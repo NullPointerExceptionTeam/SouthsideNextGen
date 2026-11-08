@@ -1,0 +1,46 @@
+package dev.southside.command.impl;
+
+import cc.polyfrost.oneconfig.config.core.OneKeyBind;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import dev.southside.Southside;
+import dev.southside.command.Command;
+import dev.southside.command.args.KeybindingArgumentType;
+import dev.southside.command.args.ModuleArgumentType;
+import dev.southside.module.Module;
+import java.util.ArrayList;
+import net.minecraft.class_2172;
+import net.minecraft.class_3675;
+
+public class BindCommand
+extends Command {
+    public BindCommand() {
+        super("bind", "Bound a module to a key", new String[0]);
+    }
+
+    @Override
+    public void build(LiteralArgumentBuilder<class_2172> builder) {
+        builder.then(BindCommand.literal("list").executes(context -> {
+            boolean hasBoundModules = false;
+            for (Module module : Southside.get().getModuleManager().getModules()) {
+                Integer bind;
+                ArrayList<Integer> keyBinds = ((OneKeyBind)module.getKeyBind().getValue()).getKeyBinds();
+                if (keyBinds.isEmpty() || (bind = keyBinds.getFirst()) == 0 || bind == -1) continue;
+                this.info("- {}: {}", module.getDisplayName(), class_3675.method_15985((int)bind, (int)0).method_27445().getString());
+                hasBoundModules = true;
+            }
+            if (!hasBoundModules) {
+                this.info("No modules are currently bound to any keys.", new Object[0]);
+            }
+            return 1;
+        }));
+        builder.then(BindCommand.argument("module", ModuleArgumentType.create()).then(BindCommand.argument("bind", KeybindingArgumentType.keybinding()).executes(context -> {
+            Module module = (Module)context.getArgument("module", Module.class);
+            KeybindingArgumentType.Keybinding bind = (KeybindingArgumentType.Keybinding)context.getArgument("bind", KeybindingArgumentType.Keybinding.class);
+            ((OneKeyBind)module.keyBind.getValue()).clearKeys();
+            ((OneKeyBind)module.keyBind.getValue()).addKey(bind.key());
+            module.info("Bound module '" + module.getDisplayName() + "' to " + bind.name(), new Object[0]);
+            return 1;
+        })));
+    }
+}
+

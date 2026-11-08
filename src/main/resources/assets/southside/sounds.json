@@ -1,0 +1,32 @@
+{
+  "sactivate": {
+    "sounds": [
+      "southside:sactivate"
+    ]
+  },
+  "sdeactivate": {
+    "sounds": [
+      "southside:sdeactivate"
+    ]
+  },
+  "toggleon": {
+    "sounds": [
+      "southside:toggleon"
+    ]
+  },
+  "toggleoff": {
+    "sounds": [
+      "southside:toggleoff"
+    ]
+  },
+  "toggleon2": {
+    "sounds": [
+      "southside:toggleon2"
+    ]
+  },
+  "toggleoff2": {
+    "sounds": [
+      "southside:toggleoff2"
+    ]
+  }
+}

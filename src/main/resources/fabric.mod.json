@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "id": "southside",
+  "version": "Release",
+  "name": "Southside",
+  "description": "Sexy KuChaZi~ ❤️, It's our big lovely 🥰",
+  "authors": [
+    "Southside Teams"
+  ],
+  "contact": {},
+  "license": "All-Rights-Reserved",
+  "environment": "client",
+  "accessWidener": "southside.accesswidener",
+  "entrypoints": {
+    "client": [
+      "dev.southside.Southside"
+    ]
+  },
+  "mixins": [
+    "southside.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.18.1",
+    "fabric-api": "*",
+    "minecraft": "1.21.4"
+  },
+  "jars": [
+    {
+      "file": "META-INF/jars/Java-WebSocket-1.5.7.jar"
+    },
+    {
+      "file": "META-INF/jars/bcprov-jdk15on-1.70.jar"
+    },
+    {
+      "file": "META-INF/jars/lwjgl-nanovg-3.3.3-natives-windows.jar"
+    },
+    {
+      "file": "META-INF/jars/lwjgl-nanovg-3.3.3.jar"
+    },
+    {
+      "file": "META-INF/jars/lwjgl-nanovg-3.3.3-natives-macos-arm64.jar"
+    },
+    {
+      "file": "META-INF/jars/lwjgl-nanovg-3.3.3-natives-macos.jar"
+    }
+  ]
+}
