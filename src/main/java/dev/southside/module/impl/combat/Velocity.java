@@ -27,17 +27,17 @@ import dev.southside.utils.raytrace.ClientRayTraceUtil;
 import dev.southside.utils.rotation.RotationUtils;
 import dev.southside.utils.types.Rotation;
 import java.util.Objects;
-import net.minecraft.class_1268;
-import net.minecraft.class_1297;
-import net.minecraft.class_1657;
-import net.minecraft.class_1802;
-import net.minecraft.class_238;
-import net.minecraft.class_243;
-import net.minecraft.class_2596;
-import net.minecraft.class_2708;
-import net.minecraft.class_2743;
-import net.minecraft.class_2824;
-import net.minecraft.class_2879;
+import net.minecraft.util.Hand;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.Items;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
+import net.minecraft.network.packet.s2c.play.EntityVelocityUpdateS2CPacket;
+import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
+import net.minecraft.network.packet.c2s.play.HandSwingC2SPacket;
 
 public class Velocity extends Module {
    public final Switch debug = new Switch("Debug", false);
@@ -53,9 +53,9 @@ public class Velocity extends Module {
    public boolean jump;
    int coolDownTicks;
    static int attack;
-   class_1297 target;
-   class_243 motion = class_243.field_1353;
-   class_2743 kbPacket = null;
+   Entity target;
+   Vec3d motion = Vec3d.ZERO;
+   EntityVelocityUpdateS2CPacket kbPacket = null;
       private int aimSkipTicks;
    private ProgressBarOverlay.ProgressHandle progressHandle;
 
@@ -110,21 +110,21 @@ public class Velocity extends Module {
    public void onPacket(PacketEvent event) {
       if (!ClientUtils.nullCheck()) {
          if (!event.getOrigin().equals(TransferOrigin.SEND)) {
-            class_2596<?> packet = event.getPacket();
-            if (packet instanceof class_2743 wrapper
-               && wrapper.method_11818() == mc.field_1724.method_5628()
+            Packet<?> packet = event.getPacket();
+            if (packet instanceof EntityVelocityUpdateS2CPacket wrapper
+               && wrapper.getEntityId() == mc.player.getId()
                && this.coolDownTicks <= 0
                && this.shouldReduce(wrapper)
                && !NoSlowTest.shouldEnable) {
                gotKB = true;
                this.kbPacket = wrapper;
-               this.motion = new class_243(wrapper.method_11815(), wrapper.method_11816(), wrapper.method_11819());
+               this.motion = new Vec3d(wrapper.getVelocityX(), wrapper.getVelocityY(), wrapper.getVelocityZ());
                if (!ServerPacketManager.deSyncing) {
                   ServerPacketManager.setup();
                }
             }
 
-            if (packet instanceof class_2708 && gotKB) {
+            if (packet instanceof PlayerPositionLookS2CPacket && gotKB) {
                if (this.debug.getValue()) {
                   ChatUtils.warning("Flag Detected");
                }
@@ -135,17 +135,17 @@ public class Velocity extends Module {
       }
    }
 
-   private boolean shouldReduce(class_2743 packet) {
+   private boolean shouldReduce(EntityVelocityUpdateS2CPacket packet) {
       return Southside.INSTANCE.getModuleManager().isEnabled(KillAura.class)
          && !AutoGApple.eating
-         && new class_243(packet.method_11815(), 0.0, packet.method_11819()).method_1033() >= this.targetMotion.getDouble();
+         && new Vec3d(packet.getVelocityX(), 0.0, packet.getVelocityZ()).length() >= this.targetMotion.getDouble();
    }
 
    @EventHandler(
       priority = -200
    )
    public void onRotation(RotationEvent event) {
-      if (mc.field_1724 == null) {
+      if (mc.player == null) {
          this.reset();
       } else if (this.coolDownTicks > 0) {
          this.coolDownTicks--;
@@ -192,7 +192,7 @@ public class Velocity extends Module {
                   gotKB = false;
                   this.kbPacket = null;
                   this.cancelProgressBar();
-                  double strength = new class_243(mc.field_1724.method_18798().method_10216(), 0.0, mc.field_1724.method_18798().method_10215()).method_1033();
+                  double strength = new Vec3d(mc.player.getVelocity().getX(), 0.0, mc.player.getVelocity().getZ()).length();
                   attack = this.calcAttacks(strength) + 1;
                   if (this.debug.getValue()) {
                      ChatUtils.info("Sync, ticks used: " + tick + " calculated attacks: " + attack + ".");
@@ -207,7 +207,7 @@ public class Velocity extends Module {
          }
 
          if (gotKB && attack > 0) {
-            mc.field_1690.field_1867.method_23481(true);
+            mc.options.sprintKey.setPressed(true);
          }
       }
    }
@@ -220,7 +220,7 @@ public class Velocity extends Module {
             && this.ready()
             && KillAura.target != null
             && Southside.INSTANCE.getModuleManager().get(KillAura.class).inRaycast(KillAura.target)
-            && BoundBoxUtils.getMinDistanceVec3dByBox(mc.field_1724.method_33571(), KillAura.target.method_5829()).method_1022(mc.field_1724.method_33571())
+            && BoundBoxUtils.getMinDistanceVec3dByBox(mc.player.getEyePos(), KillAura.target.getBoundingBox()).distanceTo(mc.player.getEyePos())
                <= this.releaseDistance.getValue().doubleValue()) {
             int tick = ServerPacketManager.deSyncTick;
             if (this.testFull.getValue()) {
@@ -232,7 +232,7 @@ public class Velocity extends Module {
             gotKB = false;
             this.kbPacket = null;
             this.cancelProgressBar();
-            double strength = new class_243(mc.field_1724.method_18798().method_10216(), 0.0, mc.field_1724.method_18798().method_10215()).method_1033();
+            double strength = new Vec3d(mc.player.getVelocity().getX(), 0.0, mc.player.getVelocity().getZ()).length();
             attack = this.calcAttacks(strength) + 1;
             if (this.debug.getValue()) {
                ChatUtils.info("Sync, ticks used: " + tick + " calculated attacks: " + attack + ".");
@@ -240,7 +240,7 @@ public class Velocity extends Module {
          }
 
          if (attack > 0) {
-            class_1297 aimTarget = this.target != null ? this.target : this.findTarget();
+            Entity aimTarget = this.target != null ? this.target : this.findTarget();
             this.target = aimTarget;
 
             if (aimTarget == null || !this.serverAimValid(aimTarget)) {
@@ -264,11 +264,11 @@ public class Velocity extends Module {
       }
    }
 
-   private class_1297 findTarget() {
+   private Entity findTarget() {
       return KillAura.target != null && Southside.INSTANCE.getModuleManager().get(KillAura.class).inRaycast(KillAura.target) ? KillAura.target : null;
    }
 
-      private boolean serverAimValid(class_1297 entity) {
+      private boolean serverAimValid(Entity entity) {
       if (entity == null) {
          return false;
       }
@@ -298,8 +298,8 @@ public class Velocity extends Module {
    public void onItemUse(ItemUseEvent event) {
       if (this.fireballCooldown.getValue()
          && !event.isCancelled()
-         && mc.field_1724 != null
-         && (mc.field_1724.method_6079().method_7909().equals(class_1802.field_8814) || mc.field_1724.method_6047().method_7909().equals(class_1802.field_8814))
+         && mc.player != null
+         && (mc.player.getOffHandStack().getItem().equals(Items.FIRE_CHARGE) || mc.player.getMainHandStack().getItem().equals(Items.FIRE_CHARGE))
          )
        {
          this.coolDownTicks = 10;
@@ -308,11 +308,11 @@ public class Velocity extends Module {
 
    private boolean checkAsyncTargets() {
       if (KillAura.target != null) {
-         for (class_1297 entity : mc.field_1687.method_18112()) {
-            if (entity instanceof class_1657 player) {
-               class_238 box = entity.field_18065.method_30757(player.method_19538());
+         for (Entity entity : mc.world.getEntities()) {
+            if (entity instanceof PlayerEntity player) {
+               Box box = entity.dimensions.getBoxAt(player.getPos());
                if (TargetUtils.isTarget(entity, true, true)
-                  && BoundBoxUtils.getMinDistanceVec3dByBox(mc.field_1724.method_33571(), box).method_1022(mc.field_1724.method_33571())
+                  && BoundBoxUtils.getMinDistanceVec3dByBox(mc.player.getEyePos(), box).distanceTo(mc.player.getEyePos())
                      <= this.releaseDistance.getValue().doubleValue()) {
                   Rotation rotTo = RotationUtils.calculate(BoundBoxUtils.getMinDistanceVec3dByBox(ClientRayTraceUtil.eyePos, box));
                   if (ClientRayTraceUtil.overBox(rotTo.yaw, rotTo.pitch, 3.0, box)) {
@@ -346,13 +346,13 @@ public class Velocity extends Module {
          }
 
          if (this.target != null) {
-            if (mc.field_1724.method_5624()) {
-               PacketUtils.sendPacket(class_2824.method_34206(this.target, mc.field_1724.method_5715()));
-               mc.field_1724.method_18799(mc.field_1724.method_18798().method_18805(0.6, 1.0, 0.6));
-               mc.field_1724.method_6104(class_1268.field_5808);
+            if (mc.player.isSprinting()) {
+               PacketUtils.sendPacket(PlayerInteractEntityC2SPacket.attack(this.target, mc.player.isSneaking()));
+               mc.player.setVelocity(mc.player.getVelocity().multiply(0.6, 1.0, 0.6));
+               mc.player.swingHand(Hand.MAIN_HAND);
                CPSManager.INSTANCE.click();
                KillAura.msTimer.reset();
-               KillAura.lastAttackSprint = mc.field_1724.field_3919;
+               KillAura.lastAttackSprint = mc.player.lastSprinting;
                if (this.debug.getValue()) {
                   ChatUtils.info("Reduce.");
                }
@@ -362,10 +362,10 @@ public class Velocity extends Module {
 
             this.target = null;
          } else {
-            class_1297 auraTarget = KillAura.target;
+            Entity auraTarget = KillAura.target;
             double dist = auraTarget == null || ClientRayTraceUtil.eyePos == null
                ? -1.0
-               : BoundBoxUtils.getMinDistanceVec3dByBox(ClientRayTraceUtil.eyePos, auraTarget.method_5829()).method_1022(ClientRayTraceUtil.eyePos);
+               : BoundBoxUtils.getMinDistanceVec3dByBox(ClientRayTraceUtil.eyePos, auraTarget.getBoundingBox()).distanceTo(ClientRayTraceUtil.eyePos);
             ChatUtils.error("target is null. dist: " + dist);
          }
       }
@@ -380,12 +380,12 @@ public class Velocity extends Module {
          return;
       }
 
-      if (mc.field_1724.method_7261(0.0F) < 1.0F) {
+      if (mc.player.getAttackCooldownProgress(0.0F) < 1.0F) {
          attack = 1;
       } else {
-         PacketUtils.sendPacket(class_2824.method_34206(this.target, false));
-         PacketUtils.sendPacket(new class_2879(class_1268.field_5808));
-         mc.field_1724.method_18799(mc.field_1724.method_18798().method_18805(0.6, 1.0, 0.6));
+         PacketUtils.sendPacket(PlayerInteractEntityC2SPacket.attack(this.target, false));
+         PacketUtils.sendPacket(new HandSwingC2SPacket(Hand.MAIN_HAND));
+         mc.player.setVelocity(mc.player.getVelocity().multiply(0.6, 1.0, 0.6));
          CPSManager.INSTANCE.click();
          KillAura.msTimer.reset();
          if (this.debug.getValue()) {
@@ -398,7 +398,7 @@ public class Velocity extends Module {
 
    @EventHandler
    public void onMove(MovementInputEvent event) {
-      if (mc.field_1755 == null && (gotKB && ServerPacketManager.deSyncing || attack > 0)) {
+      if (mc.currentScreen == null && (gotKB && ServerPacketManager.deSyncing || attack > 0)) {
          event.setForward(true);
          event.setRight(false);
          event.setLeft(false);
@@ -435,14 +435,14 @@ public class Velocity extends Module {
    }
 
    private boolean ready() {
-      if (mc.field_1724 == null) {
+      if (mc.player == null) {
          return false;
       } else {
-         return mc.field_1724.method_6115() ? false : this.checkSprint() && (mc.field_1724.method_24828() || !this.delayTillGround.getValue());
+         return mc.player.isUsingItem() ? false : this.checkSprint() && (mc.player.isOnGround() || !this.delayTillGround.getValue());
       }
    }
 
    private boolean checkSprint() {
-      return mc.field_1724.method_5624();
+      return mc.player.isSprinting();
    }
 }

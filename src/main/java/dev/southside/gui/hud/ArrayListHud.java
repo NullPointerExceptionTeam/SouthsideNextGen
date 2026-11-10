@@ -28,8 +28,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.Generated;
-import net.minecraft.class_332;
-import net.minecraft.class_4587;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.util.math.MatrixStack;
 
 public class ArrayListHud extends Hud {
    public static final Dropdown mode = new Dropdown("Style", "Southside", "Southside", "SigmaJello", "大香肠");
@@ -97,10 +97,10 @@ public class ArrayListHud extends Hud {
                   String text2 = Southside.get().getModuleManager().formatRaw(o2.module);
                   String text1 = Southside.get().getModuleManager().formatRaw(o1.module);
                   float width2 = useVanillaFont()
-                     ? mc.field_1772.method_1727(text2) * this.lastScale
+                     ? mc.textRenderer.getWidth(text2) * this.lastScale
                      : nanoVGHelper.getTextWidth(vg, text2, fontSize, getSelectedFont());
                   float width1 = useVanillaFont()
-                     ? mc.field_1772.method_1727(text1) * this.lastScale
+                     ? mc.textRenderer.getWidth(text1) * this.lastScale
                      : nanoVGHelper.getTextWidth(vg, text1, fontSize, getSelectedFont());
                   return (int)(10000.0F * width2 - 10000.0F * width1);
                }
@@ -109,7 +109,7 @@ public class ArrayListHud extends Hud {
    }
 
    @Override
-   protected void draw(class_332 context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
+   protected void draw(DrawContext context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
       String var7 = mode.getMode();
       switch (var7) {
          case "Southside":
@@ -172,7 +172,7 @@ public class ArrayListHud extends Hud {
             }
 
             if (updatedSize.get()) {
-               if (mc.field_1755 instanceof HudGui hudGui && hudGui.isScaling) {
+               if (mc.currentScreen instanceof HudGui hudGui && hudGui.isScaling) {
                   return;
                }
 
@@ -190,7 +190,7 @@ public class ArrayListHud extends Hud {
          default:
             AtomicInteger posY = Southside.get().getModuleManager().get(Watermark.class).isEnabled() ? new AtomicInteger(22) : new AtomicInteger(2);
             this.enabledModules.forEach(u -> {
-               context.method_25303(mc.field_1772, u.module.getDisplayName(), 1, posY.get(), -1);
+               context.drawTextWithShadow(mc.textRenderer, u.module.getDisplayName(), 1, posY.get(), -1);
                posY.addAndGet(9);
             });
       }
@@ -291,7 +291,7 @@ public class ArrayListHud extends Hud {
          NanoVGHelper nanoVGHelper = NanoVGHelper.INSTANCE;
          boolean vanillaFontSelected = ArrayListHud.useVanillaFont();
          float moduleWidth = vanillaFontSelected
-            ? ArrayListHud.mc.field_1772.method_1727(rawText) * scale
+            ? ArrayListHud.mc.textRenderer.getWidth(rawText) * scale
             : nanoVGHelper.getTextWidth(vg, rawText, fontSize, ArrayListHud.getSelectedFont());
          float fontHeight = vanillaFontSelected ? 9.0F * scale : nanoVGHelper.getTextHeight(vg, fontSize, ArrayListHud.getSelectedFont());
          float height = fontHeight + 3.0F * scale;
@@ -489,14 +489,14 @@ public class ArrayListHud extends Hud {
          this.vanillaNeedsDraw = true;
       }
 
-      public void drawVanillaText(class_332 context) {
+      public void drawVanillaText(DrawContext context) {
          if (this.vanillaNeedsDraw) {
-            class_4587 matrices = context.method_51448();
-            matrices.method_22903();
-            matrices.method_46416(this.vanillaTextX, this.vanillaTextY, 0.0F);
-            matrices.method_22905(this.vanillaScale, this.vanillaScale, 1.0F);
-            context.method_51433(ArrayListHud.mc.field_1772, this.vanillaText, 0, 0, this.vanillaColor, !ArrayListHud.removeShadow.getValue());
-            matrices.method_22909();
+            MatrixStack matrices = context.getMatrices();
+            matrices.push();
+            matrices.translate(this.vanillaTextX, this.vanillaTextY, 0.0F);
+            matrices.scale(this.vanillaScale, this.vanillaScale, 1.0F);
+            context.drawText(ArrayListHud.mc.textRenderer, this.vanillaText, 0, 0, this.vanillaColor, !ArrayListHud.removeShadow.getValue());
+            matrices.pop();
             this.vanillaNeedsDraw = false;
          }
       }

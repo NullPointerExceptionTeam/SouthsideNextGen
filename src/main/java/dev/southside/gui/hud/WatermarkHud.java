@@ -18,7 +18,7 @@ import dev.southside.nanovg.NanoUtil;
 import dev.southside.utils.network.Http;
 import java.awt.Color;
 import java.util.concurrent.atomic.AtomicBoolean;
-import net.minecraft.class_332;
+import net.minecraft.client.gui.DrawContext;
 
 public class WatermarkHud extends Hud {
    public final Dropdown subtitleContent = new Dropdown(
@@ -62,10 +62,10 @@ public class WatermarkHud extends Hud {
          default:
             return "";
          case 1:
-            int fps = mc.method_47599();
+            int fps = mc.getCurrentFps();
             return fps + " FPS";
          case 2:
-            return mc.field_1724 != null ? mc.field_1724.method_5477().getString() : "Player";
+            return mc.player != null ? mc.player.getName().getString() : "Player";
          case 3:
             long playTime = (System.currentTimeMillis() - this.startTime) / 1000L;
             long hours = playTime / 3600L;
@@ -73,7 +73,7 @@ public class WatermarkHud extends Hud {
             long seconds = playTime % 60L;
             return String.format("%02d:%02d:%02d", hours, minutes, seconds);
          case 4:
-            return mc.field_1724 != null ? mc.field_1724.method_3123().method_2959() + " ms" : "Ping";
+            return mc.player != null ? mc.player.getPlayerListEntry().getLatency() + " ms" : "Ping";
          case 5:
          case 6:
             return this.getHitokotoSubtitle();
@@ -153,12 +153,12 @@ public class WatermarkHud extends Hud {
    }
 
    @Override
-   protected void draw(class_332 context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
+   protected void draw(DrawContext context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
       if (this.module == null) {
          this.module = Southside.INSTANCE.getModuleManager().get(Watermark.class);
       }
 
-      if (mc.method_1562() != null) {
+      if (mc.getNetworkHandler() != null) {
          NanoVGHelper nanovg = NanoVGHelper.INSTANCE;
          nanovg.setupAndDraw(
             true,

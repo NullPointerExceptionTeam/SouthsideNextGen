@@ -10,8 +10,8 @@ import dev.southside.module.Module;
 import dev.southside.orbit.EventHandler;
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.class_2668;
-import net.minecraft.class_2761;
+import net.minecraft.network.packet.s2c.play.GameStateChangeS2CPacket;
+import net.minecraft.network.packet.s2c.play.WorldTimeUpdateS2CPacket;
 
 public class WorldManager extends Module {
    private final Switch timeEnabled = new Switch("Time", false);
@@ -45,14 +45,14 @@ public class WorldManager extends Module {
 
    @Override
    public void onEnable() {
-      if (mc.field_1687 != null) {
-         this.oldTime = mc.field_1687.method_8510();
-         this.oldShould = mc.field_1687.field_54500;
+      if (mc.world != null) {
+         this.oldTime = mc.world.getTime();
+         this.oldShould = mc.world.shouldTickTimeOfDay;
          this.fastTimeBase = this.oldTime;
          this.lastRenderMs = System.currentTimeMillis();
-         this.oldRainGradient = mc.field_1687.method_8430(1.0F);
-         this.oldThunderGradient = mc.field_1687.method_8478(1.0F);
-         this.oldRaining = mc.field_1687.method_28104().method_156();
+         this.oldRainGradient = mc.world.getRainGradient(1.0F);
+         this.oldThunderGradient = mc.world.getThunderGradient(1.0F);
+         this.oldRaining = mc.world.getLevelProperties().isRaining();
       }
    }
 
@@ -60,27 +60,27 @@ public class WorldManager extends Module {
    public void onDisable() {
       forceSnow = false;
       forceRain = false;
-      if (mc.field_1687 != null) {
-         mc.field_1687.method_29089(mc.field_1687.method_8510(), this.oldTime, this.oldShould);
-         mc.field_1687.method_28104().method_157(this.oldRaining);
-         mc.field_1687.method_8519(this.oldRainGradient);
-         mc.field_1687.method_8496(this.oldThunderGradient);
+      if (mc.world != null) {
+         mc.world.setTime(mc.world.getTime(), this.oldTime, this.oldShould);
+         mc.world.getLevelProperties().setRaining(this.oldRaining);
+         mc.world.setRainGradient(this.oldRainGradient);
+         mc.world.setThunderGradient(this.oldThunderGradient);
       }
    }
 
    @EventHandler
    public void onUpdate(TickEvent event) {
-      if (mc.field_1687 != null) {
+      if (mc.world != null) {
          if (this.timeEnabled.getValue()) {
             if (this.timeMode.isMode("Pinned")) {
-               mc.field_1687.method_29089(mc.field_1687.method_8510(), this.timer.getValue().longValue() * 1000L, false);
+               mc.world.setTime(mc.world.getTime(), this.timer.getValue().longValue() * 1000L, false);
             } else {
                long now = System.currentTimeMillis();
                long deltaMs = now - this.lastRenderMs;
                this.lastRenderMs = now;
                double ticksDelta = deltaMs / 50.0 * this.speed.getValue().doubleValue();
                this.fastTimeBase += (long)(ticksDelta * 20.0);
-               mc.field_1687.method_29089(mc.field_1687.method_8510(), this.fastTimeBase, false);
+               mc.world.setTime(mc.world.getTime(), this.fastTimeBase, false);
             }
          }
 
@@ -88,27 +88,27 @@ public class WorldManager extends Module {
             if (this.weatherMode.isMode("Clear")) {
                forceSnow = false;
                forceRain = false;
-               mc.field_1687.method_28104().method_157(false);
-               mc.field_1687.method_8519(0.0F);
-               mc.field_1687.method_8496(0.0F);
+               mc.world.getLevelProperties().setRaining(false);
+               mc.world.setRainGradient(0.0F);
+               mc.world.setThunderGradient(0.0F);
             } else if (this.weatherMode.isMode("Rain")) {
                forceSnow = false;
                forceRain = true;
-               mc.field_1687.method_28104().method_157(true);
-               mc.field_1687.method_8519(1.0F);
-               mc.field_1687.method_8496(0.0F);
+               mc.world.getLevelProperties().setRaining(true);
+               mc.world.setRainGradient(1.0F);
+               mc.world.setThunderGradient(0.0F);
             } else if (this.weatherMode.isMode("Thunder")) {
                forceSnow = false;
                forceRain = true;
-               mc.field_1687.method_28104().method_157(true);
-               mc.field_1687.method_8519(1.0F);
-               mc.field_1687.method_8496(1.0F);
+               mc.world.getLevelProperties().setRaining(true);
+               mc.world.setRainGradient(1.0F);
+               mc.world.setThunderGradient(1.0F);
             } else if (this.weatherMode.isMode("Snow")) {
                forceSnow = true;
                forceRain = false;
-               mc.field_1687.method_28104().method_157(true);
-               mc.field_1687.method_8519(1.0F);
-               mc.field_1687.method_8496(0.0F);
+               mc.world.getLevelProperties().setRaining(true);
+               mc.world.setRainGradient(1.0F);
+               mc.world.setThunderGradient(0.0F);
             }
          } else {
             forceSnow = false;
@@ -120,18 +120,18 @@ public class WorldManager extends Module {
    @EventHandler
    public void onPacket(PacketEvent event) {
       if (!event.isSend()) {
-         if (this.timeEnabled.getValue() && event.getPacket() instanceof class_2761 packet) {
-            this.oldTime = packet.comp_3219();
+         if (this.timeEnabled.getValue() && event.getPacket() instanceof WorldTimeUpdateS2CPacket packet) {
+            this.oldTime = packet.time();
             event.setCancelled(true);
          }
 
          if (this.weatherEnabled.getValue()
-            && event.getPacket() instanceof class_2668 gs
+            && event.getPacket() instanceof GameStateChangeS2CPacket gs
             && (
-               gs.method_11491() == class_2668.field_25646
-                  || gs.method_11491() == class_2668.field_25647
-                  || gs.method_11491() == class_2668.field_25652
-                  || gs.method_11491() == class_2668.field_25653
+               gs.getReason() == GameStateChangeS2CPacket.RAIN_STARTED
+                  || gs.getReason() == GameStateChangeS2CPacket.RAIN_STOPPED
+                  || gs.getReason() == GameStateChangeS2CPacket.RAIN_GRADIENT_CHANGED
+                  || gs.getReason() == GameStateChangeS2CPacket.THUNDER_GRADIENT_CHANGED
             )) {
             event.setCancelled(true);
          }

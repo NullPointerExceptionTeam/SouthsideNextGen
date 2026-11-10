@@ -1,18 +1,18 @@
 package dev.southside.event.events;
 
 import lombok.Generated;
-import net.minecraft.class_638;
+import net.minecraft.client.world.ClientWorld;
 
 public class WorldEvent {
-   private class_638 world;
+   private ClientWorld world;
 
    @Generated
-   public class_638 getWorld() {
+   public ClientWorld getWorld() {
       return this.world;
    }
 
    @Generated
-   public WorldEvent(class_638 world) {
+   public WorldEvent(ClientWorld world) {
       this.world = world;
    }
 }

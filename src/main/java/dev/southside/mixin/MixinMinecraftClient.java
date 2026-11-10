@@ -24,40 +24,40 @@ import dev.southside.utils.raytrace.ClientRayTraceUtil;
 import dev.southside.utils.rotation.RotationUtils;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import net.minecraft.class_1041;
-import net.minecraft.class_1144;
-import net.minecraft.class_1156;
-import net.minecraft.class_1268;
-import net.minecraft.class_1297;
-import net.minecraft.class_1812;
-import net.minecraft.class_1829;
-import net.minecraft.class_1839;
-import net.minecraft.class_239;
-import net.minecraft.class_2561;
-import net.minecraft.class_310;
-import net.minecraft.class_312;
-import net.minecraft.class_315;
-import net.minecraft.class_329;
-import net.minecraft.class_333;
-import net.minecraft.class_372;
-import net.minecraft.class_4071;
-import net.minecraft.class_429;
-import net.minecraft.class_4325;
-import net.minecraft.class_437;
-import net.minecraft.class_4394;
-import net.minecraft.class_442;
-import net.minecraft.class_4749;
-import net.minecraft.class_500;
-import net.minecraft.class_525;
-import net.minecraft.class_542;
-import net.minecraft.class_634;
-import net.minecraft.class_636;
-import net.minecraft.class_638;
-import net.minecraft.class_746;
-import net.minecraft.class_757;
-import net.minecraft.class_761;
-import net.minecraft.class_239.class_240;
-import net.minecraft.class_9779.class_9781;
+import net.minecraft.client.util.Window;
+import net.minecraft.client.sound.SoundManager;
+import net.minecraft.client.tutorial.TutorialManager;
+import net.minecraft.util.Hand;
+import net.minecraft.entity.Entity;
+import net.minecraft.item.PotionItem;
+import net.minecraft.item.SwordItem;
+import net.minecraft.item.consume.UseAction;
+import net.minecraft.util.hit.HitResult;
+import net.minecraft.text.Text;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Mouse;
+import net.minecraft.client.option.GameOptions;
+import net.minecraft.client.gui.hud.InGameHud;
+import net.minecraft.client.util.NarratorManager;
+import net.minecraft.client.toast.TutorialToast;
+import net.minecraft.client.gui.screen.Overlay;
+import net.minecraft.client.gui.screen.option.OptionsScreen;
+import net.minecraft.client.realms.gui.screen.RealmsMainScreen;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.realms.gui.screen.RealmsGenericErrorScreen;
+import net.minecraft.client.gui.screen.TitleScreen;
+import net.minecraft.client.gui.screen.multiplayer.MultiplayerWarningScreen;
+import net.minecraft.client.gui.screen.multiplayer.MultiplayerScreen;
+import net.minecraft.client.gui.screen.world.CreateWorldScreen;
+import net.minecraft.client.RunArgs;
+import net.minecraft.client.network.ClientPlayNetworkHandler;
+import net.minecraft.client.network.ClientPlayerInteractionManager;
+import net.minecraft.client.world.ClientWorld;
+import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.render.WorldRenderer;
+import net.minecraft.util.hit.HitResult.Type;
+import net.minecraft.client.render.RenderTickCounter.Dynamic;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.Final;
@@ -71,74 +71,74 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.At.Shift;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin({class_310.class})
+@Mixin({MinecraftClient.class})
 public abstract class MixinMinecraftClient implements IMinecraftClient {
    @Shadow
-   public class_437 field_1755;
+   public Screen currentScreen;
    @Final
    @Shadow
-   private static Logger field_1762;
+   private static Logger LOGGER;
    @Shadow
-   public int field_1771;
+   public int attackCooldown;
    @Shadow
-   public int field_1752;
+   public int itemUseCooldown;
    @Shadow
    @Final
-   private class_1041 field_1704;
+   private Window window;
    @Shadow
-   Thread field_1696;
+   Thread thread;
    @Shadow
-   private boolean field_46551;
+   private boolean disconnecting;
    @Shadow
-   public boolean field_1743;
+   public boolean skipGameRender;
    @Final
    @Shadow
-   private class_1144 field_1727;
+   private SoundManager soundManager;
    @Shadow
    @Nullable
-   public class_746 field_1724;
+   public ClientPlayerEntity player;
    @Shadow
    @Nullable
-   public class_239 field_1765;
+   public HitResult crosshairTarget;
    @Shadow
    @Final
-   public class_315 field_1690;
+   public GameOptions options;
    @Shadow
    @Final
-   public class_9781 field_52750;
+   public Dynamic renderTickCounter;
    @Shadow
    @Final
-   public class_757 field_1773;
+   public GameRenderer gameRenderer;
    @Shadow
    @Final
-   public class_761 field_1769;
+   public WorldRenderer worldRenderer;
    @Shadow
    @Final
-   public class_329 field_1705;
+   public InGameHud inGameHud;
    @Shadow
    @Final
-   private static class_2561 field_26841;
+   private static Text SOCIAL_INTERACTIONS_NOT_AVAILABLE;
    @Shadow
    @Final
-   private class_333 field_39769;
+   private NarratorManager narratorManager;
    @Shadow
    @Nullable
-   private class_372 field_26843;
+   private TutorialToast socialInteractionsToast;
    @Shadow
    @Final
-   private class_1156 field_1758;
+   private TutorialManager tutorialManager;
    @Shadow
    @Nullable
-   public class_636 field_1761;
+   public ClientPlayerInteractionManager interactionManager;
    @Shadow
    @Nullable
-   private class_4071 field_18175;
+   private Overlay overlay;
    @Shadow
    @Final
-   public class_312 field_1729;
+   public Mouse mouse;
    @Shadow
    @Nullable
-   public class_638 field_1687;
+   public ClientWorld world;
    @Unique
    private AtomicBoolean currentIsInGame;
    @Unique
@@ -147,45 +147,45 @@ public abstract class MixinMinecraftClient implements IMinecraftClient {
    private AtomicInteger startTick;
 
    @Shadow
-   public abstract class_1041 method_22683();
+   public abstract Window getWindow();
 
    @Shadow
-   protected abstract boolean method_1536();
-
-   @Shadow
-   @Nullable
-   public abstract class_1297 method_1560();
-
-   @Shadow
-   public abstract boolean method_47392();
+   protected abstract boolean doAttack();
 
    @Shadow
    @Nullable
-   public abstract class_634 method_1562();
+   public abstract Entity getCameraEntity();
 
    @Shadow
-   protected abstract void method_29041(String var1);
+   public abstract boolean isConnectedToLocalServer();
 
    @Shadow
-   protected abstract void method_1511();
+   @Nullable
+   public abstract ClientPlayNetworkHandler getNetworkHandler();
 
    @Shadow
-   protected abstract void method_1590(boolean var1);
+   protected abstract void openChatScreen(String var1);
 
    @Shadow
-   public void method_1507(@Nullable class_437 screen) {
+   protected abstract void doItemPick();
+
+   @Shadow
+   protected abstract void handleBlockBreaking(boolean var1);
+
+   @Shadow
+   public void setScreen(@Nullable Screen screen) {
    }
 
    @Inject(
-      method = {"<init>(Lnet/minecraft/class_542;)V"},
+      method = {"<init>(Lnet/minecraft/client/RunArgs;)V"},
       at = {@At("TAIL")}
    )
-   public void PostInit(class_542 args, CallbackInfo ci) {
+   public void PostInit(RunArgs args, CallbackInfo ci) {
       Southside.INSTANCE.onInitialize();
    }
 
    @Inject(
-      method = {"method_1574()V"},
+      method = {"tick()V"},
       at = {@At("HEAD")}
    )
    public void preTick(CallbackInfo ci) {
@@ -196,7 +196,7 @@ public abstract class MixinMinecraftClient implements IMinecraftClient {
    }
 
    @Inject(
-      method = {"method_1574()V"},
+      method = {"tick()V"},
       at = {@At("TAIL")}
    )
    public void postTick(CallbackInfo ci) {
@@ -205,10 +205,10 @@ public abstract class MixinMinecraftClient implements IMinecraftClient {
    }
 
    @Inject(
-      method = {"method_1574()V"},
+      method = {"tick()V"},
       at = {@At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_757;method_3190(F)V",
+         target = "Lnet/minecraft/client/render/GameRenderer;updateCrosshairTarget(F)V",
          shift = Shift.BEFORE
       )}
    )
@@ -218,10 +218,10 @@ public abstract class MixinMinecraftClient implements IMinecraftClient {
    }
 
    @Inject(
-      method = {"method_1574()V"},
+      method = {"tick()V"},
       at = {@At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_310;method_1508()V",
+         target = "Lnet/minecraft/client/MinecraftClient;handleInputEvents()V",
          shift = Shift.BEFORE
       )}
    )
@@ -232,7 +232,7 @@ public abstract class MixinMinecraftClient implements IMinecraftClient {
 
    @Inject(
       at = {@At("HEAD")},
-      method = {"method_1490()V"}
+      method = {"stop()V"}
    )
    private void stop(CallbackInfo info) {
       try {
@@ -243,7 +243,7 @@ public abstract class MixinMinecraftClient implements IMinecraftClient {
    }
 
    @Inject(
-      method = {"method_1583()V"},
+      method = {"doItemUse()V"},
       at = {@At("HEAD")},
       cancellable = true
    )
@@ -253,10 +253,10 @@ public abstract class MixinMinecraftClient implements IMinecraftClient {
    }
 
    @Inject(
-      method = {"method_18097(Lnet/minecraft/class_638;)V"},
+      method = {"setWorld(Lnet/minecraft/client/world/ClientWorld;)V"},
       at = {@At("HEAD")}
    )
-   public void setWorld(class_638 world, CallbackInfo ci) {
+   public void setWorld(ClientWorld world, CallbackInfo ci) {
       Southside.INSTANCE.getEventBus().call(new WorldEvent(world));
       PlayerUtils.serverSprinting = false;
       PingSpoofManager.packets.clear();
@@ -264,45 +264,45 @@ public abstract class MixinMinecraftClient implements IMinecraftClient {
    }
 
    @Inject(
-      method = {"method_1508()V"},
+      method = {"handleInputEvents()V"},
       at = {@At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_746;method_6115()Z",
+         target = "Lnet/minecraft/client/network/ClientPlayerEntity;isUsingItem()Z",
          shift = Shift.AFTER,
          ordinal = 0
       )}
    )
    private void handleInputEvents(CallbackInfo ci) {
-      if (!this.field_1724.method_5765() && this.field_1765 != null && Southside.get().getModuleManager().isEnabled(OldHitting.class)) {
-         class_1839 useAction = this.field_1724.method_6030().method_7976();
+      if (!this.player.hasVehicle() && this.crosshairTarget != null && Southside.get().getModuleManager().isEnabled(OldHitting.class)) {
+         UseAction useAction = this.player.getActiveItem().getUseAction();
          if ((
-               this.field_1724.method_6030().method_7909() instanceof class_1829
-                  || useAction.equals(class_1839.field_8950)
-                  || useAction.equals(class_1839.field_8953)
-                  || this.field_1724.method_6030().method_7909() instanceof class_1812
+               this.player.getActiveItem().getItem() instanceof SwordItem
+                  || useAction.equals(UseAction.EAT)
+                  || useAction.equals(UseAction.BOW)
+                  || this.player.getActiveItem().getItem() instanceof PotionItem
             )
-            && this.field_1690.field_1886.method_1434()
-            && this.field_1765.method_17783() == class_240.field_1332) {
-            this.field_1724.method_23667(class_1268.field_5808, false);
+            && this.options.attackKey.isPressed()
+            && this.crosshairTarget.getType() == Type.BLOCK) {
+            this.player.swingHand(Hand.MAIN_HAND, false);
          }
       }
    }
 
    @Redirect(
-      method = {"method_1574()V"},
+      method = {"tick()V"},
       at = @At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_310;method_1508()V"
+         target = "Lnet/minecraft/client/MinecraftClient;handleInputEvents()V"
       )
    )
-   private void ss$redirectHandleInputEvents(class_310 self) {
+   private void ss$redirectHandleInputEvents(MinecraftClient self) {
    }
 
    @Inject(
-      method = {"method_1508()V"},
+      method = {"handleInputEvents()V"},
       at = {@At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_746;method_6115()Z",
+         target = "Lnet/minecraft/client/network/ClientPlayerEntity;isUsingItem()Z",
          ordinal = 0,
          shift = Shift.BEFORE
       )},
@@ -319,19 +319,19 @@ public abstract class MixinMinecraftClient implements IMinecraftClient {
    }
 
    @Inject(
-      method = {"method_1507(Lnet/minecraft/class_437;)V"},
+      method = {"setScreen(Lnet/minecraft/client/gui/screen/Screen;)V"},
       at = {@At("HEAD")},
       cancellable = true
    )
-   private void setScreen(class_437 screen, CallbackInfo ci) {
-      class_437 currentScreen = this.field_1755;
+   private void setScreen(Screen screen, CallbackInfo ci) {
+      Screen currentScreen = this.currentScreen;
       if (screen == null
-         && !(currentScreen instanceof class_525)
-         && !(currentScreen instanceof class_500)
-         && !(currentScreen instanceof class_4749)
-         && !(currentScreen instanceof class_4325)
-         && !(currentScreen instanceof class_429)
-         && !(currentScreen instanceof class_4394)) {
+         && !(currentScreen instanceof CreateWorldScreen)
+         && !(currentScreen instanceof MultiplayerScreen)
+         && !(currentScreen instanceof MultiplayerWarningScreen)
+         && !(currentScreen instanceof RealmsMainScreen)
+         && !(currentScreen instanceof OptionsScreen)
+         && !(currentScreen instanceof RealmsGenericErrorScreen)) {
          if (this.currentIsInGame == null) {
             this.currentIsInGame = new AtomicBoolean(true);
          }
@@ -347,30 +347,30 @@ public abstract class MixinMinecraftClient implements IMinecraftClient {
    }
 
    @ModifyVariable(
-      method = {"method_1507(Lnet/minecraft/class_437;)V"},
+      method = {"setScreen(Lnet/minecraft/client/gui/screen/Screen;)V"},
       at = @At(
          value = "FIELD",
-         target = "Lnet/minecraft/class_310;field_1755:Lnet/minecraft/class_437;",
+         target = "Lnet/minecraft/client/MinecraftClient;currentScreen:Lnet/minecraft/client/gui/screen/Screen;",
          shift = Shift.AFTER
       ),
       ordinal = 0,
       argsOnly = true
    )
-   private class_437 modifyScreen(class_437 screen) {
-      return (class_437)(screen instanceof class_442 && Southside.get().getModuleManager().get(ClientSettings.class).mode.getMode().equals("Southside")
+   private Screen modifyScreen(Screen screen) {
+      return (Screen)(screen instanceof TitleScreen && Southside.get().getModuleManager().get(ClientSettings.class).mode.getMode().equals("Southside")
          ? new SouthsideMenuScreen()
          : screen);
    }
 
    @Shadow
-   public void method_24288() {
+   public void updateWindowTitle() {
    }
 
    @Inject(
-      method = {"method_1523(Z)V"},
+      method = {"render(Z)V"},
       at = {@At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_276;method_1237(II)V",
+         target = "Lnet/minecraft/client/gl/Framebuffer;draw(II)V",
          shift = Shift.BEFORE
       )}
    )
@@ -379,10 +379,10 @@ public abstract class MixinMinecraftClient implements IMinecraftClient {
    }
 
    @Inject(
-      method = {"method_1523(Z)V"},
+      method = {"render(Z)V"},
       at = {@At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_276;method_1237(II)V",
+         target = "Lnet/minecraft/client/gl/Framebuffer;draw(II)V",
          shift = Shift.AFTER
       )}
    )
@@ -391,34 +391,34 @@ public abstract class MixinMinecraftClient implements IMinecraftClient {
    }
 
    @Inject(
-      method = {"method_1523(Z)V"},
+      method = {"render(Z)V"},
       at = {@At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_757;method_3192(Lnet/minecraft/class_9779;Z)V",
+         target = "Lnet/minecraft/client/render/GameRenderer;render(Lnet/minecraft/client/render/RenderTickCounter;Z)V",
          shift = Shift.BEFORE
       )}
    )
    public void renderGameBefore(CallbackInfo ci) {
-      Southside.INSTANCE.getEventBus().call(new GameRendererDrawEvent(Stage.PRE, this.field_52750.method_60637(false)));
+      Southside.INSTANCE.getEventBus().call(new GameRendererDrawEvent(Stage.PRE, this.renderTickCounter.getTickDelta(false)));
    }
 
    @Inject(
-      method = {"method_1523(Z)V"},
+      method = {"render(Z)V"},
       at = {@At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_757;method_3192(Lnet/minecraft/class_9779;Z)V",
+         target = "Lnet/minecraft/client/render/GameRenderer;render(Lnet/minecraft/client/render/RenderTickCounter;Z)V",
          shift = Shift.AFTER
       )}
    )
    public void renderGameAfter(CallbackInfo ci) {
-      Southside.INSTANCE.getEventBus().call(new GameRendererDrawEvent(Stage.POST, this.field_52750.method_60637(false)));
+      Southside.INSTANCE.getEventBus().call(new GameRendererDrawEvent(Stage.POST, this.renderTickCounter.getTickDelta(false)));
    }
 
    @Inject(
-      method = {"method_1574()V"},
+      method = {"tick()V"},
       at = {@At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_1142;method_18669()V"
+         target = "Lnet/minecraft/client/sound/MusicTracker;tick()V"
       )}
    )
    public void tick(CallbackInfo ci) {
@@ -440,10 +440,10 @@ public abstract class MixinMinecraftClient implements IMinecraftClient {
    }
 
    @Inject(
-      method = {"method_1523(Z)V"},
+      method = {"render(Z)V"},
       at = {@At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_310;method_5383()V",
+         target = "Lnet/minecraft/client/MinecraftClient;runTasks()V",
          shift = Shift.BEFORE
       )}
    )
@@ -473,11 +473,11 @@ public abstract class MixinMinecraftClient implements IMinecraftClient {
 
    @Override
    public void setAttackCooldown(int i) {
-      this.field_1771 = i;
+      this.attackCooldown = i;
    }
 
    @Override
    public void leftClick() {
-      this.method_1536();
+      this.doAttack();
    }
 }

@@ -11,14 +11,14 @@ import dev.southside.utils.misc.MSTimer;
 import dev.southside.utils.player.InventoryUtils;
 import java.util.function.Predicate;
 import java.util.function.ToDoubleFunction;
-import net.minecraft.class_1713;
-import net.minecraft.class_1743;
-import net.minecraft.class_1799;
-import net.minecraft.class_1802;
-import net.minecraft.class_1810;
-import net.minecraft.class_1820;
-import net.minecraft.class_1829;
-import net.minecraft.class_2815;
+import net.minecraft.screen.slot.SlotActionType;
+import net.minecraft.item.AxeItem;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.item.PickaxeItem;
+import net.minecraft.item.ShearsItem;
+import net.minecraft.item.SwordItem;
+import net.minecraft.network.packet.c2s.play.CloseHandledScreenC2SPacket;
 
 public class QuickbarManager extends Module {
    private static final int POST_USE_DELAY_TICKS = 5;
@@ -45,8 +45,8 @@ public class QuickbarManager extends Module {
    @EventHandler
    private void onMotion(MotionEvent event) {
       if (event.getState() == Stage.PRE) {
-         if (mc.field_1724 != null && mc.field_1687 != null && mc.method_1562() != null) {
-            if (mc.field_1755 == null) {
+         if (mc.player != null && mc.world != null && mc.getNetworkHandler() != null) {
+            if (mc.currentScreen == null) {
                if (!this.shouldDelayForUse()) {
                   if (!this.shouldPauseForAutoOffhand()) {
                      if (!this.tryEnsureSword()) {
@@ -68,7 +68,7 @@ public class QuickbarManager extends Module {
    }
 
    private boolean shouldDelayForUse() {
-      boolean using = mc.field_1724.method_6115() || mc.field_1724.field_6252 || mc.field_1690.field_1904.method_1434();
+      boolean using = mc.player.isUsingItem() || mc.player.handSwinging || mc.options.useKey.isPressed();
       if (using) {
          this.useCooldownTicks = 5;
          return true;
@@ -82,23 +82,23 @@ public class QuickbarManager extends Module {
 
    private boolean shouldPauseForAutoOffhand() {
       AutoOffhand autoOffhand = this.getAutoOffhand();
-      return autoOffhand != null && autoOffhand.isEnabled() ? isGoldenApple(mc.field_1724.method_6079()) : false;
+      return autoOffhand != null && autoOffhand.isEnabled() ? isGoldenApple(mc.player.getOffHandStack()) : false;
    }
 
    private boolean tryEnsureSword() {
-      return this.ensureSlot(this.swordSlot, stack -> stack.method_7909() instanceof class_1829, InventoryUtils::getSwordDamage);
+      return this.ensureSlot(this.swordSlot, stack -> stack.getItem() instanceof SwordItem, InventoryUtils::getSwordDamage);
    }
 
    private boolean tryEnsurePickaxe() {
-      return this.ensureSlot(this.pickaxeSlot, stack -> stack.method_7909() instanceof class_1810, InventoryUtils::getToolScore);
+      return this.ensureSlot(this.pickaxeSlot, stack -> stack.getItem() instanceof PickaxeItem, InventoryUtils::getToolScore);
    }
 
    private boolean tryEnsureAxe() {
-      return this.ensureSlot(this.axeSlot, stack -> stack.method_7909() instanceof class_1743, InventoryUtils::getToolScore);
+      return this.ensureSlot(this.axeSlot, stack -> stack.getItem() instanceof AxeItem, InventoryUtils::getToolScore);
    }
 
    private boolean tryEnsureShears() {
-      return this.ensureSlot(this.shearsSlot, stack -> stack.method_7909() instanceof class_1820, QuickbarManager::getDurabilityScore);
+      return this.ensureSlot(this.shearsSlot, stack -> stack.getItem() instanceof ShearsItem, QuickbarManager::getDurabilityScore);
    }
 
    private boolean tryEnsureGoldenApple() {
@@ -106,15 +106,15 @@ public class QuickbarManager extends Module {
    }
 
    private boolean tryEnsureFireball() {
-      return this.ensureSlot(this.fireballSlot, stack -> stack.method_7909() == class_1802.field_8814, stack -> stack.method_7947());
+      return this.ensureSlot(this.fireballSlot, stack -> stack.getItem() == Items.FIRE_CHARGE, stack -> stack.getCount());
    }
 
-   private boolean ensureSlot(Slider slotSetting, Predicate<class_1799> predicate, ToDoubleFunction<class_1799> priority) {
+   private boolean ensureSlot(Slider slotSetting, Predicate<ItemStack> predicate, ToDoubleFunction<ItemStack> priority) {
       int targetSlot = this.sliderToSlot(slotSetting);
       if (!this.isHotbarSlot(targetSlot)) {
          return false;
       } else {
-         class_1799 currentStack = mc.field_1724.method_31548().method_5438(targetSlot);
+         ItemStack currentStack = mc.player.getInventory().getStack(targetSlot);
          if (predicate.test(currentStack)) {
             return false;
          } else {
@@ -124,13 +124,13 @@ public class QuickbarManager extends Module {
       }
    }
 
-   private int findBestInventoryMatch(Predicate<class_1799> predicate, ToDoubleFunction<class_1799> priority) {
+   private int findBestInventoryMatch(Predicate<ItemStack> predicate, ToDoubleFunction<ItemStack> priority) {
       int bestSlot = -1;
       double bestScore = Double.NEGATIVE_INFINITY;
 
-      for (int slot = 0; slot < mc.field_1724.method_31548().field_7547.size(); slot++) {
-         class_1799 stack = mc.field_1724.method_31548().method_5438(slot);
-         if (!stack.method_7960() && predicate.test(stack)) {
+      for (int slot = 0; slot < mc.player.getInventory().main.size(); slot++) {
+         ItemStack stack = mc.player.getInventory().getStack(slot);
+         if (!stack.isEmpty() && predicate.test(stack)) {
             double score = priority.applyAsDouble(stack);
             if (score > bestScore) {
                bestScore = score;
@@ -145,18 +145,18 @@ public class QuickbarManager extends Module {
    private boolean silentSwapIntoHotbar(int fromInventorySlot, int targetHotbarSlot) {
       if (fromInventorySlot == targetHotbarSlot || !this.isHotbarSlot(targetHotbarSlot)) {
          return false;
-      } else if (mc.field_1761 != null && mc.field_1724.field_3944 != null) {
+      } else if (mc.interactionManager != null && mc.player.networkHandler != null) {
          if (!this.swapTimer.hasPassed(this.swapDelay.getValue().longValue())) {
             return true;
-         } else if (mc.field_1724.field_3919) {
+         } else if (mc.player.lastSprinting) {
             return true;
          } else {
             int sourceContainerSlot = this.toContainerSlotId(fromInventorySlot);
             if (sourceContainerSlot == -1) {
                return false;
             } else {
-               mc.field_1761.method_2906(mc.field_1724.field_7498.field_7763, sourceContainerSlot, targetHotbarSlot, class_1713.field_7791, mc.field_1724);
-               mc.field_1724.field_3944.method_52787(new class_2815(mc.field_1724.field_7498.field_7763));
+               mc.interactionManager.clickSlot(mc.player.playerScreenHandler.syncId, sourceContainerSlot, targetHotbarSlot, SlotActionType.SWAP, mc.player);
+               mc.player.networkHandler.sendPacket(new CloseHandledScreenC2SPacket(mc.player.playerScreenHandler.syncId));
                this.swapTimer.reset();
                return true;
             }
@@ -175,26 +175,26 @@ public class QuickbarManager extends Module {
    }
 
    private int toContainerSlotId(int inventorySlot) {
-      if (inventorySlot >= 0 && inventorySlot < mc.field_1724.method_31548().field_7547.size()) {
+      if (inventorySlot >= 0 && inventorySlot < mc.player.getInventory().main.size()) {
          return inventorySlot < 9 ? inventorySlot + 36 : inventorySlot;
       } else {
          return -1;
       }
    }
 
-   private static boolean isGoldenApple(class_1799 stack) {
-      return stack.method_7960() ? false : stack.method_7909() == class_1802.field_8463 || stack.method_7909() == class_1802.field_8367;
+   private static boolean isGoldenApple(ItemStack stack) {
+      return stack.isEmpty() ? false : stack.getItem() == Items.GOLDEN_APPLE || stack.getItem() == Items.ENCHANTED_GOLDEN_APPLE;
    }
 
-   private static double getGoldenAppleScore(class_1799 stack) {
-      return stack.method_7909() == class_1802.field_8367 ? 1000 + stack.method_7947() : stack.method_7947();
+   private static double getGoldenAppleScore(ItemStack stack) {
+      return stack.getItem() == Items.ENCHANTED_GOLDEN_APPLE ? 1000 + stack.getCount() : stack.getCount();
    }
 
-   private static double getDurabilityScore(class_1799 stack) {
-      if (stack.method_7960()) {
+   private static double getDurabilityScore(ItemStack stack) {
+      if (stack.isEmpty()) {
          return 0.0;
       } else {
-         return !stack.method_7963() ? stack.method_7947() : stack.method_7936() - stack.method_7919();
+         return !stack.isDamageable() ? stack.getCount() : stack.getMaxDamage() - stack.getDamage();
       }
    }
 

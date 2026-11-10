@@ -6,7 +6,7 @@ import dev.southside.module.Category;
 import dev.southside.module.Module;
 import dev.southside.orbit.EventHandler;
 import dev.southside.utils.player.MovementUtils;
-import net.minecraft.class_3532;
+import net.minecraft.util.math.MathHelper;
 
 public class Spider extends Module {
    public Dropdown mode = new Dropdown("Mode", "Test", "Test");
@@ -20,25 +20,25 @@ public class Spider extends Module {
    public void onMotion(MotionEvent event) {
       this.setSuffix(this.mode.getMode());
       if (this.mode.isMode("Test")) {
-         if (mc.field_1724.field_5976) {
-            if (mc.field_1724.method_5624()) {
-               mc.field_1724.method_5728(false);
+         if (mc.player.horizontalCollision) {
+            if (mc.player.isSprinting()) {
+               mc.player.setSprinting(false);
             }
 
-            if (!this.colled && mc.field_1724.method_24828()) {
+            if (!this.colled && mc.player.isOnGround()) {
                this.colled = true;
                double yaw = MovementUtils.direction();
-               event.setX(event.getX() - -class_3532.method_15374((float)yaw) * 1.0E-4F);
-               event.setZ(event.getZ() - class_3532.method_15362((float)yaw) * 1.0E-4F);
+               event.setX(event.getX() - -MathHelper.sin((float)yaw) * 1.0E-4F);
+               event.setZ(event.getZ() - MathHelper.cos((float)yaw) * 1.0E-4F);
             }
 
-            if (mc.field_1724.method_18798().field_1351 <= 0.0 && this.colled) {
+            if (mc.player.getVelocity().y <= 0.0 && this.colled) {
                event.setOnGround(true);
-               mc.field_1724.method_6043();
+               mc.player.jump();
             }
          }
 
-         if (mc.field_1724.method_24828() && !mc.field_1724.field_5976) {
+         if (mc.player.isOnGround() && !mc.player.horizontalCollision) {
             this.colled = false;
          }
       }

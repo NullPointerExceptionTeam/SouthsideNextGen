@@ -28,13 +28,13 @@ public class FakerVSBin extends Module {
 
    @EventHandler
    public void onRender2D(Render2DEvent event) {
-      if (mc.method_22683() != null) {
+      if (mc.getWindow() != null) {
          String text = this.scrollText.getValue();
          if (text != null && !text.isEmpty()) {
             float size = this.fontSize.getValue().floatValue();
             float speed = this.scrollSpeed.getValue().floatValue();
-            int screenWidth = mc.method_22683().method_4486();
-            int screenHeight = mc.method_22683().method_4502();
+            int screenWidth = mc.getWindow().getScaledWidth();
+            int screenHeight = mc.getWindow().getScaledHeight();
             float y = screenHeight / 5.0F;
             NanoVGHelper instance = NanoVGHelper.INSTANCE;
             instance.setupAndDraw(true, vg -> {

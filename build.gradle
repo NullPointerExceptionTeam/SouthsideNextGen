@@ -5,45 +5,24 @@ plugins {
 version = '2.0.1'
 
 repositories {
-    // 国内镜像优先（阿里云代理 Maven Central）
     maven { url = 'https://maven.aliyun.com/repository/public' }
     maven { url = 'https://maven.aliyun.com/repository/central' }
     mavenCentral()
-    // fabric 官方仓库（fabric-loader / mixin 等），国内无镜像，放最后兜底
     maven { url = 'https://maven.fabricmc.net/' }
 }
 
 loom {
-    // 编译期 access widener（named 命名空间，与开发环境运行时一致）
-    accessWidenerPath = file('compile.accesswidener')
-}
-
-// ---------------------------------------------------------------------------
-// access widener 命名空间
-//
-// Fabric Loader 会校验 mod 声明的 access widener 的命名空间必须与当前运行时
-// 一致：
-//   - runClient 开发环境运行时命名空间是 named；
-//   - 正式客户端运行时命名空间是 intermediary。
-// 本项目禁用了 remapJar（loom 平时就在 remapJar 里做 named -> intermediary
-// 的转换），所以这里手工处理：
-//   - 源码里的 southside.accesswidener 用 named，开发环境可直接加载；
-//   - jar 任务在打包时把它过滤回 intermediary，保证发布产物正确。
-// ---------------------------------------------------------------------------
-tasks.named('jar') {
-    filesMatching('southside.accesswidener') {
-        filter { line ->
-            line.replaceFirst('^accessWidener(\\s+)v1(\\s+)named', 'accessWidener\tv1\tintermediary')
-        }
+    accessWidenerPath = file('src/main/resources/southside.accesswidener')
+    mixin {
+        useLegacyMixinAp = true
+        defaultRefmapName = 'southside-refmap.json'
     }
 }
 
 dependencies {
     minecraft 'com.mojang:minecraft:1.21.4'
-    mappings files('mappings/intermediary-named.jar')
+    mappings files('mappings/yarn-1.21.4+build.8-v2.jar')
     modImplementation 'net.fabricmc:fabric-loader:0.18.1'
-    // 模组资源包（assets/ 下的着色器、字体、贴图）由 Fabric API 的
-    // fabric-resource-loader-v0 注入，缺少它运行时会读不到自己的资源
     modImplementation 'net.fabricmc.fabric-api:fabric-api:0.119.2+1.21.4'
     compileOnly 'io.github.llamalad7:mixinextras-fabric:0.5.0'
     compileOnly 'org.projectlombok:lombok:1.18.42'
@@ -51,29 +30,24 @@ dependencies {
     compileOnly 'net.java.dev.jna:jna-platform:5.15.0'
     compileOnly 'org.apache.httpcomponents:httpclient:4.5.14'
     compileOnly 'org.lwjgl:lwjgl-nanovg:3.3.3'
-    // 内嵌依赖（Java-WebSocket / BouncyCastle / LWJGL NanoVG）。
-    // 发布时由 fabric.mod.json 的 "jars" 作为嵌套 jar 加载；但开发环境里模组
-    // 是目录形式，Fabric 不会加载嵌套 jar，所以必须直接放进 classpath。
     implementation fileTree('src/main/resources/META-INF/jars') { include '*.jar' }
 }
 
 tasks.withType(JavaCompile).configureEach {
     options.release = 21
     options.encoding = 'UTF-8'
-    options.compilerArgs.addAll(['-proc:none', '-Xmaxerrs', '2000'])
+    options.compilerArgs.addAll(['-Xmaxerrs', '2000'])
 }
 
 tasks.named('jar') {
     manifest.from('src/main/resources/META-INF/MANIFEST.MF')
     exclude('META-INF/MANIFEST.MF')
+    archiveClassifier = 'dev'
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
 }
 
-// The compile-time names deliberately match Fabric's intermediary namespace.
 tasks.named('remapJar') {
-    enabled = false
-}
-
-tasks.named('jar') {
     archiveClassifier = 'rebuilt'
     destinationDirectory = layout.buildDirectory.dir('libs')
     preserveFileTimestamps = false

@@ -42,7 +42,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-import net.minecraft.class_437;
+import net.minecraft.client.gui.screen.Screen;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Contract;
@@ -530,7 +530,7 @@ public class Config {
 
    public void openGui() {
       if (this.mod != null) {
-         GuiUtils.displayScreen((class_437)(new OneConfigGui(new ModConfigPage(this.mod.defaultPage))));
+         GuiUtils.displayScreen((Screen)(new OneConfigGui(new ModConfigPage(this.mod.defaultPage))));
       }
    }
 

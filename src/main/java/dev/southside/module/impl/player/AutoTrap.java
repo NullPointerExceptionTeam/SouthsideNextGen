@@ -18,25 +18,25 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import net.minecraft.class_1268;
-import net.minecraft.class_1269;
-import net.minecraft.class_1297;
-import net.minecraft.class_1792;
-import net.minecraft.class_1802;
-import net.minecraft.class_2246;
-import net.minecraft.class_2338;
-import net.minecraft.class_2350;
-import net.minecraft.class_243;
-import net.minecraft.class_2560;
-import net.minecraft.class_3965;
+import net.minecraft.util.Hand;
+import net.minecraft.util.ActionResult;
+import net.minecraft.entity.Entity;
+import net.minecraft.item.Item;
+import net.minecraft.item.Items;
+import net.minecraft.block.Blocks;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.block.CobwebBlock;
+import net.minecraft.util.hit.BlockHitResult;
 
 public class AutoTrap extends Module {
-   public final List<class_1792> TRAPS = List.of(class_1802.field_8786, class_1802.field_8187);
+   public final List<Item> TRAPS = List.of(Items.COBWEB, Items.LAVA_BUCKET);
    public Slider range = new Slider("Range", 3.0, 3.0, 4.0, 0.01);
    public Slider reTicks = new Slider("LavaRetrieve", 30, 2, 30, 1);
-   private final Map<class_2338, Integer> placedLava = new HashMap<>();
-   public static List<class_1297> targets = new ArrayList<>();
-   public static class_1297 target;
+   private final Map<BlockPos, Integer> placedLava = new HashMap<>();
+   public static List<Entity> targets = new ArrayList<>();
+   public static Entity target;
 
    public AutoTrap() {
       super(Category.Player, "AutoTrap", "我会trap别人。");
@@ -50,15 +50,15 @@ public class AutoTrap extends Module {
                this.handleLavaRetrieval();
                this.updateTargets();
                if (!targets.isEmpty()) {
-                  targets.sort((o1, o2) -> (int)(o1.method_5739(mc.field_1724) - o2.method_5739(mc.field_1724)));
+                  targets.sort((o1, o2) -> (int)(o1.distanceTo(mc.player) - o2.distanceTo(mc.player)));
                   target = targets.get(0);
                   int targetSlot = -1;
                   if (target != null
-                     && target.method_5805()
-                     && !target.method_31481()
-                     && mc.field_1724.method_5739(target) <= this.range.getValue().doubleValue()) {
+                     && target.isAlive()
+                     && !target.isRemoved()
+                     && mc.player.distanceTo(target) <= this.range.getValue().doubleValue()) {
                      for (int i = 0; i < 9; i++) {
-                        if (this.TRAPS.contains(mc.field_1724.method_31548().method_5438(i).method_7909())) {
+                        if (this.TRAPS.contains(mc.player.getInventory().getStack(i).getItem())) {
                            targetSlot = i;
                            break;
                         }
@@ -69,27 +69,27 @@ public class AutoTrap extends Module {
                      return;
                   }
 
-                  int originalSlot = mc.field_1724.method_31548().field_7545;
-                  if (mc.field_1724.method_31548().field_7545 != targetSlot) {
-                     mc.field_1724.method_31548().field_7545 = targetSlot;
+                  int originalSlot = mc.player.getInventory().selectedSlot;
+                  if (mc.player.getInventory().selectedSlot != targetSlot) {
+                     mc.player.getInventory().selectedSlot = targetSlot;
                   }
 
-                  class_2338 trapPos = target.method_24515().method_10074();
-                  Rotation rot = ScaffoldRotationHelper.getRotation(trapPos, class_2350.field_11036);
-                  if (mc.field_1724.method_31548().method_5438(targetSlot).method_7909() == class_1802.field_8786) {
-                     RotationUtils.setRotation(ScaffoldRotationHelper.getRotation(trapPos, class_2350.field_11036), this.rotationPriority());
-                     class_243 hitVec = new class_243(trapPos.method_10263() + 0.5, trapPos.method_10264() + 1, trapPos.method_10260() + 0.5);
-                     class_3965 hitResult = new class_3965(hitVec, class_2350.field_11036, trapPos, false);
-                     mc.field_1761.method_2896(mc.field_1724, class_1268.field_5808, hitResult);
-                     mc.field_1724.method_6104(class_1268.field_5808);
+                  BlockPos trapPos = target.getBlockPos().down();
+                  Rotation rot = ScaffoldRotationHelper.getRotation(trapPos, Direction.UP);
+                  if (mc.player.getInventory().getStack(targetSlot).getItem() == Items.COBWEB) {
+                     RotationUtils.setRotation(ScaffoldRotationHelper.getRotation(trapPos, Direction.UP), this.rotationPriority());
+                     Vec3d hitVec = new Vec3d(trapPos.getX() + 0.5, trapPos.getY() + 1, trapPos.getZ() + 0.5);
+                     BlockHitResult hitResult = new BlockHitResult(hitVec, Direction.UP, trapPos, false);
+                     mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, hitResult);
+                     mc.player.swingHand(Hand.MAIN_HAND);
                   } else {
-                     RotationUtils.setRotation(ScaffoldRotationHelper.getRotation(trapPos, class_2350.field_11036), this.rotationPriority());
-                     mc.field_1761.method_2919(mc.field_1724, class_1268.field_5808);
-                     class_2338 lavaPos = trapPos.method_10084();
+                     RotationUtils.setRotation(ScaffoldRotationHelper.getRotation(trapPos, Direction.UP), this.rotationPriority());
+                     mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
+                     BlockPos lavaPos = trapPos.up();
                      this.placedLava.put(lavaPos, 0);
                   }
 
-                  mc.field_1724.method_31548().field_7545 = originalSlot;
+                  mc.player.getInventory().selectedSlot = originalSlot;
                }
             }
          }
@@ -98,11 +98,11 @@ public class AutoTrap extends Module {
 
    private void handleLavaRetrieval() {
       if (!this.placedLava.isEmpty()) {
-         List<class_2338> toRetrieve = new ArrayList<>();
+         List<BlockPos> toRetrieve = new ArrayList<>();
          this.placedLava.entrySet().removeIf(entry -> {
-            class_2338 pos = entry.getKey();
+            BlockPos pos = entry.getKey();
             int ticks = entry.getValue();
-            if (mc.field_1687.method_8320(pos).method_26204() != class_2246.field_10164 || !mc.field_1687.method_8316(pos).method_15771()) {
+            if (mc.world.getBlockState(pos).getBlock() != Blocks.LAVA || !mc.world.getFluidState(pos).isStill()) {
                return true;
             } else if (ticks >= this.reTicks.getValue().intValue()) {
                toRetrieve.add(pos);
@@ -116,24 +116,24 @@ public class AutoTrap extends Module {
             int emptyBucketSlot = -1;
 
             for (int i = 0; i < 9; i++) {
-               if (mc.field_1724.method_31548().method_5438(i).method_7909() == class_1802.field_8550) {
+               if (mc.player.getInventory().getStack(i).getItem() == Items.BUCKET) {
                   emptyBucketSlot = i;
                   break;
                }
             }
 
             if (emptyBucketSlot != -1) {
-               class_2338 lavaPos = toRetrieve.get(0);
-               int originalSlot = mc.field_1724.method_31548().field_7545;
-               mc.field_1724.method_31548().field_7545 = emptyBucketSlot;
-               float[] rotArray = RotationUtils.getRotations(lavaPos.method_46558());
-               RotationUtils.setRotation(ScaffoldRotationHelper.getRotation(lavaPos, class_2350.field_11036), 0);
-               class_1269 result = mc.field_1761.method_2919(mc.field_1724, class_1268.field_5808);
-               if (result.method_23665()) {
-                  mc.field_1724.method_6104(class_1268.field_5808);
+               BlockPos lavaPos = toRetrieve.get(0);
+               int originalSlot = mc.player.getInventory().selectedSlot;
+               mc.player.getInventory().selectedSlot = emptyBucketSlot;
+               float[] rotArray = RotationUtils.getRotations(lavaPos.toCenterPos());
+               RotationUtils.setRotation(ScaffoldRotationHelper.getRotation(lavaPos, Direction.UP), 0);
+               ActionResult result = mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
+               if (result.isAccepted()) {
+                  mc.player.swingHand(Hand.MAIN_HAND);
                }
 
-               mc.field_1724.method_31548().field_7545 = originalSlot;
+               mc.player.getInventory().selectedSlot = originalSlot;
             }
          }
       }
@@ -143,13 +143,13 @@ public class AutoTrap extends Module {
       target = null;
       targets.clear();
 
-      for (class_1297 entity : mc.field_1687.method_18112()) {
+      for (Entity entity : mc.world.getEntities()) {
          if (TargetUtils.isTarget(entity, true, true)
-            && BoundBoxUtils.getMinDistanceVec3dByBox(mc.field_1724.method_33571(), entity.method_5829()).method_1022(mc.field_1724.method_33571())
+            && BoundBoxUtils.getMinDistanceVec3dByBox(mc.player.getEyePos(), entity.getBoundingBox()).distanceTo(mc.player.getEyePos())
                <= this.range.getValue().doubleValue()
-            && !entity.method_5771()
-            && !(mc.field_1687.method_8320(entity.method_24515()).method_26204() instanceof class_2560)
-            && mc.field_1687.method_8320(entity.method_24515().method_10074()).method_51367()) {
+            && !entity.isInLava()
+            && !(mc.world.getBlockState(entity.getBlockPos()).getBlock() instanceof CobwebBlock)
+            && mc.world.getBlockState(entity.getBlockPos().down()).isSolid()) {
             targets.add(entity);
          }
       }

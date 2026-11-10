@@ -22,12 +22,12 @@ import dev.southside.nanovg.NanoUtil;
 import dev.southside.orbit.EventHandler;
 import dev.southside.render.ProjectionUtil;
 import java.awt.Color;
-import net.minecraft.class_124;
-import net.minecraft.class_1297;
-import net.minecraft.class_1309;
-import net.minecraft.class_1657;
-import net.minecraft.class_241;
-import net.minecraft.class_3532;
+import net.minecraft.util.Formatting;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.math.Vec2f;
+import net.minecraft.util.math.MathHelper;
 
 public class NameTag extends Module {
    private static NameTag INSTANCE;
@@ -55,21 +55,21 @@ public class NameTag extends Module {
 
    @EventHandler
    public final void onRender2DEvent(Render2DEvent event) {
-      for (class_1297 entity : mc.field_1687.method_18112()) {
-         if (Targets.check(entity) && entity instanceof class_1309 living) {
+      for (Entity entity : mc.world.getEntities()) {
+         if (Targets.check(entity) && entity instanceof LivingEntity living) {
             this.drawNameTag(living, event.getRenderTick());
          }
       }
    }
 
-   private void drawNameTag(class_1309 entity, float partialTicks) {
-      if ((entity != mc.field_1724 || !this.hideMe.getValue()) && (entity != mc.field_1724 || !mc.field_1690.method_31044().method_31034())) {
+   private void drawNameTag(LivingEntity entity, float partialTicks) {
+      if ((entity != mc.player || !this.hideMe.getValue()) && (entity != mc.player || !mc.options.getPerspective().isFirstPerson())) {
          boolean friend = false;
-         String name = entity.method_5476().getString();
+         String name = entity.getDisplayName().getString();
          boolean team;
-         if (entity instanceof class_1657 player) {
-            if (player.method_7334() != null) {
-               name = player.method_7334().getName();
+         if (entity instanceof PlayerEntity player) {
+            if (player.getGameProfile() != null) {
+               name = player.getGameProfile().getName();
                FriendManager friendManager = Southside.get().getFriendManager();
                if (friendManager != null) {
                   friend = friendManager.isFriend(name);
@@ -87,44 +87,44 @@ public class NameTag extends Module {
          boolean hacker = Southside.get().getModuleManager().get(HackerDetector.class).isHacker(entity);
          boolean endCrystal = GodItemDetector.isEndCrystal(entity);
          boolean enchantedGapple = GodItemDetector.isEGapple(entity);
-         class_241 pos = ProjectionUtil.entityScreenPos(entity, partialTicks);
+         Vec2f pos = ProjectionUtil.entityScreenPos(entity, partialTicks);
          if (pos != null) {
             if (this.showGodItem.getValue() && GodItemDetector.shouldShowTag(GodItemDetector.TagTarget.NAMETAG)) {
                if (godAxe) {
-                  name = class_124.field_1065 + "[GodAxe] " + class_124.field_1070 + name;
+                  name = Formatting.GOLD + "[GodAxe] " + Formatting.RESET + name;
                }
 
                if (mace) {
-                  name = class_124.field_1054 + "[Mace] " + class_124.field_1070 + name;
+                  name = Formatting.YELLOW + "[Mace] " + Formatting.RESET + name;
                }
 
                if (endCrystal) {
-                  name = class_124.field_1064 + "[Crystal] " + class_124.field_1070 + name;
+                  name = Formatting.DARK_PURPLE + "[Crystal] " + Formatting.RESET + name;
                }
 
                if (enchantedGapple) {
-                  name = class_124.field_1076 + "[GApple] " + class_124.field_1070 + name;
+                  name = Formatting.LIGHT_PURPLE + "[GApple] " + Formatting.RESET + name;
                }
             }
 
             if (this.showMurder.getValue() && MurderFinder.isMurder(entity)) {
-               name = class_124.field_1079 + "[Murder] " + class_124.field_1070 + name;
+               name = Formatting.DARK_RED + "[Murder] " + Formatting.RESET + name;
             }
 
             if (team) {
-               name = class_124.field_1060 + "[Team] " + class_124.field_1070 + name;
+               name = Formatting.GREEN + "[Team] " + Formatting.RESET + name;
             }
 
             if (friend) {
-               name = class_124.field_1060 + "[Friend] " + class_124.field_1070 + name;
+               name = Formatting.GREEN + "[Friend] " + Formatting.RESET + name;
             }
 
             if (bot) {
-               name = class_124.field_1061 + "[Bot] " + class_124.field_1070 + name;
+               name = Formatting.RED + "[Bot] " + Formatting.RESET + name;
             }
 
             if (hacker) {
-               name = class_124.field_1079 + "[Hacker] " + class_124.field_1070 + name;
+               name = Formatting.DARK_RED + "[Hacker] " + Formatting.RESET + name;
             }
 
             NanoVGHelper nanoVGHelper = NanoVGHelper.INSTANCE;
@@ -136,8 +136,8 @@ public class NameTag extends Module {
                   float scaleFactor = (float)(
                      this.customScale.getValue() ? this.scale.getDouble() : (this.distanceScale.getValue() ? this.distanceScale(entity, partialTicks) : 1.0)
                   );
-                  NanoUtil.scaleStart(pos.field_1343, pos.field_1342, scaleFactor);
-                  nanoVGHelper.translate(vg, pos.field_1343, pos.field_1342);
+                  NanoUtil.scaleStart(pos.x, pos.y, scaleFactor);
+                  nanoVGHelper.translate(vg, pos.x, pos.y);
                   if (this.style.getMode().equals("Classic")) {
                      float extraWidth = 197.5F;
                      float h1 = nanoVGHelper.getTextHeight(vg, 12.0F, Fonts.REGULAR);
@@ -147,7 +147,7 @@ public class NameTag extends Module {
                      float bottom = -10.0F;
                      int alpha = 191;
                      float rad = 7.5F;
-                     float rate = class_3532.method_15363(entity.method_6032() / entity.method_6063(), 0.0F, 1.0F);
+                     float rate = MathHelper.clamp(entity.getHealth() / entity.getMaxHealth(), 0.0F, 1.0F);
                      if (this.glow.getValue()) {
                         nanoVGHelper.drawDropShadow(vg, left, top, right - left, bottom - top, 10.0F, 0.0F, rad, new Color(34, 35, 38, alpha));
                      }
@@ -162,7 +162,7 @@ public class NameTag extends Module {
                      nanoVGHelper.drawTextWithFormatting(vg, finalName, left + 9.0F, top + yy, fontColor, 13.0F, Fonts.SEMIBOLD);
                      nanoVGHelper.drawTextWithFormatting(
                         vg,
-                        String.format("Health: %.1f / %.1f", entity.method_6032(), entity.method_6063()),
+                        String.format("Health: %.1f / %.1f", entity.getHealth(), entity.getMaxHealth()),
                         left + 9.0F,
                         top + yy + h1 + 4.5F,
                         fontColor,
@@ -170,8 +170,8 @@ public class NameTag extends Module {
                         Fonts.REGULAR
                      );
                   } else if (this.style.getMode().equals("Summer")) {
-                     double dist = mc.field_1773.method_19418().method_19326().method_1022(entity.method_30950(partialTicks));
-                     String hpText = " " + (int)entity.method_6032() + "HP";
+                     double dist = mc.gameRenderer.getCamera().getPos().distanceTo(entity.getLerpedPos(partialTicks));
+                     String hpText = " " + (int)entity.getHealth() + "HP";
                      String distText = " " + String.format("%.1f", dist) + "m";
                      float textSize = 13.0F;
                      float fontHeight = nanoVGHelper.getTextHeight(vg, textSize, Fonts.SEMIBOLD);
@@ -203,7 +203,7 @@ public class NameTag extends Module {
                   } else if (this.style.getMode().equals("Retro")) {
                      float extraWidth = Math.max(
                            nanoVGHelper.getTextWidth(vg, finalName, 18.0F, Fonts.SEMIBOLD),
-                           nanoVGHelper.getTextWidth(vg, String.format("Health: %.1f / %.1f", entity.method_6032(), entity.method_6063()), 12.0F, Fonts.REGULAR)
+                           nanoVGHelper.getTextWidth(vg, String.format("Health: %.1f / %.1f", entity.getHealth(), entity.getMaxHealth()), 12.0F, Fonts.REGULAR)
                         )
                         + 18.0F;
                      float h1 = nanoVGHelper.getTextHeight(vg, 12.0F, Fonts.REGULAR);
@@ -213,7 +213,7 @@ public class NameTag extends Module {
                      float bottom = -10.0F;
                      int alpha = 191;
                      float rad = 7.5F;
-                     float rate = class_3532.method_15363(entity.method_6032() / entity.method_6063(), 0.0F, 1.0F);
+                     float rate = MathHelper.clamp(entity.getHealth() / entity.getMaxHealth(), 0.0F, 1.0F);
                      if (this.glow.getValue()) {
                         nanoVGHelper.drawDropShadow(vg, left, top, right - left, bottom - top, 10.0F, 0.0F, rad, new Color(34, 35, 38, alpha));
                      }
@@ -227,7 +227,7 @@ public class NameTag extends Module {
                      nanoVGHelper.drawTextWithFormatting(vg, finalName, left + 9.0F, top + yy, fontColor, 18.0F, Fonts.SEMIBOLD);
                      nanoVGHelper.drawTextWithFormatting(
                         vg,
-                        String.format("Health: %.1f / %.1f", entity.method_6032(), entity.method_6063()),
+                        String.format("Health: %.1f / %.1f", entity.getHealth(), entity.getMaxHealth()),
                         left + 9.0F,
                         top + yy + h1 + 4.5F,
                         fontColor,
@@ -240,7 +240,7 @@ public class NameTag extends Module {
                      nanoVGHelper.drawTextWithFormatting(vg, finalName, left + 9.0F, top + yy, fontRevertColor, 18.0F, Fonts.SEMIBOLD);
                      nanoVGHelper.drawTextWithFormatting(
                         vg,
-                        String.format("Health: %.1f / %.1f", entity.method_6032(), entity.method_6063()),
+                        String.format("Health: %.1f / %.1f", entity.getHealth(), entity.getMaxHealth()),
                         left + 9.0F,
                         top + yy + h1 + 4.5F,
                         fontRevertColor,
@@ -249,8 +249,8 @@ public class NameTag extends Module {
                      );
                      scissorHelper.resetScissor(vg, scissor2);
                   } else if (this.style.getMode().equals("Simple")) {
-                     double dist = mc.field_1773.method_19418().method_19326().method_1022(entity.method_30950(partialTicks));
-                     String hpText = " " + (int)entity.method_6032() + "HP";
+                     double dist = mc.gameRenderer.getCamera().getPos().distanceTo(entity.getLerpedPos(partialTicks));
+                     String hpText = " " + (int)entity.getHealth() + "HP";
                      String distText = " " + String.format("%.1f", dist) + "m";
                      float textSize = 13.0F;
                      float fontHeight = nanoVGHelper.getTextHeight(vg, textSize, Fonts.SEMIBOLD);
@@ -271,13 +271,13 @@ public class NameTag extends Module {
                      nanoVGHelper.drawTextWithFormatting(vg, hpText, textX, textY, Color.WHITE.getRGB(), textSize, Fonts.SEMIBOLD);
                      textX += hpWidth;
                      nanoVGHelper.drawTextWithFormatting(vg, distText, textX, textY, new Color(180, 180, 180).getRGB(), textSize, Fonts.SEMIBOLD);
-                     float rate = class_3532.method_15363(entity.method_6032() / entity.method_6063(), 0.0F, 1.0F);
+                     float rate = MathHelper.clamp(entity.getHealth() / entity.getMaxHealth(), 0.0F, 1.0F);
                      float barH = 2.0F;
                      nanoVGHelper.drawRect(vg, left, top + bgHeight, bgWidth, barH, new Color(255, 255, 255, 30).getRGB());
                      nanoVGHelper.drawRect(vg, left, top + bgHeight, bgWidth * rate, barH, new Color(255, 255, 255, 220).getRGB());
                   }
 
-                  nanoVGHelper.translate(vg, -pos.field_1343, -pos.field_1342);
+                  nanoVGHelper.translate(vg, -pos.x, -pos.y);
                   NanoUtil.scaleEnd();
                }
             );
@@ -285,8 +285,8 @@ public class NameTag extends Module {
       }
    }
 
-   private double distanceScale(class_1297 ent, float tickDelta) {
-      double dist = mc.field_1773.method_19418().method_19326().method_1022(ent.method_30950(tickDelta));
-      return class_3532.method_15350(1.0 - dist * 0.01, 0.5, 2.147483647E9);
+   private double distanceScale(Entity ent, float tickDelta) {
+      double dist = mc.gameRenderer.getCamera().getPos().distanceTo(ent.getLerpedPos(tickDelta));
+      return MathHelper.clamp(1.0 - dist * 0.01, 0.5, 2.147483647E9);
    }
 }

@@ -12,20 +12,20 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import net.minecraft.class_1657;
-import net.minecraft.class_1792;
-import net.minecraft.class_1799;
-import net.minecraft.class_1802;
-import net.minecraft.class_2244;
-import net.minecraft.class_2338;
-import net.minecraft.class_2350;
-import net.minecraft.class_241;
-import net.minecraft.class_243;
-import net.minecraft.class_2587;
-import net.minecraft.class_2680;
-import net.minecraft.class_2742;
-import net.minecraft.class_332;
-import net.minecraft.class_4587;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.block.BedBlock;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Vec2f;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.block.entity.BedBlockEntity;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.enums.BedPart;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.util.math.MatrixStack;
 
 public class BedShow extends Module {
    private static final int HORIZONTAL_RANGE = 3;
@@ -44,13 +44,13 @@ public class BedShow extends Module {
 
    @EventHandler
    private void onRender2D(Render2DEvent event) {
-      if (mc.field_1687 != null && mc.field_1724 != null) {
+      if (mc.world != null && mc.player != null) {
          List<BedShow.BedInfo> beds = this.collectBeds();
          if (!beds.isEmpty()) {
-            class_332 context = event.getDrawContext();
+            DrawContext context = event.getDrawContext();
 
             for (BedShow.BedInfo bed : beds) {
-               class_241 screenPos = ProjectionUtil.worldScreenPos(bed.anchor());
+               Vec2f screenPos = ProjectionUtil.worldScreenPos(bed.anchor());
                if (screenPos != null) {
                   this.renderBedInfo(context, screenPos, bed.blocks());
                }
@@ -61,18 +61,18 @@ public class BedShow extends Module {
 
    private List<BedShow.BedInfo> collectBeds() {
       List<BedShow.BedInfo> beds = new ArrayList<>();
-      class_1657 player = mc.field_1724;
-      if (player != null && mc.field_1687 != null) {
+      PlayerEntity player = mc.player;
+      if (player != null && mc.world != null) {
          double radius = this.searchRadius.getValue().doubleValue() + 3.0;
          double radiusSq = radius * radius;
          BlockEntityIterator iterator = new BlockEntityIterator();
 
          while (iterator.hasNext()) {
-            if (iterator.next() instanceof class_2587 bedEntity) {
-               class_2338 pos = bedEntity.method_11016();
-               if (!(player.method_5649(pos.method_10263() + 0.5, pos.method_10264() + 0.5, pos.method_10260() + 0.5) > radiusSq)) {
-                  class_2680 state = mc.field_1687.method_8320(pos);
-                  if (state.method_26204() instanceof class_2244 bedBlock && state.method_11654(class_2244.field_9967) == class_2742.field_12560) {
+            if (iterator.next() instanceof BedBlockEntity bedEntity) {
+               BlockPos pos = bedEntity.getPos();
+               if (!(player.squaredDistanceTo(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5) > radiusSq)) {
+                  BlockState state = mc.world.getBlockState(pos);
+                  if (state.getBlock() instanceof BedBlock bedBlock && state.get(BedBlock.PART) == BedPart.HEAD) {
                      BedShow.BedInfo info = this.buildInfo(pos, state);
                      if (!info.blocks().isEmpty()) {
                         beds.add(info);
@@ -88,44 +88,44 @@ public class BedShow extends Module {
       }
    }
 
-   private BedShow.BedInfo buildInfo(class_2338 headPos, class_2680 headState) {
-      if (mc.field_1687 == null) {
-         return new BedShow.BedInfo(class_243.method_24953(headPos), List.of());
+   private BedShow.BedInfo buildInfo(BlockPos headPos, BlockState headState) {
+      if (mc.world == null) {
+         return new BedShow.BedInfo(Vec3d.ofCenter(headPos), List.of());
       } else {
-         class_2350 facing = (class_2350)headState.method_11654(class_2244.field_11177);
-         class_2338 footPos = headPos.method_10093(facing.method_10153());
-         Set<class_2338> bedBlocks = new LinkedHashSet<>();
-         bedBlocks.add(headPos.method_10062());
-         bedBlocks.add(footPos.method_10062());
-         LinkedHashSet<class_2338> surrounding = new LinkedHashSet<>();
+         Direction facing = (Direction)headState.get(BedBlock.FACING);
+         BlockPos footPos = headPos.offset(facing.getOpposite());
+         Set<BlockPos> bedBlocks = new LinkedHashSet<>();
+         bedBlocks.add(headPos.toImmutable());
+         bedBlocks.add(footPos.toImmutable());
+         LinkedHashSet<BlockPos> surrounding = new LinkedHashSet<>();
 
-         for (class_2338 base : bedBlocks) {
-            class_2338 above = base.method_10084();
+         for (BlockPos base : bedBlocks) {
+            BlockPos above = base.up();
             if (!bedBlocks.contains(above)) {
-               surrounding.add(above.method_10062());
+               surrounding.add(above.toImmutable());
             }
 
             for (int dx = -3; dx <= 3; dx++) {
                for (int dz = -3; dz <= 3; dz++) {
                   if ((dx != 0 || dz != 0) && Math.max(Math.abs(dx), Math.abs(dz)) <= 3) {
-                     class_2338 target = base.method_10069(dx, 0, dz);
+                     BlockPos target = base.add(dx, 0, dz);
                      if (!bedBlocks.contains(target)) {
-                        surrounding.add(target.method_10062());
+                        surrounding.add(target.toImmutable());
                      }
                   }
                }
             }
          }
 
-         List<class_1799> stacks = new ArrayList<>();
-         Set<class_1792> seenItems = new LinkedHashSet<>();
+         List<ItemStack> stacks = new ArrayList<>();
+         Set<Item> seenItems = new LinkedHashSet<>();
 
-         for (class_2338 pos : surrounding) {
-            class_2680 state = mc.field_1687.method_8320(pos);
-            if (!state.method_26215() && SlotUtils.isGoodForBridging(state.method_26204())) {
-               class_1792 item = state.method_26204().method_8389();
-               if (item != class_1802.field_8162 && seenItems.add(item)) {
-                  stacks.add(new class_1799(item));
+         for (BlockPos pos : surrounding) {
+            BlockState state = mc.world.getBlockState(pos);
+            if (!state.isAir() && SlotUtils.isGoodForBridging(state.getBlock())) {
+               Item item = state.getBlock().asItem();
+               if (item != Items.AIR && seenItems.add(item)) {
+                  stacks.add(new ItemStack(item));
                   if (stacks.size() >= 12) {
                      break;
                   }
@@ -133,12 +133,12 @@ public class BedShow extends Module {
             }
          }
 
-         class_243 anchor = class_243.method_24953(headPos).method_1031(0.0, 0.75, 0.0);
+         Vec3d anchor = Vec3d.ofCenter(headPos).add(0.0, 0.75, 0.0);
          return new BedShow.BedInfo(anchor, stacks);
       }
    }
 
-   private void renderBedInfo(class_332 context, class_241 screenPos, List<class_1799> stacks) {
+   private void renderBedInfo(DrawContext context, Vec2f screenPos, List<ItemStack> stacks) {
       if (!stacks.isEmpty()) {
          int rows = (int)Math.ceil(stacks.size() / 4.0);
          int cols = Math.min(4, stacks.size());
@@ -148,36 +148,36 @@ public class BedShow extends Module {
          int top = -(totalHeight + 2);
          int right = left + totalWidth;
          int bottom = top + totalHeight;
-         class_4587 matrices = context.method_51448();
-         matrices.method_22903();
-         matrices.method_46416(screenPos.field_1343, screenPos.field_1342, 0.0F);
+         MatrixStack matrices = context.getMatrices();
+         matrices.push();
+         matrices.translate(screenPos.x, screenPos.y, 0.0F);
          float scaleValue = this.scale.getValue().floatValue();
-         matrices.method_22905(scaleValue, scaleValue, 1.0F);
+         matrices.scale(scaleValue, scaleValue, 1.0F);
          float alpha = this.backgroundAlpha.getValue().floatValue();
          alpha = Math.max(0.0F, Math.min(1.0F, alpha));
          int background = ((int)(alpha * 255.0F) & 0xFF) << 24;
-         context.method_25294(left, top, right, bottom, background);
+         context.fill(left, top, right, bottom, background);
 
          for (int i = 0; i < stacks.size(); i++) {
-            class_1799 stack = stacks.get(i);
-            if (!stack.method_7960()) {
+            ItemStack stack = stacks.get(i);
+            if (!stack.isEmpty()) {
                int row = i / 4;
                int col = i % 4;
                int x = left + 4 + col * 18;
                int y = top + 4 + row * 18;
-               class_1799 displayStack = stack.method_7972();
-               displayStack.method_7939(1);
-               context.method_51427(displayStack, x, y);
-               if (mc.field_1772 != null) {
-                  context.method_51431(mc.field_1772, displayStack, x, y);
+               ItemStack displayStack = stack.copy();
+               displayStack.setCount(1);
+               context.drawItem(displayStack, x, y);
+               if (mc.textRenderer != null) {
+                  context.drawStackOverlay(mc.textRenderer, displayStack, x, y);
                }
             }
          }
 
-         matrices.method_22909();
+         matrices.pop();
       }
    }
 
-   private record BedInfo(class_243 anchor, List<class_1799> blocks) {
+   private record BedInfo(Vec3d anchor, List<ItemStack> blocks) {
    }
 }

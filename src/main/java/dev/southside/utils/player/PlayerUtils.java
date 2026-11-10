@@ -13,29 +13,29 @@ import dev.southside.utils.rotation.RotationUtils;
 import dev.southside.utils.types.Rotation;
 import java.util.Set;
 import lombok.Generated;
-import net.minecraft.class_10182;
-import net.minecraft.class_1294;
-import net.minecraft.class_1297;
-import net.minecraft.class_1657;
-import net.minecraft.class_2189;
-import net.minecraft.class_2246;
-import net.minecraft.class_2248;
-import net.minecraft.class_2338;
-import net.minecraft.class_238;
-import net.minecraft.class_2399;
-import net.minecraft.class_2404;
-import net.minecraft.class_243;
-import net.minecraft.class_2680;
-import net.minecraft.class_2708;
-import net.minecraft.class_2709;
-import net.minecraft.class_310;
-import net.minecraft.class_3481;
-import net.minecraft.class_3532;
-import net.minecraft.class_3959;
-import net.minecraft.class_744;
-import net.minecraft.class_239.class_240;
-import net.minecraft.class_3959.class_242;
-import net.minecraft.class_3959.class_3960;
+import net.minecraft.entity.player.PlayerPosition;
+import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.block.AirBlock;
+import net.minecraft.block.Blocks;
+import net.minecraft.block.Block;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
+import net.minecraft.block.LadderBlock;
+import net.minecraft.block.FluidBlock;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.block.BlockState;
+import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
+import net.minecraft.network.packet.s2c.play.PositionFlag;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.registry.tag.BlockTags;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.world.RaycastContext;
+import net.minecraft.client.input.Input;
+import net.minecraft.util.hit.HitResult.Type;
+import net.minecraft.world.RaycastContext.FluidHandling;
+import net.minecraft.world.RaycastContext.ShapeType;
 
 public class PlayerUtils implements MinecraftAccessor {
    public static int playerStuckTicks = 0;
@@ -47,84 +47,84 @@ public class PlayerUtils implements MinecraftAccessor {
    public static double lastPitchDiff = Double.MIN_VALUE;
    public static double lastPlacePitchDiff = Double.MIN_VALUE;
    public static boolean serverSprinting = false;
-   private static class_243 lastVelocity = new class_243(0.0, 0.0, 0.0);
+   private static Vec3d lastVelocity = new Vec3d(0.0, 0.0, 0.0);
 
    public void init() {
       Southside.INSTANCE.getEventBus().register(this);
    }
 
    public static boolean isMoving() {
-      return mc.field_1724 == null ? false : mc.field_1724.field_6212 != 0.0F || mc.field_1724.field_6250 != 0.0F;
+      return mc.player == null ? false : mc.player.sidewaysSpeed != 0.0F || mc.player.forwardSpeed != 0.0F;
    }
 
    public static void stopSprint() {
-      mc.field_1724.method_5728(false);
-      mc.field_1690.field_1867.method_23481(false);
+      mc.player.setSprinting(false);
+      mc.options.sprintKey.setPressed(false);
    }
 
    public static boolean isSprintMovementKeyHold() {
-      return mc.field_1690.field_1894.method_1434() && !mc.field_1690.field_1881.method_1434();
+      return mc.options.forwardKey.isPressed() && !mc.options.backKey.isPressed();
    }
 
-   public static class_10182 resolvePos(class_10182 newPos, Set<class_2709> flags) {
-      if (mc.field_1724 == null) {
+   public static PlayerPosition resolvePos(PlayerPosition newPos, Set<PositionFlag> flags) {
+      if (mc.player == null) {
          return newPos;
       } else {
-         class_10182 current = class_10182.method_63638(mc.field_1724);
-         return class_10182.method_63639(current, newPos, flags);
+         PlayerPosition current = PlayerPosition.fromEntity(mc.player);
+         return PlayerPosition.apply(current, newPos, flags);
       }
    }
 
-   public static float getSpeed(class_1657 player) {
-      return player != null && mc.field_1687 != null
+   public static float getSpeed(PlayerEntity player) {
+      return player != null && mc.world != null
          ? (float)Math.sqrt(
-            player.method_18798().field_1352 * player.method_18798().field_1352 + player.method_18798().field_1350 * player.method_18798().field_1350
+            player.getVelocity().x * player.getVelocity().x + player.getVelocity().z * player.getVelocity().z
          )
          : 0.0F;
    }
 
    public static int getMoveSpeedEffectAmplifier() {
-      return mc.field_1724.method_6059(class_1294.field_5904) ? mc.field_1724.method_6112(class_1294.field_5904).method_5578() + 1 : 0;
+      return mc.player.hasStatusEffect(StatusEffects.SPEED) ? mc.player.getStatusEffect(StatusEffects.SPEED).getAmplifier() + 1 : 0;
    }
 
    public static boolean isOnLadder() {
-      class_2680 state = mc.field_1687.method_8320(mc.field_1724.method_24515());
-      return state.method_26164(class_3481.field_22414)
-         || !mc.field_1724.method_24828() && mc.field_1724.method_18798().field_1351 < 0.0 && state.method_26204() instanceof class_2399;
+      BlockState state = mc.world.getBlockState(mc.player.getBlockPos());
+      return state.isIn(BlockTags.CLIMBABLE)
+         || !mc.player.isOnGround() && mc.player.getVelocity().y < 0.0 && state.getBlock() instanceof LadderBlock;
    }
 
-   public static boolean inFov(class_1297 entity, double fov) {
+   public static boolean inFov(Entity entity, double fov) {
       if (fov >= 360.0) {
          return true;
       } else {
-         Rotation angle = RotationUtils.calculate(mc.field_1724.method_5836(1.0F), entity.method_5829().method_1005());
-         double xDist = class_3532.method_15356(angle.yaw, mc.field_1724.method_36454());
-         double yDist = class_3532.method_15356(angle.pitch, mc.field_1724.method_36455());
+         Rotation angle = RotationUtils.calculate(mc.player.getCameraPosVec(1.0F), entity.getBoundingBox().getCenter());
+         double xDist = MathHelper.angleBetween(angle.yaw, mc.player.getYaw());
+         double yDist = MathHelper.angleBetween(angle.pitch, mc.player.getPitch());
          double angleDistance = Math.hypot(xDist, yDist);
          return angleDistance <= fov;
       }
    }
 
    public static boolean isAboveVoid() {
-      if (mc.field_1724 == null) {
+      if (mc.player == null) {
          return false;
-      } else if (mc.field_1724.method_23318() < 0.0) {
+      } else if (mc.player.getY() < 0.0) {
          return true;
       } else {
-         for (int i = (int)(mc.field_1724.method_23318() - 1.0); i >= 1; i--) {
-            if (!mc.field_1687.method_8320(class_2338.method_49637(mc.field_1724.method_23317(), i, mc.field_1724.method_23321())).method_26215()) {
+         for (int i = (int)(mc.player.getY() - 1.0); i >= 1; i--) {
+            if (!mc.world.getBlockState(BlockPos.ofFloored(mc.player.getX(), i, mc.player.getZ())).isAir()) {
                return false;
             }
          }
 
-         return !mc.field_1724.method_24828();
+         return !mc.player.isOnGround();
       }
    }
 
    public static double[] forward(double d) {
-      float f = mc.field_1724.field_3913.field_3905;
-      float f2 = mc.field_1724.field_3913.field_3907;
-      float f3 = mc.field_1724.method_36454();
+      float f = mc.player.input.movementForward;
+      float f2 = mc.player.input.movementSideways;
+      float f3 = mc.player.getYaw();
       if (f != 0.0F) {
          if (f2 > 0.0F) {
             f3 += f > 0.0F ? -45 : 45;
@@ -148,25 +148,25 @@ public class PlayerUtils implements MinecraftAccessor {
    }
 
    public static boolean isInLiquid() {
-      if (mc.field_1724.method_5869()) {
+      if (mc.player.isSubmergedInWater()) {
          return true;
       } else {
          boolean inLiquid = false;
-         int box = (int)mc.field_1724.method_5829().field_1322;
+         int box = (int)mc.player.getBoundingBox().minY;
 
-         for (int x = class_3532.method_15357(mc.field_1724.method_5829().field_1323);
-            x < class_3532.method_15357(mc.field_1724.method_5829().field_1320) + 1;
+         for (int x = MathHelper.floor(mc.player.getBoundingBox().minX);
+            x < MathHelper.floor(mc.player.getBoundingBox().maxX) + 1;
             x++
          ) {
-            for (int z = class_3532.method_15357(mc.field_1724.method_5829().field_1321);
-               z < class_3532.method_15357(mc.field_1724.method_5829().field_1324) + 1;
+            for (int z = MathHelper.floor(mc.player.getBoundingBox().minZ);
+               z < MathHelper.floor(mc.player.getBoundingBox().maxZ) + 1;
                z++
             ) {
-               class_2338 pos = new class_2338(x, box, z);
-               class_2680 state = mc.field_1687.method_8320(pos);
-               class_2248 b = state.method_26204();
-               if (b != class_2246.field_10124 && state.method_26204() != class_2246.field_10124) {
-                  if (!(b instanceof class_2404)) {
+               BlockPos pos = new BlockPos(x, box, z);
+               BlockState state = mc.world.getBlockState(pos);
+               Block b = state.getBlock();
+               if (b != Blocks.AIR && state.getBlock() != Blocks.AIR) {
+                  if (!(b instanceof FluidBlock)) {
                      return false;
                   }
 
@@ -179,25 +179,25 @@ public class PlayerUtils implements MinecraftAccessor {
       }
    }
 
-   public static boolean canSeeEntity(class_1297 entity) {
-      class_243 vec1 = new class_243(0.0, 0.0, 0.0);
-      class_243 vec2 = new class_243(0.0, 0.0, 0.0);
-      ((IVec3d)vec1).ss$set(mc.field_1724.method_23317(), mc.field_1724.method_23318() + mc.field_1724.method_5751(), mc.field_1724.method_23321());
-      ((IVec3d)vec2).ss$set(entity.method_23317(), entity.method_23318(), entity.method_23321());
-      boolean canSeeFeet = mc.field_1687.method_17742(new class_3959(vec1, vec2, class_3960.field_17558, class_242.field_1348, mc.field_1724)).method_17783()
-         == class_240.field_1333;
-      ((IVec3d)vec2).ss$set(entity.method_23317(), entity.method_23318() + entity.method_5751(), entity.method_23321());
-      boolean canSeeEyes = mc.field_1687.method_17742(new class_3959(vec1, vec2, class_3960.field_17558, class_242.field_1348, mc.field_1724)).method_17783()
-         == class_240.field_1333;
+   public static boolean canSeeEntity(Entity entity) {
+      Vec3d vec1 = new Vec3d(0.0, 0.0, 0.0);
+      Vec3d vec2 = new Vec3d(0.0, 0.0, 0.0);
+      ((IVec3d)vec1).ss$set(mc.player.getX(), mc.player.getY() + mc.player.getStandingEyeHeight(), mc.player.getZ());
+      ((IVec3d)vec2).ss$set(entity.getX(), entity.getY(), entity.getZ());
+      boolean canSeeFeet = mc.world.raycast(new RaycastContext(vec1, vec2, ShapeType.COLLIDER, FluidHandling.NONE, mc.player)).getType()
+         == Type.MISS;
+      ((IVec3d)vec2).ss$set(entity.getX(), entity.getY() + entity.getStandingEyeHeight(), entity.getZ());
+      boolean canSeeEyes = mc.world.raycast(new RaycastContext(vec1, vec2, ShapeType.COLLIDER, FluidHandling.NONE, mc.player)).getType()
+         == Type.MISS;
       return canSeeFeet || canSeeEyes;
    }
 
-   public static class_2248 blockRelativeToPlayer(double offsetX, double offsetY, double offsetZ) {
-      return mc.field_1687.method_8320(mc.field_1724.method_24515().method_10069((int)offsetX, (int)offsetY, (int)offsetZ)).method_26204();
+   public static Block blockRelativeToPlayer(double offsetX, double offsetY, double offsetZ) {
+      return mc.world.getBlockState(mc.player.getBlockPos().add((int)offsetX, (int)offsetY, (int)offsetZ)).getBlock();
    }
 
    public static void strafe(Float speed) {
-      if (mc.field_1724 != null) {
+      if (mc.player != null) {
          if (isMoving()) {
             double yaw = Math.toRadians(getPlayerDirection());
             double xSpeed = -Math.sin(yaw);
@@ -208,7 +208,7 @@ public class PlayerUtils implements MinecraftAccessor {
                zSpeed /= magnitude;
             }
 
-            mc.field_1724.method_18800(xSpeed * speed.floatValue(), mc.field_1724.method_18798().field_1351, zSpeed * speed.floatValue());
+            mc.player.setVelocity(xSpeed * speed.floatValue(), mc.player.getVelocity().y, zSpeed * speed.floatValue());
          } else {
             stopMoving();
          }
@@ -216,25 +216,25 @@ public class PlayerUtils implements MinecraftAccessor {
    }
 
    public static float getPlayerDirection() {
-      if (mc.field_1724 == null) {
+      if (mc.player == null) {
          return 0.0F;
       } else {
-         float yaw = mc.field_1724.method_36454();
+         float yaw = mc.player.getYaw();
          float strafe = 45.0F;
-         class_744 input = mc.field_1724.field_3913;
-         if (input.field_3905 < 0.0F) {
+         Input input = mc.player.input;
+         if (input.movementForward < 0.0F) {
             strafe = -45.0F;
             yaw += 180.0F;
          }
 
-         if (input.field_54155.comp_3161()) {
+         if (input.playerInput.left()) {
             yaw -= strafe;
-            if (input.field_3905 == 0.0F) {
+            if (input.movementForward == 0.0F) {
                yaw -= 45.0F;
             }
-         } else if (input.field_54155.comp_3162()) {
+         } else if (input.playerInput.right()) {
             yaw += strafe;
-            if (input.field_3905 == 0.0F) {
+            if (input.movementForward == 0.0F) {
                yaw += 45.0F;
             }
          }
@@ -244,17 +244,17 @@ public class PlayerUtils implements MinecraftAccessor {
    }
 
    public static void stopMoving() {
-      if (mc.field_1724 != null) {
-         mc.field_1724.method_18800(0.0, mc.field_1724.method_18798().field_1351, 0.0);
-         mc.field_1724.field_3913.field_3905 = 0.0F;
-         mc.field_1724.field_3913.field_3907 = 0.0F;
+      if (mc.player != null) {
+         mc.player.setVelocity(0.0, mc.player.getVelocity().y, 0.0);
+         mc.player.input.movementForward = 0.0F;
+         mc.player.input.movementSideways = 0.0F;
       }
    }
 
    public static boolean isBlockUnder(double height) {
       for (int offset = 0; offset < height; offset += 2) {
-         class_238 bb = mc.field_1724.method_5829().method_989(0.0, -offset, 0.0);
-         if (!mc.field_1687.method_39454(mc.field_1724, bb)) {
+         Box bb = mc.player.getBoundingBox().offset(0.0, -offset, 0.0);
+         if (!mc.world.canCollide(mc.player, bb)) {
             return true;
          }
       }
@@ -264,15 +264,15 @@ public class PlayerUtils implements MinecraftAccessor {
 
    @EventHandler
    public void onPacket(PacketEvent event) {
-      if (event.getOrigin().equals(TransferOrigin.RECEIVE) && event.getPacket() instanceof class_2708) {
+      if (event.getOrigin().equals(TransferOrigin.RECEIVE) && event.getPacket() instanceof PlayerPositionLookS2CPacket) {
          ticksSinceTeleport = 0;
       }
    }
 
    @EventHandler
    public void onPostTick(TickEvent e) {
-      if (e.getState().equals(Stage.POST) && mc.field_1724 != null) {
-         lastVelocity = mc.field_1724.method_18798();
+      if (e.getState().equals(Stage.POST) && mc.player != null) {
+         lastVelocity = mc.player.getVelocity();
       }
    }
 
@@ -290,7 +290,7 @@ public class PlayerUtils implements MinecraftAccessor {
    }
 
    public static float direction(float forward, float strafe) {
-      float direction = class_310.method_1551().field_1724.method_36454();
+      float direction = MinecraftClient.getInstance().player.getYaw();
       boolean isMovingForward = forward > 0.0F;
       boolean isMovingBack = forward < 0.0F;
       boolean isMovingRight = strafe > 0.0F;
@@ -331,31 +331,31 @@ public class PlayerUtils implements MinecraftAccessor {
    }
 
    public static void flushBoundingBoxes() {
-      if (mc.field_1687 != null) {
-         for (class_1297 entity : mc.field_1687.method_18112()) {
-            entity.method_33574(entity.method_19538());
+      if (mc.world != null) {
+         for (Entity entity : mc.world.getEntities()) {
+            entity.setPosition(entity.getPos());
          }
       }
    }
 
    public static void moveFlying(double speed) {
-      class_1657 player = mc.field_1724;
+      PlayerEntity player = mc.player;
       if (player != null && isMoving()) {
-         double yawRad = Math.toRadians(direction(mc.field_1724.field_3913.field_3905, mc.field_1724.field_3913.field_3907));
-         double x = -class_3532.method_15374((float)yawRad) * speed;
-         double z = class_3532.method_15362((float)yawRad) * speed;
-         player.method_5762(x, 0.0, z);
+         double yawRad = Math.toRadians(direction(mc.player.input.movementForward, mc.player.input.movementSideways));
+         double x = -MathHelper.sin((float)yawRad) * speed;
+         double z = MathHelper.cos((float)yawRad) * speed;
+         player.addVelocity(x, 0.0, z);
       }
    }
 
    public static boolean willFallNextTick() {
-      if (mc.field_1724 == null) {
+      if (mc.player == null) {
          return false;
       } else {
-         FallingPlayer pred = new FallingPlayer(mc.field_1724);
+         FallingPlayer pred = new FallingPlayer(mc.player);
          pred.calculate(1);
-         class_2338 frontPos1 = new class_2338((int)pred.getX(), (int)(mc.field_1724.method_23318() - 0.1), (int)pred.getZ());
-         return mc.field_1687.method_8320(frontPos1).method_26204() instanceof class_2189 && pred.getMotion().field_1351 < 0.0;
+         BlockPos frontPos1 = new BlockPos((int)pred.getX(), (int)(mc.player.getY() - 0.1), (int)pred.getZ());
+         return mc.world.getBlockState(frontPos1).getBlock() instanceof AirBlock && pred.getMotion().y < 0.0;
       }
    }
 
@@ -375,7 +375,7 @@ public class PlayerUtils implements MinecraftAccessor {
    }
 
    @Generated
-   public static class_243 getLastVelocity() {
+   public static Vec3d getLastVelocity() {
       return lastVelocity;
    }
 }

@@ -11,10 +11,10 @@ public class CPSManager implements MinecraftAccessor {
    private final List<Integer> click_ticks = new ArrayList<>();
 
    public void click() {
-      if (mc.field_1724 == null) {
+      if (mc.player == null) {
          this.click_ticks.clear();
       } else {
-         this.click_ticks.add(mc.field_1724.field_6012);
+         this.click_ticks.add(mc.player.age);
       }
    }
 
@@ -23,11 +23,11 @@ public class CPSManager implements MinecraftAccessor {
    }
 
    public int getCurrentCPS() {
-      if (mc.field_1724 == null) {
+      if (mc.player == null) {
          this.click_ticks.clear();
       }
 
-      this.click_ticks.removeIf(cpsData -> mc.field_1724.field_6012 < cpsData || mc.field_1724.field_6012 - cpsData > 20);
+      this.click_ticks.removeIf(cpsData -> mc.player.age < cpsData || mc.player.age - cpsData > 20);
       return this.click_ticks.size();
    }
 

@@ -2,30 +2,30 @@ package cc.polyfrost.oneconfig.libs.universal;
 
 public class UResolution {
    public static float getScaleFactor() {
-      return (float)UMinecraft.getMinecraft().method_22683().method_4495();
+      return (float)UMinecraft.getMinecraft().getWindow().getScaleFactor();
    }
 
    public static final int getScaledWidth() {
-      return UMinecraft.getMinecraft().method_22683().method_4486();
+      return UMinecraft.getMinecraft().getWindow().getScaledWidth();
    }
 
    public static final int getScaledHeight() {
-      return UMinecraft.getMinecraft().method_22683().method_4502();
+      return UMinecraft.getMinecraft().getWindow().getScaledHeight();
    }
 
    public static final int getWindowWidth() {
-      return UMinecraft.getMinecraft().method_22683().method_4489();
+      return UMinecraft.getMinecraft().getWindow().getFramebufferWidth();
    }
 
    public static final int getWindowHeight() {
-      return UMinecraft.getMinecraft().method_22683().method_4506();
+      return UMinecraft.getMinecraft().getWindow().getFramebufferHeight();
    }
 
    public static final int getViewportWidth() {
-      return UMinecraft.getMinecraft().method_22683().method_4489();
+      return UMinecraft.getMinecraft().getWindow().getFramebufferWidth();
    }
 
    public static final int getViewportHeight() {
-      return UMinecraft.getMinecraft().method_22683().method_4506();
+      return UMinecraft.getMinecraft().getWindow().getFramebufferHeight();
    }
 }

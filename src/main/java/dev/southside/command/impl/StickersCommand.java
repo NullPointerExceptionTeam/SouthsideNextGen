@@ -7,8 +7,8 @@ import dev.southside.command.Command;
 import dev.southside.command.args.StickerArgumentType;
 import dev.southside.manager.StickerManager;
 import java.util.List;
-import net.minecraft.class_2172;
-import net.minecraft.class_2561;
+import net.minecraft.command.CommandSource;
+import net.minecraft.text.Text;
 
 public class StickersCommand extends Command {
    public StickersCommand() {
@@ -16,7 +16,7 @@ public class StickersCommand extends Command {
    }
 
    @Override
-   public void build(LiteralArgumentBuilder<class_2172> builder) {
+   public void build(LiteralArgumentBuilder<CommandSource> builder) {
       builder.executes(context -> {
          this.msg("§eUsage:");
          this.msg("§7  .stickers list §8- List available stickers");
@@ -73,8 +73,8 @@ public class StickersCommand extends Command {
    }
 
    private void msg(String text) {
-      if (MinecraftAccessor.mc.field_1724 != null) {
-         MinecraftAccessor.mc.field_1724.method_7353(class_2561.method_43470(text), false);
+      if (MinecraftAccessor.mc.player != null) {
+         MinecraftAccessor.mc.player.sendMessage(Text.literal(text), false);
       }
    }
 }

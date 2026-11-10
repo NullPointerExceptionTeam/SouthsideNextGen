@@ -10,7 +10,7 @@ import dev.southside.Southside;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import net.minecraft.class_2172;
+import net.minecraft.command.CommandSource;
 
 public class StickerArgumentType implements ArgumentType<String> {
    private static final StickerArgumentType INSTANCE = new StickerArgumentType();
@@ -27,7 +27,7 @@ public class StickerArgumentType implements ArgumentType<String> {
    }
 
    public <S> CompletableFuture<Suggestions> listSuggestions(CommandContext<S> context, SuggestionsBuilder builder) {
-      return class_2172.method_9265(Southside.get().getStickerManager().getAvailableStickers(), builder);
+      return CommandSource.suggestMatching(Southside.get().getStickerManager().getAvailableStickers(), builder);
    }
 
    public Collection<String> getExamples() {

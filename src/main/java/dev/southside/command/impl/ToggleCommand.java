@@ -4,7 +4,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import dev.southside.command.Command;
 import dev.southside.command.args.ModuleArgumentType;
 import dev.southside.module.Module;
-import net.minecraft.class_2172;
+import net.minecraft.command.CommandSource;
 
 public class ToggleCommand extends Command {
    public ToggleCommand() {
@@ -12,7 +12,7 @@ public class ToggleCommand extends Command {
    }
 
    @Override
-   public void build(LiteralArgumentBuilder<class_2172> builder) {
+   public void build(LiteralArgumentBuilder<CommandSource> builder) {
       builder.then(argument("module", ModuleArgumentType.create()).executes(context -> {
          Module module = (Module)context.getArgument("module", Module.class);
          if (module == null) {

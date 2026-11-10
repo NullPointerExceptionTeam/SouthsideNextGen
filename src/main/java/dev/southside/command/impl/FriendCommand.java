@@ -14,16 +14,14 @@ import dev.southside.utils.ChatUtils;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
-import net.minecraft.class_124;
-import net.minecraft.class_2172;
-import net.minecraft.class_2558;
-import net.minecraft.class_2561;
-import net.minecraft.class_2568;
-import net.minecraft.class_2583;
-import net.minecraft.class_5250;
-import net.minecraft.class_640;
-import net.minecraft.class_2558.class_2559;
-import net.minecraft.class_2568.class_5247;
+import net.minecraft.util.Formatting;
+import net.minecraft.command.CommandSource;
+import net.minecraft.text.ClickEvent;
+import net.minecraft.text.Text;
+import net.minecraft.text.HoverEvent;
+import net.minecraft.text.Style;
+import net.minecraft.text.MutableText;
+import net.minecraft.client.network.PlayerListEntry;
 
 public class FriendCommand extends Command {
    public FriendCommand() {
@@ -31,7 +29,7 @@ public class FriendCommand extends Command {
    }
 
    @Override
-   public void build(LiteralArgumentBuilder<class_2172> builder) {
+   public void build(LiteralArgumentBuilder<CommandSource> builder) {
       builder.executes(context -> this.listFriends());
       builder.then(literal("list").executes(context -> this.listFriends()));
       builder.then(
@@ -61,15 +59,15 @@ public class FriendCommand extends Command {
          friendManager.getFriends().stream().sorted(String.CASE_INSENSITIVE_ORDER).forEach(name -> ChatUtils.info(this.friendLine(name)));
       }
 
-      if (MinecraftAccessor.mc.method_1562() != null) {
+      if (MinecraftAccessor.mc.getNetworkHandler() != null) {
          List<String> onlinePlayers = MinecraftAccessor.mc
-            .method_1562()
-            .method_2880()
+            .getNetworkHandler()
+            .getPlayerList()
             .stream()
-            .<GameProfile>map(class_640::method_2966)
+            .<GameProfile>map(PlayerListEntry::getProfile)
             .map(profile -> profile.getName())
             .filter(name -> name != null && !name.isBlank())
-            .filter(name -> MinecraftAccessor.mc.field_1724 == null || !name.equalsIgnoreCase(MinecraftAccessor.mc.field_1724.method_5477().getString()))
+            .filter(name -> MinecraftAccessor.mc.player == null || !name.equalsIgnoreCase(MinecraftAccessor.mc.player.getName().getString()))
             .filter(name -> !friendManager.isFriend(name))
             .sorted(String.CASE_INSENSITIVE_ORDER)
             .toList();
@@ -106,53 +104,53 @@ public class FriendCommand extends Command {
       }
    }
 
-   private class_5250 friendLine(String name) {
-      return class_2561.method_43473()
-         .method_10852(class_2561.method_43470("- ").method_27692(class_124.field_1080))
-         .method_10852(class_2561.method_43470(name).method_27692(class_124.field_1060))
-         .method_10852(class_2561.method_43470(" "))
-         .method_10852(this.actionButton("删除", class_124.field_1061, ".friend del " + name, "点击删除好友 " + name));
+   private MutableText friendLine(String name) {
+      return Text.empty()
+         .append(Text.literal("- ").formatted(Formatting.GRAY))
+         .append(Text.literal(name).formatted(Formatting.GREEN))
+         .append(Text.literal(" "))
+         .append(this.actionButton("删除", Formatting.RED, ".friend del " + name, "点击删除好友 " + name));
    }
 
-   private class_5250 addLine(String name) {
-      return class_2561.method_43473()
-         .method_10852(class_2561.method_43470("- ").method_27692(class_124.field_1080))
-         .method_10852(class_2561.method_43470(name).method_27692(class_124.field_1068))
-         .method_10852(class_2561.method_43470(" "))
-         .method_10852(this.actionButton("添加", class_124.field_1060, ".friend add " + name, "点击添加好友 " + name));
+   private MutableText addLine(String name) {
+      return Text.empty()
+         .append(Text.literal("- ").formatted(Formatting.GRAY))
+         .append(Text.literal(name).formatted(Formatting.WHITE))
+         .append(Text.literal(" "))
+         .append(this.actionButton("添加", Formatting.GREEN, ".friend add " + name, "点击添加好友 " + name));
    }
 
-   private class_5250 actionButton(String label, class_124 color, String command, String hoverText) {
-      return class_2561.method_43470("[" + label + "]")
-         .method_10862(
-            class_2583.field_24360
-               .method_10977(color)
-               .method_10958(new class_2558(class_2559.field_11750, command))
-               .method_10949(new class_2568(class_5247.field_24342, class_2561.method_43470(hoverText)))
+   private MutableText actionButton(String label, Formatting color, String command, String hoverText) {
+      return Text.literal("[" + label + "]")
+         .setStyle(
+            Style.EMPTY
+               .withColor(color)
+               .withClickEvent(new ClickEvent(net.minecraft.text.ClickEvent.Action.RUN_COMMAND, command))
+               .withHoverEvent(new HoverEvent(net.minecraft.text.HoverEvent.Action.SHOW_TEXT, Text.literal(hoverText)))
          );
    }
 
-   private CompletableFuture<Suggestions> suggestOnlinePlayers(CommandContext<class_2172> context, SuggestionsBuilder builder) {
-      if (MinecraftAccessor.mc.method_1562() == null) {
+   private CompletableFuture<Suggestions> suggestOnlinePlayers(CommandContext<CommandSource> context, SuggestionsBuilder builder) {
+      if (MinecraftAccessor.mc.getNetworkHandler() == null) {
          return Suggestions.empty();
       } else {
          FriendManager friendManager = Southside.get().getFriendManager();
          Stream<String> names = MinecraftAccessor.mc
-            .method_1562()
-            .method_2880()
+            .getNetworkHandler()
+            .getPlayerList()
             .stream()
-            .<GameProfile>map(class_640::method_2966)
+            .<GameProfile>map(PlayerListEntry::getProfile)
             .map(profile -> profile.getName())
             .filter(name -> name != null && !name.isBlank())
-            .filter(name -> MinecraftAccessor.mc.field_1724 == null || !name.equalsIgnoreCase(MinecraftAccessor.mc.field_1724.method_5477().getString()))
+            .filter(name -> MinecraftAccessor.mc.player == null || !name.equalsIgnoreCase(MinecraftAccessor.mc.player.getName().getString()))
             .filter(name -> !friendManager.isFriend(name))
             .sorted(String.CASE_INSENSITIVE_ORDER);
-         return class_2172.method_9264(names, builder);
+         return CommandSource.suggestMatching(names, builder);
       }
    }
 
-   private CompletableFuture<Suggestions> suggestFriends(CommandContext<class_2172> context, SuggestionsBuilder builder) {
+   private CompletableFuture<Suggestions> suggestFriends(CommandContext<CommandSource> context, SuggestionsBuilder builder) {
       Stream<String> names = Southside.get().getFriendManager().getFriends().stream().sorted(String.CASE_INSENSITIVE_ORDER);
-      return class_2172.method_9264(names, builder);
+      return CommandSource.suggestMatching(names, builder);
    }
 }

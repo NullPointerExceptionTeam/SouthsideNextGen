@@ -1,8 +1,8 @@
 package dev.southside.mixin.render;
 
-import net.minecraft.class_408;
+import net.minecraft.client.gui.screen.ChatScreen;
 import org.spongepowered.asm.mixin.Mixin;
 
-@Mixin({class_408.class})
+@Mixin({ChatScreen.class})
 public class MixinGuiChat {
 }

@@ -4,34 +4,34 @@ import dev.southside.Southside;
 import dev.southside.manager.ChestManager;
 import dev.southside.module.impl.player.StealerN;
 import dev.southside.render.ProjectionUtil;
-import net.minecraft.class_1661;
-import net.minecraft.class_1707;
-import net.minecraft.class_1735;
-import net.minecraft.class_1799;
-import net.minecraft.class_2338;
-import net.minecraft.class_2561;
-import net.minecraft.class_332;
-import net.minecraft.class_3936;
-import net.minecraft.class_465;
-import net.minecraft.class_476;
+import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.screen.GenericContainerScreenHandler;
+import net.minecraft.screen.slot.Slot;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.text.Text;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.ingame.ScreenHandlerProvider;
+import net.minecraft.client.gui.screen.ingame.HandledScreen;
+import net.minecraft.client.gui.screen.ingame.GenericContainerScreen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin({class_476.class})
-public abstract class MixinGenericContainerScreen extends class_465<class_1707> implements class_3936<class_1707> {
-   protected MixinGenericContainerScreen(class_1707 container, class_1661 playerInventory, class_2561 text) {
+@Mixin({GenericContainerScreen.class})
+public abstract class MixinGenericContainerScreen extends HandledScreen<GenericContainerScreenHandler> implements ScreenHandlerProvider<GenericContainerScreenHandler> {
+   protected MixinGenericContainerScreen(GenericContainerScreenHandler container, PlayerInventory playerInventory, Text text) {
       super(container, playerInventory, text);
    }
 
    @Inject(
-      method = {"method_25394(Lnet/minecraft/class_332;IIF)V"},
+      method = {"render(Lnet/minecraft/client/gui/DrawContext;IIF)V"},
       at = {@At("HEAD")},
       cancellable = true
    )
-   private void onRender(class_332 context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+   private void onRender(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
       StealerN stealer = Southside.INSTANCE.getModuleManager().get(StealerN.class);
       if (stealer.isEnabled() && stealer.silently.getValue()) {
          ci.cancel();
@@ -40,33 +40,33 @@ public abstract class MixinGenericContainerScreen extends class_465<class_1707> 
    }
 
    @Unique
-   private void drawContainerContents(class_332 context) {
-      if (this.field_2797 != null && Southside.INSTANCE.getModuleManager() != null) {
+   private void drawContainerContents(DrawContext context) {
+      if (this.handler != null && Southside.INSTANCE.getModuleManager() != null) {
          ChestManager manager = Southside.get().getChestManager();
-         class_2338 stealing = manager.getStealingChest();
-         if (stealing != null && ProjectionUtil.worldScreenPos(stealing.method_46558()) != null) {
-            int containerX = (int)ProjectionUtil.worldScreenPos(stealing.method_46558()).field_1343;
-            int containerY = (int)ProjectionUtil.worldScreenPos(stealing.method_46558()).field_1342;
+         BlockPos stealing = manager.getStealingChest();
+         if (stealing != null && ProjectionUtil.worldScreenPos(stealing.toCenterPos()) != null) {
+            int containerX = (int)ProjectionUtil.worldScreenPos(stealing.toCenterPos()).x;
+            int containerY = (int)ProjectionUtil.worldScreenPos(stealing.toCenterPos()).y;
             int slotSize = 18;
             int slotsPerRow = 9;
             int containerWidth = slotsPerRow * slotSize + 10;
-            int containerHeight = (((class_1707)this.field_2797).field_7761.size() / slotsPerRow + 1) * slotSize + 10;
-            context.method_25294(containerX, containerY, containerX + containerWidth, containerY + containerHeight, Integer.MIN_VALUE);
+            int containerHeight = (((GenericContainerScreenHandler)this.handler).slots.size() / slotsPerRow + 1) * slotSize + 10;
+            context.fill(containerX, containerY, containerX + containerWidth, containerY + containerHeight, Integer.MIN_VALUE);
             String title = "Container Contents";
-            context.method_25303(this.field_22793, title, containerX + 5, containerY + 5, 16777215);
-            int separatorY = containerY + 20 + ((class_1707)this.field_2797).method_17388() * slotSize;
-            context.method_25294(containerX + 5, separatorY, containerX + 5 + slotsPerRow * slotSize, separatorY + 1, -1);
+            context.drawTextWithShadow(this.textRenderer, title, containerX + 5, containerY + 5, 16777215);
+            int separatorY = containerY + 20 + ((GenericContainerScreenHandler)this.handler).getRows() * slotSize;
+            context.fill(containerX + 5, separatorY, containerX + 5 + slotsPerRow * slotSize, separatorY + 1, -1);
 
-            for (int i = 0; i < ((class_1707)this.field_2797).field_7761.size(); i++) {
-               class_1735 slot = (class_1735)((class_1707)this.field_2797).field_7761.get(i);
-               class_1799 stack = slot.method_7677();
-               if (!stack.method_7960()) {
+            for (int i = 0; i < ((GenericContainerScreenHandler)this.handler).slots.size(); i++) {
+               Slot slot = (Slot)((GenericContainerScreenHandler)this.handler).slots.get(i);
+               ItemStack stack = slot.getStack();
+               if (!stack.isEmpty()) {
                   int row = i / slotsPerRow;
                   int col = i % slotsPerRow;
                   int x = containerX + 5 + col * slotSize;
                   int y = containerY + 20 + row * slotSize;
-                  context.method_51427(stack, x, y);
-                  context.method_51431(this.field_22793, stack, x, y);
+                  context.drawItem(stack, x, y);
+                  context.drawStackOverlay(this.textRenderer, stack, x, y);
                }
             }
          }

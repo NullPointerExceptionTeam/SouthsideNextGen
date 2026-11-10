@@ -3,78 +3,78 @@ package dev.southside.utils.player;
 import dev.southside.utils.raytrace.RayCastUtils;
 import dev.southside.utils.rotation.RotationUtils;
 import lombok.Generated;
-import net.minecraft.class_1657;
-import net.minecraft.class_2338;
-import net.minecraft.class_2350;
-import net.minecraft.class_243;
-import net.minecraft.class_310;
-import net.minecraft.class_3532;
-import net.minecraft.class_3965;
-import net.minecraft.class_239.class_240;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.HitResult.Type;
 
 public class FallingPlayer {
    private double x;
    private double y;
    private double z;
-   private class_243 motion;
-   private class_243 eyePos;
+   private Vec3d motion;
+   private Vec3d eyePos;
    private float yaw;
    private float strafe;
    private float forward;
    private float jumpMovementFactor;
    private float movementSpeed;
    private boolean onGround;
-   private final class_310 mc = class_310.method_1551();
+   private final MinecraftClient mc = MinecraftClient.getInstance();
 
-   public FallingPlayer(class_1657 player) {
-      this.x = player.method_23317();
-      this.y = player.method_23318();
-      this.z = player.method_23321();
-      this.motion = player.method_18798();
+   public FallingPlayer(PlayerEntity player) {
+      this.x = player.getX();
+      this.y = player.getY();
+      this.z = player.getZ();
+      this.motion = player.getVelocity();
       this.yaw = RotationUtils.getRotationSafely().yaw;
-      this.strafe = this.mc.field_1724.field_3913.field_3907;
-      this.forward = this.mc.field_1724.field_3913.field_3905;
-      this.movementSpeed = player.method_6029();
-      this.onGround = player.method_24828();
-      this.jumpMovementFactor = player.method_5624() ? 0.026F : 0.02F;
-      this.eyePos = this.mc.field_1724.method_33571();
+      this.strafe = this.mc.player.input.movementSideways;
+      this.forward = this.mc.player.input.movementForward;
+      this.movementSpeed = player.getMovementSpeed();
+      this.onGround = player.isOnGround();
+      this.jumpMovementFactor = player.isSprinting() ? 0.026F : 0.02F;
+      this.eyePos = this.mc.player.getEyePos();
    }
 
    private void calculateForTick() {
       float dragX = 0.91F;
       float dragY = 0.98F;
       float acceleration = this.jumpMovementFactor;
-      this.updateVelocity(acceleration, new class_243(this.strafe, 0.0, this.forward));
-      this.x = this.x + this.motion.field_1352;
-      this.y = this.y + this.motion.field_1351;
-      this.z = this.z + this.motion.field_1350;
+      this.updateVelocity(acceleration, new Vec3d(this.strafe, 0.0, this.forward));
+      this.x = this.x + this.motion.x;
+      this.y = this.y + this.motion.y;
+      this.z = this.z + this.motion.z;
       this.updateGroundState();
       double gravity = 0.08;
-      this.motion = this.motion.method_1031(0.0, -gravity, 0.0);
-      this.eyePos = new class_243(this.x, this.y + this.mc.field_1724.field_18065.comp_2187(), this.z);
-      this.motion = new class_243(this.motion.field_1352 * dragX, this.motion.field_1351 * dragY, this.motion.field_1350 * dragX);
+      this.motion = this.motion.add(0.0, -gravity, 0.0);
+      this.eyePos = new Vec3d(this.x, this.y + this.mc.player.dimensions.eyeHeight(), this.z);
+      this.motion = new Vec3d(this.motion.x * dragX, this.motion.y * dragY, this.motion.z * dragX);
    }
 
    private void updateGroundState() {
-      class_243 center = new class_243(this.x, this.y, this.z);
-      class_243 down = center.method_1031(0.0, -0.2, 0.0);
-      class_3965 result = this.rayTraceHit(center, down);
-      if (result != null && result.method_17783() == class_240.field_1332 && result.method_17780() == class_2350.field_11036) {
+      Vec3d center = new Vec3d(this.x, this.y, this.z);
+      Vec3d down = center.add(0.0, -0.2, 0.0);
+      BlockHitResult result = this.rayTraceHit(center, down);
+      if (result != null && result.getType() == Type.BLOCK && result.getSide() == Direction.UP) {
          this.onGround = true;
       } else {
          this.onGround = false;
       }
    }
 
-   private void updateVelocity(float speed, class_243 input) {
-      double lengthSquared = input.method_1027();
+   private void updateVelocity(float speed, Vec3d input) {
+      double lengthSquared = input.lengthSquared();
       if (!(lengthSquared < 1.0E-7)) {
-         class_243 normalizedInput = (lengthSquared > 1.0 ? input.method_1029() : input).method_1021(speed);
-         float f = class_3532.method_15374(this.yaw * (float) (Math.PI / 180.0));
-         float g = class_3532.method_15362(this.yaw * (float) (Math.PI / 180.0));
-         double inputX = normalizedInput.field_1352 * g - normalizedInput.field_1350 * f;
-         double inputZ = normalizedInput.field_1350 * g + normalizedInput.field_1352 * f;
-         this.motion = this.motion.method_1031(inputX, 0.0, inputZ);
+         Vec3d normalizedInput = (lengthSquared > 1.0 ? input.normalize() : input).multiply(speed);
+         float f = MathHelper.sin(this.yaw * (float) (Math.PI / 180.0));
+         float g = MathHelper.cos(this.yaw * (float) (Math.PI / 180.0));
+         double inputX = normalizedInput.x * g - normalizedInput.z * f;
+         double inputZ = normalizedInput.z * g + normalizedInput.x * f;
+         this.motion = this.motion.add(inputX, 0.0, inputZ);
       }
    }
 
@@ -84,47 +84,47 @@ public class FallingPlayer {
       }
    }
 
-   public class_2338 findCollision(int ticks) {
-      float w = this.mc.field_1724 != null ? this.mc.field_1724.method_17681() / 2.0F : 0.3F;
+   public BlockPos findCollision(int ticks) {
+      float w = this.mc.player != null ? this.mc.player.getWidth() / 2.0F : 0.3F;
 
       for (int i = 0; i < ticks; i++) {
-         class_243 start = new class_243(this.x, this.y, this.z);
+         Vec3d start = new Vec3d(this.x, this.y, this.z);
          this.calculateForTick();
-         class_243 end = new class_243(this.x, this.y, this.z);
-         class_2338 raytracedBlock;
+         Vec3d end = new Vec3d(this.x, this.y, this.z);
+         BlockPos raytracedBlock;
          if ((raytracedBlock = this.rayTrace(start, end)) != null) {
             return raytracedBlock;
          }
 
-         if ((raytracedBlock = this.rayTrace(start.method_1031(w, 0.0, w), end.method_1031(w, 0.0, w))) != null) {
+         if ((raytracedBlock = this.rayTrace(start.add(w, 0.0, w), end.add(w, 0.0, w))) != null) {
             return raytracedBlock;
          }
 
-         if ((raytracedBlock = this.rayTrace(start.method_1031(-w, 0.0, w), end.method_1031(-w, 0.0, w))) != null) {
+         if ((raytracedBlock = this.rayTrace(start.add(-w, 0.0, w), end.add(-w, 0.0, w))) != null) {
             return raytracedBlock;
          }
 
-         if ((raytracedBlock = this.rayTrace(start.method_1031(w, 0.0, -w), end.method_1031(w, 0.0, -w))) != null) {
+         if ((raytracedBlock = this.rayTrace(start.add(w, 0.0, -w), end.add(w, 0.0, -w))) != null) {
             return raytracedBlock;
          }
 
-         if ((raytracedBlock = this.rayTrace(start.method_1031(-w, 0.0, -w), end.method_1031(-w, 0.0, -w))) != null) {
+         if ((raytracedBlock = this.rayTrace(start.add(-w, 0.0, -w), end.add(-w, 0.0, -w))) != null) {
             return raytracedBlock;
          }
 
-         if ((raytracedBlock = this.rayTrace(start.method_1031(w, 0.0, 0.0), end.method_1031(w, 0.0, 0.0))) != null) {
+         if ((raytracedBlock = this.rayTrace(start.add(w, 0.0, 0.0), end.add(w, 0.0, 0.0))) != null) {
             return raytracedBlock;
          }
 
-         if ((raytracedBlock = this.rayTrace(start.method_1031(-w, 0.0, 0.0), end.method_1031(-w, 0.0, 0.0))) != null) {
+         if ((raytracedBlock = this.rayTrace(start.add(-w, 0.0, 0.0), end.add(-w, 0.0, 0.0))) != null) {
             return raytracedBlock;
          }
 
-         if ((raytracedBlock = this.rayTrace(start.method_1031(0.0, 0.0, w), end.method_1031(0.0, 0.0, w))) != null) {
+         if ((raytracedBlock = this.rayTrace(start.add(0.0, 0.0, w), end.add(0.0, 0.0, w))) != null) {
             return raytracedBlock;
          }
 
-         if ((raytracedBlock = this.rayTrace(start.method_1031(0.0, 0.0, -w), end.method_1031(0.0, 0.0, -w))) != null) {
+         if ((raytracedBlock = this.rayTrace(start.add(0.0, 0.0, -w), end.add(0.0, 0.0, -w))) != null) {
             return raytracedBlock;
          }
       }
@@ -132,22 +132,22 @@ public class FallingPlayer {
       return null;
    }
 
-   private class_3965 rayTraceHit(class_243 start, class_243 end) {
-      double distance = start.method_1022(end);
+   private BlockHitResult rayTraceHit(Vec3d start, Vec3d end) {
+      double distance = start.distanceTo(end);
       return distance < 1.0E-7 ? null : RayCastUtils.raycast(distance, RotationUtils.getRotationByVector(start, end, false), false, 1.0F);
    }
 
-   private class_2338 rayTrace(class_243 start, class_243 end) {
-      class_3965 result = this.rayTraceHit(start, end);
-      return result != null && result.method_17783() == class_240.field_1332 && result.method_17780() == class_2350.field_11036 ? result.method_17777() : null;
+   private BlockPos rayTrace(Vec3d start, Vec3d end) {
+      BlockHitResult result = this.rayTraceHit(start, end);
+      return result != null && result.getType() == Type.BLOCK && result.getSide() == Direction.UP ? result.getBlockPos() : null;
    }
 
-   public class_243 getEyePos() {
-      return this.eyePos.method_61889(0.0);
+   public Vec3d getEyePos() {
+      return this.eyePos.add(0.0);
    }
 
-   public class_243 getPos() {
-      return new class_243(this.x, this.y, this.z);
+   public Vec3d getPos() {
+      return new Vec3d(this.x, this.y, this.z);
    }
 
    @Generated
@@ -166,7 +166,7 @@ public class FallingPlayer {
    }
 
    @Generated
-   public class_243 getMotion() {
+   public Vec3d getMotion() {
       return this.motion;
    }
 
@@ -201,7 +201,7 @@ public class FallingPlayer {
    }
 
    @Generated
-   public class_310 getMc() {
+   public MinecraftClient getMc() {
       return this.mc;
    }
 
@@ -221,12 +221,12 @@ public class FallingPlayer {
    }
 
    @Generated
-   public void setMotion(class_243 motion) {
+   public void setMotion(Vec3d motion) {
       this.motion = motion;
    }
 
    @Generated
-   public void setEyePos(class_243 eyePos) {
+   public void setEyePos(Vec3d eyePos) {
       this.eyePos = eyePos;
    }
 

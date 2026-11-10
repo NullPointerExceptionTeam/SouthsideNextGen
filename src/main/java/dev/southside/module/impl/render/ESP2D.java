@@ -15,17 +15,17 @@ import dev.southside.utils.render.RenderUtils;
 import java.awt.Color;
 import java.util.Arrays;
 import java.util.List;
-import net.minecraft.class_1297;
-import net.minecraft.class_1308;
-import net.minecraft.class_1309;
-import net.minecraft.class_1427;
-import net.minecraft.class_1429;
-import net.minecraft.class_1542;
-import net.minecraft.class_1621;
-import net.minecraft.class_1646;
-import net.minecraft.class_1657;
-import net.minecraft.class_238;
-import net.minecraft.class_243;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.mob.MobEntity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.passive.GolemEntity;
+import net.minecraft.entity.passive.AnimalEntity;
+import net.minecraft.entity.ItemEntity;
+import net.minecraft.entity.mob.SlimeEntity;
+import net.minecraft.entity.passive.VillagerEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
 import org.joml.Vector4d;
 
 public class ESP2D
@@ -60,45 +60,45 @@ extends Module {
     public final void onRender2DEvent(Render2DEvent event) {
         NanoVGHelper nanoVGHelper = NanoVGHelper.INSTANCE;
         nanoVGHelper.setupAndDraw(true, vg -> {
-            double scaleFactor = mc.method_22683().method_4495();
+            double scaleFactor = mc.getWindow().getScaleFactor();
             float scaling = (float)(scaleFactor / Math.pow(scaleFactor, 2.0));
-            for (class_1297 entity : ESP2D.mc.field_1687.method_18112()) {
+            for (Entity entity : ESP2D.mc.world.getEntities()) {
                 if (!this.isValid(entity) || !RenderUtils.isInViewFrustrum(entity)) continue;
-                class_243 lerpedPos = entity.method_30950(event.getRenderTick());
-                double x = lerpedPos.field_1352;
-                double y = lerpedPos.field_1351;
-                double z = lerpedPos.field_1350;
-                double width = (double)entity.method_17681() / 1.5;
-                double height = (double)entity.method_17682() + (entity.method_5715() ? -0.3 : 0.2);
-                class_238 aabb = new class_238(x - width, y, z - width, x + width, y + height + 0.05, z + width);
-                List<class_243> vectors = Arrays.asList(new class_243(aabb.field_1323, aabb.field_1322, aabb.field_1321), new class_243(aabb.field_1323, aabb.field_1325, aabb.field_1321), new class_243(aabb.field_1320, aabb.field_1322, aabb.field_1321), new class_243(aabb.field_1320, aabb.field_1325, aabb.field_1321), new class_243(aabb.field_1323, aabb.field_1322, aabb.field_1324), new class_243(aabb.field_1323, aabb.field_1325, aabb.field_1324), new class_243(aabb.field_1320, aabb.field_1322, aabb.field_1324), new class_243(aabb.field_1320, aabb.field_1325, aabb.field_1324));
+                Vec3d lerpedPos = entity.getLerpedPos(event.getRenderTick());
+                double x = lerpedPos.x;
+                double y = lerpedPos.y;
+                double z = lerpedPos.z;
+                double width = (double)entity.getWidth() / 1.5;
+                double height = (double)entity.getHeight() + (entity.isSneaking() ? -0.3 : 0.2);
+                Box aabb = new Box(x - width, y, z - width, x + width, y + height + 0.05, z + width);
+                List<Vec3d> vectors = Arrays.asList(new Vec3d(aabb.minX, aabb.minY, aabb.minZ), new Vec3d(aabb.minX, aabb.maxY, aabb.minZ), new Vec3d(aabb.maxX, aabb.minY, aabb.minZ), new Vec3d(aabb.maxX, aabb.maxY, aabb.minZ), new Vec3d(aabb.minX, aabb.minY, aabb.maxZ), new Vec3d(aabb.minX, aabb.maxY, aabb.maxZ), new Vec3d(aabb.maxX, aabb.minY, aabb.maxZ), new Vec3d(aabb.maxX, aabb.maxY, aabb.maxZ));
                 Vector4d position = null;
-                for (class_243 vector : vectors) {
-                    if ((vector = ProjectionUtil.project(vector)) == null || !(vector.field_1350 >= 0.0) || !(vector.field_1350 < 1.0)) continue;
+                for (Vec3d vector : vectors) {
+                    if ((vector = ProjectionUtil.project(vector)) == null || !(vector.z >= 0.0) || !(vector.z < 1.0)) continue;
                     if (position == null) {
-                        position = new Vector4d(vector.field_1352, vector.field_1351, vector.field_1352, vector.field_1351);
+                        position = new Vector4d(vector.x, vector.y, vector.x, vector.y);
                     }
-                    position.x = Math.min(vector.field_1352, position.x);
-                    position.y = Math.min(vector.field_1351, position.y);
-                    position.z = Math.max(vector.field_1352, position.z);
-                    position.w = Math.max(vector.field_1351, position.w);
+                    position.x = Math.min(vector.x, position.x);
+                    position.y = Math.min(vector.y, position.y);
+                    position.z = Math.max(vector.x, position.z);
+                    position.w = Math.max(vector.y, position.w);
                 }
-                if (ESP2D.mc.field_1724.method_5739(entity) < 1.0f || position == null) continue;
+                if (ESP2D.mc.player.distanceTo(entity) < 1.0f || position == null) continue;
                 Color clr = new Color(this.getColor());
                 double posX = position.x;
                 double posY = position.y;
                 double endPosX = position.z;
                 double endPosY = position.w;
                 double thickness2 = ((Number)this.thickness.getValue()).doubleValue();
-                if (((Boolean)this.health.getValue()).booleanValue() && entity instanceof class_1309) {
-                    class_1309 livingBase = (class_1309)entity;
-                    double hpPercentage = livingBase.method_6032() / livingBase.method_6063();
+                if (((Boolean)this.health.getValue()).booleanValue() && entity instanceof LivingEntity) {
+                    LivingEntity livingBase = (LivingEntity)entity;
+                    double hpPercentage = livingBase.getHealth() / livingBase.getMaxHealth();
                     if (hpPercentage > 1.0) {
                         hpPercentage = 1.0;
                     } else if (hpPercentage < 0.0) {
                         hpPercentage = 0.0;
                     }
-                    float health = livingBase.method_6032();
+                    float health = livingBase.getHealth();
                     double hpHeight = (endPosY - posY) * hpPercentage;
                     double difference = posY - endPosY + 0.5;
                     if (health > 0.0f) {
@@ -119,11 +119,11 @@ extends Module {
                     Font wqy = Fonts.WQY;
                     float size = ((Number)this.tagSize.getValue()).floatValue();
                     double dif = (endPosX - posX) / 2.0;
-                    if (entity instanceof class_1542) {
-                        class_1542 item = (class_1542)entity;
-                        name = item.method_6983().method_7964().getString();
+                    if (entity instanceof ItemEntity) {
+                        ItemEntity item = (ItemEntity)entity;
+                        name = item.getStack().getName().getString();
                     } else {
-                        name = entity.method_5476().getString();
+                        name = entity.getDisplayName().getString();
                     }
                     float textX = (float)(posX + dif) - nanoVGHelper.getTextWidth(vg, name, size, wqy) / 2.0f;
                     float textY = (float)(posY - 12.0 + 2.0);
@@ -173,20 +173,20 @@ extends Module {
         return new Color(255, 255, 255).getRGB();
     }
 
-    private boolean isValid(class_1297 entity) {
-        if (entity instanceof class_1309) {
-            class_1309 livingBase = (class_1309)entity;
-            return this.isValidType(livingBase) && entity.method_5805() && (!entity.method_5767() || (Boolean)this.invisible.getValue() != false);
+    private boolean isValid(Entity entity) {
+        if (entity instanceof LivingEntity) {
+            LivingEntity livingBase = (LivingEntity)entity;
+            return this.isValidType(livingBase) && entity.isAlive() && (!entity.isInvisible() || (Boolean)this.invisible.getValue() != false);
         }
-        return (Boolean)this.droppedItems.getValue() != false && entity instanceof class_1542;
+        return (Boolean)this.droppedItems.getValue() != false && entity instanceof ItemEntity;
     }
 
-    private boolean isValidType(class_1309 entity) {
-        return (Boolean)this.players.getValue() != false && entity instanceof class_1657 || (Boolean)this.mobs.getValue() != false && (entity instanceof class_1308 || entity instanceof class_1621) || (Boolean)this.passives.getValue() != false && (entity instanceof class_1646 || entity instanceof class_1427) || (Boolean)this.animals.getValue() != false && entity instanceof class_1429;
+    private boolean isValidType(LivingEntity entity) {
+        return (Boolean)this.players.getValue() != false && entity instanceof PlayerEntity || (Boolean)this.mobs.getValue() != false && (entity instanceof MobEntity || entity instanceof SlimeEntity) || (Boolean)this.passives.getValue() != false && (entity instanceof VillagerEntity || entity instanceof GolemEntity) || (Boolean)this.animals.getValue() != false && entity instanceof AnimalEntity;
     }
 
-    private int getHealthColor(class_1309 player) {
-        return Color.HSBtoRGB(Math.max(0.0f, Math.min(player.method_6032(), player.method_6063()) / player.method_6063()) / 3.0f, 1.0f, 0.8f) | 0xFF000000;
+    private int getHealthColor(LivingEntity player) {
+        return Color.HSBtoRGB(Math.max(0.0f, Math.min(player.getHealth(), player.getMaxHealth()) / player.getMaxHealth()) / 3.0f, 1.0f, 0.8f) | 0xFF000000;
     }
 }
 

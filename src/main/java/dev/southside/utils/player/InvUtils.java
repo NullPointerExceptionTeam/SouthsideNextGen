@@ -4,31 +4,31 @@ import dev.southside.MinecraftAccessor;
 import dev.southside.utils.item.ItemUtils;
 import dev.southside.utils.types.FindItemResult;
 import java.util.function.Predicate;
-import net.minecraft.class_1268;
-import net.minecraft.class_1661;
-import net.minecraft.class_1703;
-import net.minecraft.class_1713;
-import net.minecraft.class_1738;
-import net.minecraft.class_1743;
-import net.minecraft.class_1753;
-import net.minecraft.class_1764;
-import net.minecraft.class_1792;
-import net.minecraft.class_1799;
-import net.minecraft.class_1802;
-import net.minecraft.class_1810;
-import net.minecraft.class_1829;
-import net.minecraft.class_1835;
-import net.minecraft.class_1893;
-import net.minecraft.class_2246;
-import net.minecraft.class_5134;
+import net.minecraft.util.Hand;
+import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.screen.ScreenHandler;
+import net.minecraft.screen.slot.SlotActionType;
+import net.minecraft.item.ArmorItem;
+import net.minecraft.item.AxeItem;
+import net.minecraft.item.BowItem;
+import net.minecraft.item.CrossbowItem;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.item.PickaxeItem;
+import net.minecraft.item.SwordItem;
+import net.minecraft.item.TridentItem;
+import net.minecraft.enchantment.Enchantments;
+import net.minecraft.block.Blocks;
+import net.minecraft.entity.attribute.EntityAttributes;
 
 public class InvUtils {
    private static final InvUtils.Action ACTION = new InvUtils.Action();
 
-   public static FindItemResult find(class_1792... items) {
+   public static FindItemResult find(Item... items) {
       return find(itemStack -> {
-         for (class_1792 item : items) {
-            if (itemStack.method_7909() == item) {
+         for (Item item : items) {
+            if (itemStack.getItem() == item) {
                return true;
             }
          }
@@ -37,9 +37,9 @@ public class InvUtils {
       });
    }
 
-   public static boolean isInventoryFull(class_1661 inventory) {
-      for (class_1799 stack : inventory.field_7547) {
-         if (stack.method_7960()) {
+   public static boolean isInventoryFull(PlayerInventory inventory) {
+      for (ItemStack stack : inventory.main) {
+         if (stack.isEmpty()) {
             return false;
          }
       }
@@ -47,21 +47,21 @@ public class InvUtils {
       return true;
    }
 
-   public static boolean isSharpAxe(class_1799 stack) {
-      return stack.method_7909() instanceof class_1743 && stack.method_7942() ? EnchantmentUtils.getLevel(class_1893.field_9118, stack) >= 10 : false;
+   public static boolean isSharpAxe(ItemStack stack) {
+      return stack.getItem() instanceof AxeItem && stack.hasEnchantments() ? EnchantmentUtils.getLevel(Enchantments.SHARPNESS, stack) >= 10 : false;
    }
 
-   public static boolean isKnockBackSlimeball(class_1799 stack) {
-      return stack.method_7909() == class_1802.field_8777 && EnchantmentUtils.getLevel(class_1893.field_9121, stack) == 3;
+   public static boolean isKnockBackSlimeball(ItemStack stack) {
+      return stack.getItem() == Items.SLIME_BALL && EnchantmentUtils.getLevel(Enchantments.KNOCKBACK, stack) == 3;
    }
 
-   public static boolean isBestBow(class_1703 handler, class_1799 itemStack) {
+   public static boolean isBestBow(ScreenHandler handler, ItemStack itemStack) {
       double bestBowDmg = -1.0;
-      class_1799 bestBow = class_1799.field_8037;
+      ItemStack bestBow = ItemStack.EMPTY;
 
       for (int i = 9; i < 45; i++) {
-         class_1799 stack = handler.method_7611(i).method_7677();
-         if (!stack.method_7960() && stack.method_7909() instanceof class_1753) {
+         ItemStack stack = handler.getSlot(i).getStack();
+         if (!stack.isEmpty() && stack.getItem() instanceof BowItem) {
             double damage = getBowDamage(stack);
             if (damage > bestBowDmg) {
                bestBow = stack;
@@ -73,13 +73,13 @@ public class InvUtils {
       return itemStack.equals(bestBow) || getBowDamage(itemStack) > bestBowDmg;
    }
 
-   public static boolean isBestCrossBow(class_1703 handler, class_1799 itemStack) {
+   public static boolean isBestCrossBow(ScreenHandler handler, ItemStack itemStack) {
       double bestCrossbowDmg = -1.0;
-      class_1799 bestCrossbow = class_1799.field_8037;
+      ItemStack bestCrossbow = ItemStack.EMPTY;
 
       for (int i = 9; i < 45; i++) {
-         class_1799 stack = handler.method_7611(i).method_7677();
-         if (!stack.method_7960() && stack.method_7909() instanceof class_1764) {
+         ItemStack stack = handler.getSlot(i).getStack();
+         if (!stack.isEmpty() && stack.getItem() instanceof CrossbowItem) {
             double damage = getCrossbowDamage(stack);
             if (damage > bestCrossbowDmg) {
                bestCrossbowDmg = damage;
@@ -91,31 +91,31 @@ public class InvUtils {
       return itemStack.equals(bestCrossbow) || getCrossbowDamage(itemStack) > bestCrossbowDmg;
    }
 
-   public static double getCrossbowDamage(class_1799 stack) {
+   public static double getCrossbowDamage(ItemStack stack) {
       double damage = 0.0;
-      if (stack.method_7909() instanceof class_1764 && stack.method_7942()) {
-         damage += EnchantmentUtils.getLevel(class_1893.field_9103, stack);
+      if (stack.getItem() instanceof CrossbowItem && stack.hasEnchantments()) {
+         damage += EnchantmentUtils.getLevel(Enchantments.POWER, stack);
       }
 
       return damage;
    }
 
-   public static double getBowDamage(class_1799 stack) {
+   public static double getBowDamage(ItemStack stack) {
       double damage = 0.0;
-      if (stack.method_7909() instanceof class_1753 && stack.method_7942()) {
-         damage += EnchantmentUtils.getLevel(class_1893.field_9103, stack);
+      if (stack.getItem() instanceof BowItem && stack.hasEnchantments()) {
+         damage += EnchantmentUtils.getLevel(Enchantments.POWER, stack);
       }
 
       return damage;
    }
 
-   public static boolean isBestTool(class_1703 handler, class_1799 itemStack) {
+   public static boolean isBestTool(ScreenHandler handler, ItemStack itemStack) {
       int type = getToolType(itemStack);
-      InvUtils.Tool bestTool = new InvUtils.Tool(-1, -1.0, class_1799.field_8037);
+      InvUtils.Tool bestTool = new InvUtils.Tool(-1, -1.0, ItemStack.EMPTY);
 
       for (int i = 9; i < 45; i++) {
-         class_1799 stack = handler.method_7611(i).method_7677();
-         if (!stack.method_7960() && ItemUtils.instanceofToolItem(stack.method_7909()) && type == getToolType(stack)) {
+         ItemStack stack = handler.getSlot(i).getStack();
+         if (!stack.isEmpty() && ItemUtils.instanceofToolItem(stack.getItem()) && type == getToolType(stack)) {
             double efficiency = getToolScore(stack);
             if (efficiency > getToolScore(bestTool.getItem())) {
                bestTool = new InvUtils.Tool(i, efficiency, stack);
@@ -126,50 +126,50 @@ public class InvUtils {
       return bestTool.getItem().equals(itemStack) || getToolScore(itemStack) > getToolScore(bestTool.getItem());
    }
 
-   public static float getToolScore(class_1799 stack) {
+   public static float getToolScore(ItemStack stack) {
       float score = 0.0F;
-      class_1792 item = stack.method_7909();
+      Item item = stack.getItem();
       if (ItemUtils.instanceofToolItem(item)) {
-         if (item instanceof class_1810) {
-            score = stack.method_7924(class_2246.field_10340.method_9564());
+         if (item instanceof PickaxeItem) {
+            score = stack.getMiningSpeedMultiplier(Blocks.STONE.getDefaultState());
          } else {
-            if (!(item instanceof class_1743)) {
+            if (!(item instanceof AxeItem)) {
                return 1.0F;
             }
 
-            score = stack.method_7924(class_2246.field_10010.method_9564());
+            score = stack.getMiningSpeedMultiplier(Blocks.DARK_OAK_LOG.getDefaultState());
          }
 
-         score += EnchantmentUtils.getLevel(class_1893.field_9131, stack) * 0.0075F;
-         score += EnchantmentUtils.getLevel(class_1893.field_9131, stack) / 100.0F;
-         score += EnchantmentUtils.getLevel(class_1893.field_9118, stack);
+         score += EnchantmentUtils.getLevel(Enchantments.EFFICIENCY, stack) * 0.0075F;
+         score += EnchantmentUtils.getLevel(Enchantments.EFFICIENCY, stack) / 100.0F;
+         score += EnchantmentUtils.getLevel(Enchantments.SHARPNESS, stack);
       }
 
       return score;
    }
 
-   public static int getToolType(class_1799 stack) {
-      class_1792 tool = stack.method_7909();
-      if (tool instanceof class_1810) {
+   public static int getToolType(ItemStack stack) {
+      Item tool = stack.getItem();
+      if (tool instanceof PickaxeItem) {
          return 0;
       } else {
-         return tool instanceof class_1743 ? 1 : -1;
+         return tool instanceof AxeItem ? 1 : -1;
       }
    }
 
    public static InvUtils.Action click() {
-      ACTION.type = class_1713.field_7790;
+      ACTION.type = SlotActionType.PICKUP;
       return ACTION;
    }
 
-   public static boolean isBestSword(class_1703 c, class_1799 itemStack, boolean checkInv) {
+   public static boolean isBestSword(ScreenHandler c, ItemStack itemStack, boolean checkInv) {
       double currentDamage = getItemDamage(itemStack);
       double bestContainerDamage = 0.0;
-      class_1799 bestContainerStack = class_1799.field_8037;
+      ItemStack bestContainerStack = ItemStack.EMPTY;
 
       for (int i = 9; i < 45; i++) {
-         class_1799 stack = c.method_7611(i).method_7677();
-         if (!stack.method_7960() && (stack.method_7909() instanceof class_1829 || stack.method_7909() instanceof class_1835)) {
+         ItemStack stack = c.getSlot(i).getStack();
+         if (!stack.isEmpty() && (stack.getItem() instanceof SwordItem || stack.getItem() instanceof TridentItem)) {
             double newDamage = getItemDamage(stack);
             if (newDamage > bestContainerDamage) {
                bestContainerDamage = newDamage;
@@ -178,12 +178,12 @@ public class InvUtils {
          }
       }
 
-      if (checkInv && MinecraftAccessor.mc.field_1724 != null) {
+      if (checkInv && MinecraftAccessor.mc.player != null) {
          double bestInventoryDamage = 0.0;
 
          for (int ix = 0; ix < 36; ix++) {
-            class_1799 stack = MinecraftAccessor.mc.field_1724.method_31548().method_5438(ix);
-            if (!stack.method_7960() && (stack.method_7909() instanceof class_1829 || stack.method_7909() instanceof class_1835)) {
+            ItemStack stack = MinecraftAccessor.mc.player.getInventory().getStack(ix);
+            if (!stack.isEmpty() && (stack.getItem() instanceof SwordItem || stack.getItem() instanceof TridentItem)) {
                double newDamage = getItemDamage(stack);
                if (newDamage > bestInventoryDamage) {
                   bestInventoryDamage = newDamage;
@@ -197,11 +197,11 @@ public class InvUtils {
       }
    }
 
-   public static double getDamageReduction(class_1799 stack) {
-      if (stack.method_7909() instanceof class_1738 armor) {
-         double var9 = ItemUtils.armorAttributeValueWithStack(stack, class_5134.field_23724);
-         double toughness = ItemUtils.armorAttributeValueWithStack(stack, class_5134.field_23725);
-         int protLevel = EnchantmentUtils.getLevel(class_1893.field_9111, stack);
+   public static double getDamageReduction(ItemStack stack) {
+      if (stack.getItem() instanceof ArmorItem armor) {
+         double var9 = ItemUtils.armorAttributeValueWithStack(stack, EntityAttributes.ARMOR);
+         double toughness = ItemUtils.armorAttributeValueWithStack(stack, EntityAttributes.ARMOR_TOUGHNESS);
+         int protLevel = EnchantmentUtils.getLevel(Enchantments.PROTECTION, stack);
          double enchantBonus = protLevel * 0.04;
          return var9 + toughness * 0.5 + enchantBonus * 10.0;
       } else {
@@ -209,27 +209,27 @@ public class InvUtils {
       }
    }
 
-   public static boolean isBestArmor(class_1703 c, class_1799 itemStack, boolean checkInv) {
-      class_1738 itemArmor = (class_1738)itemStack.method_7909();
+   public static boolean isBestArmor(ScreenHandler c, ItemStack itemStack, boolean checkInv) {
+      ArmorItem itemArmor = (ArmorItem)itemStack.getItem();
       double currentReduction = getDamageReduction(itemStack);
       double bestEquippedReduction = 0.0;
-      if (MinecraftAccessor.mc.field_1724 != null) {
-         class_1799 equippedStack = MinecraftAccessor.mc.field_1724.method_6118(ItemUtils.getEquippableSlotType(itemStack));
-         if (!equippedStack.method_7960()
-            && equippedStack.method_7909() instanceof class_1738 equippedArmor
+      if (MinecraftAccessor.mc.player != null) {
+         ItemStack equippedStack = MinecraftAccessor.mc.player.getEquippedStack(ItemUtils.getEquippableSlotType(itemStack));
+         if (!equippedStack.isEmpty()
+            && equippedStack.getItem() instanceof ArmorItem equippedArmor
             && ItemUtils.getEquippableSlotType(equippedStack) == ItemUtils.getEquippableSlotType(itemStack)) {
             bestEquippedReduction = getDamageReduction(equippedStack);
          }
       }
 
       double bestContainerReduction = 0.0;
-      class_1799 bestContainerStack = class_1799.field_8037;
+      ItemStack bestContainerStack = ItemStack.EMPTY;
 
       for (int i = 5; i < 45; i++) {
-         class_1799 stack = c.method_7611(i).method_7677();
-         if (!stack.method_7960()
-            && stack.method_7909() instanceof class_1738 stackArmor
-            && ItemUtils.getEquippableSlotType(stack).method_63622() - 1 == ItemUtils.getEquippableSlotType(itemStack).method_63622() - 1) {
+         ItemStack stack = c.getSlot(i).getStack();
+         if (!stack.isEmpty()
+            && stack.getItem() instanceof ArmorItem stackArmor
+            && ItemUtils.getEquippableSlotType(stack).getIndex() - 1 == ItemUtils.getEquippableSlotType(itemStack).getIndex() - 1) {
             double newReduction = getDamageReduction(stack);
             if (newReduction > bestContainerReduction) {
                bestContainerReduction = newReduction;
@@ -238,14 +238,14 @@ public class InvUtils {
          }
       }
 
-      if (checkInv && MinecraftAccessor.mc.field_1724 != null) {
+      if (checkInv && MinecraftAccessor.mc.player != null) {
          double bestInventoryReduction = 0.0;
 
          for (int ix = 0; ix < 36; ix++) {
-            class_1799 stack = MinecraftAccessor.mc.field_1724.method_31548().method_5438(ix);
-            if (!stack.method_7960()
-               && stack.method_7909() instanceof class_1738 stackArmorx
-               && ItemUtils.getEquippableSlotType(stack).method_63622() - 1 == ItemUtils.getEquippableSlotType(itemStack).method_63622() - 1) {
+            ItemStack stack = MinecraftAccessor.mc.player.getInventory().getStack(ix);
+            if (!stack.isEmpty()
+               && stack.getItem() instanceof ArmorItem stackArmorx
+               && ItemUtils.getEquippableSlotType(stack).getIndex() - 1 == ItemUtils.getEquippableSlotType(itemStack).getIndex() - 1) {
                double newReduction = getDamageReduction(stack);
                if (newReduction > bestInventoryReduction) {
                   bestInventoryReduction = newReduction;
@@ -259,25 +259,25 @@ public class InvUtils {
       }
    }
 
-   public static FindItemResult find(Predicate<class_1799> isGood) {
-      return MinecraftAccessor.mc.field_1724 == null ? new FindItemResult(0, 0) : find(isGood, 0, MinecraftAccessor.mc.field_1724.method_31548().method_5439());
+   public static FindItemResult find(Predicate<ItemStack> isGood) {
+      return MinecraftAccessor.mc.player == null ? new FindItemResult(0, 0) : find(isGood, 0, MinecraftAccessor.mc.player.getInventory().size());
    }
 
-   public static FindItemResult find(Predicate<class_1799> isGood, int start, int end) {
-      if (MinecraftAccessor.mc.field_1724 == null) {
+   public static FindItemResult find(Predicate<ItemStack> isGood, int start, int end) {
+      if (MinecraftAccessor.mc.player == null) {
          return new FindItemResult(0, 0);
       } else {
          int slot = -1;
          int count = 0;
 
          for (int i = start; i <= end; i++) {
-            class_1799 stack = MinecraftAccessor.mc.field_1724.method_31548().method_5438(i);
+            ItemStack stack = MinecraftAccessor.mc.player.getInventory().getStack(i);
             if (isGood.test(stack)) {
                if (slot == -1) {
                   slot = i;
                }
 
-               count += stack.method_7947();
+               count += stack.getCount();
             }
          }
 
@@ -285,9 +285,9 @@ public class InvUtils {
       }
    }
 
-   public static double getItemDamage(class_1799 stack) {
-      double damage = ItemUtils.handAttributeValueWithStack(stack, class_5134.field_23721, class_1268.field_5808);
-      int sharpness = EnchantmentUtils.getLevel(class_1893.field_9118, stack);
+   public static double getItemDamage(ItemStack stack) {
+      double damage = ItemUtils.handAttributeValueWithStack(stack, EntityAttributes.ATTACK_DAMAGE, Hand.MAIN_HAND);
+      int sharpness = EnchantmentUtils.getLevel(Enchantments.SHARPNESS, stack);
       if (sharpness > 0) {
          damage += 1.0 + (sharpness - 1) * 0.5;
       }
@@ -295,13 +295,13 @@ public class InvUtils {
       return damage;
    }
 
-   public static int findItemInInv(class_1792 item) {
-      if (MinecraftAccessor.mc.field_1724 == null) {
+   public static int findItemInInv(Item item) {
+      if (MinecraftAccessor.mc.player == null) {
          return -1;
       } else {
-         for (int slot = 9; slot < MinecraftAccessor.mc.field_1724.method_31548().method_5439(); slot++) {
-            class_1799 stack = MinecraftAccessor.mc.field_1724.method_31548().method_5438(slot);
-            if (!stack.method_7960() && stack.method_7909() == item) {
+         for (int slot = 9; slot < MinecraftAccessor.mc.player.getInventory().size(); slot++) {
+            ItemStack stack = MinecraftAccessor.mc.player.getInventory().getStack(slot);
+            if (!stack.isEmpty() && stack.getItem() == item) {
                return slot;
             }
          }
@@ -311,7 +311,7 @@ public class InvUtils {
    }
 
    public static class Action {
-      private class_1713 type = null;
+      private SlotActionType type = null;
       private boolean two = false;
       private int from = -1;
       private int to = -1;
@@ -397,8 +397,8 @@ public class InvUtils {
       }
 
       private void run() {
-         boolean hadEmptyCursor = MinecraftAccessor.mc.field_1724.field_7512.method_34255().method_7960();
-         if (this.type == class_1713.field_7791) {
+         boolean hadEmptyCursor = MinecraftAccessor.mc.player.currentScreenHandler.getCursorStack().isEmpty();
+         if (this.type == SlotActionType.SWAP) {
             this.data = this.from;
             this.from = this.to;
          }
@@ -410,7 +410,7 @@ public class InvUtils {
             }
          }
 
-         class_1713 preType = this.type;
+         SlotActionType preType = this.type;
          boolean preTwo = this.two;
          int preFrom = this.from;
          int preTo = this.to;
@@ -421,11 +421,11 @@ public class InvUtils {
          this.data = 0;
          if (!this.isRecursive
             && hadEmptyCursor
-            && preType == class_1713.field_7790
+            && preType == SlotActionType.PICKUP
             && preTwo
             && preFrom != -1
             && preTo != -1
-            && !MinecraftAccessor.mc.field_1724.field_7512.method_34255().method_7960()) {
+            && !MinecraftAccessor.mc.player.currentScreenHandler.getCursorStack().isEmpty()) {
             this.isRecursive = true;
             InvUtils.click().slotId(preFrom);
             this.isRecursive = false;
@@ -434,13 +434,13 @@ public class InvUtils {
 
       private void click(int id) {
          MinecraftAccessor.mc
-            .field_1761
-            .method_2906(MinecraftAccessor.mc.field_1724.field_7512.field_7763, id, this.data, this.type, MinecraftAccessor.mc.field_1724);
+            .interactionManager
+            .clickSlot(MinecraftAccessor.mc.player.currentScreenHandler.syncId, id, this.data, this.type, MinecraftAccessor.mc.player);
       }
    }
 
-   private record Tool(int slot, double efficiency, class_1799 stack) {
-      public class_1799 getItem() {
+   private record Tool(int slot, double efficiency, ItemStack stack) {
+      public ItemStack getItem() {
          return this.stack;
       }
    }

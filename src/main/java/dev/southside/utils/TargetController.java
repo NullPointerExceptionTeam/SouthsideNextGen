@@ -3,16 +3,16 @@ package dev.southside.utils;
 import dev.southside.event.events.Render3DEvent;
 import dev.southside.orbit.EventHandler;
 import lombok.Generated;
-import net.minecraft.class_1309;
-import net.minecraft.class_2960;
-import net.minecraft.class_310;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.util.Identifier;
+import net.minecraft.client.MinecraftClient;
 import org.lwjgl.nanovg.NVGPaint;
 import org.lwjgl.nanovg.NanoVG;
 import org.lwjgl.nanovg.NanoVGGL2;
 
 public class TargetController {
-   private static class_1309 prevTarget;
-   private static class_1309 target;
+   private static LivingEntity prevTarget;
+   private static LivingEntity target;
    public static int headContext = -1;
 
    @EventHandler
@@ -27,10 +27,10 @@ public class TargetController {
       }
    }
 
-   public static void drawPlayerHead(long nvg, class_2960 location, float x, float y, float width, float height, float radius) {
-      class_310 mc = class_310.method_1551();
-      if (location != null && mc.method_1531().method_4619(location) != null) {
-         int texture = mc.method_1531().method_4619(location).method_4624();
+   public static void drawPlayerHead(long nvg, Identifier location, float x, float y, float width, float height, float radius) {
+      MinecraftClient mc = MinecraftClient.getInstance();
+      if (location != null && mc.getTextureManager().getTexture(location) != null) {
+         int texture = mc.getTextureManager().getTexture(location).getGlId();
          if (headContext == -1) {
             headContext = NanoVGGL2.nvglCreateImageFromHandle(nvg, texture, (int)width, -((int)height), 0);
          } else {
@@ -60,17 +60,17 @@ public class TargetController {
    }
 
    @Generated
-   public static class_1309 getPrevTarget() {
+   public static LivingEntity getPrevTarget() {
       return prevTarget;
    }
 
    @Generated
-   public static class_1309 getTarget() {
+   public static LivingEntity getTarget() {
       return target;
    }
 
    @Generated
-   public static void setTarget(class_1309 target) {
+   public static void setTarget(LivingEntity target) {
       TargetController.target = target;
    }
 }

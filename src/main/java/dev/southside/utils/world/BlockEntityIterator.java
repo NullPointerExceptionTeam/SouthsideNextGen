@@ -3,13 +3,13 @@ package dev.southside.utils.world;
 import dev.southside.mixin.accessors.ChunkAccessor;
 import java.util.Iterator;
 import java.util.Map;
-import net.minecraft.class_2338;
-import net.minecraft.class_2586;
-import net.minecraft.class_2791;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.world.chunk.Chunk;
 
-public class BlockEntityIterator implements Iterator<class_2586> {
-   private final Iterator<class_2791> chunks = new ChunkIterator(false);
-   private Iterator<class_2586> blockEntities;
+public class BlockEntityIterator implements Iterator<BlockEntity> {
+   private final Iterator<Chunk> chunks = new ChunkIterator(false);
+   private Iterator<BlockEntity> blockEntities;
 
    public BlockEntityIterator() {
       this.nextChunk();
@@ -17,7 +17,7 @@ public class BlockEntityIterator implements Iterator<class_2586> {
 
    private void nextChunk() {
       while (this.chunks.hasNext()) {
-         Map<class_2338, class_2586> blockEntityMap = ((ChunkAccessor)this.chunks.next()).getBlockEntities();
+         Map<BlockPos, BlockEntity> blockEntityMap = ((ChunkAccessor)this.chunks.next()).getBlockEntities();
          if (!blockEntityMap.isEmpty()) {
             this.blockEntities = blockEntityMap.values().iterator();
             break;
@@ -37,7 +37,7 @@ public class BlockEntityIterator implements Iterator<class_2586> {
       }
    }
 
-   public class_2586 next() {
+   public BlockEntity next() {
       return this.blockEntities.next();
    }
 }

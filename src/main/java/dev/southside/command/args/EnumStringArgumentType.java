@@ -9,12 +9,12 @@ import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
-import net.minecraft.class_2172;
-import net.minecraft.class_2561;
+import net.minecraft.command.CommandSource;
+import net.minecraft.text.Text;
 
 public class EnumStringArgumentType implements ArgumentType<String> {
    private static final DynamicCommandExceptionType INVALID_OPTION = new DynamicCommandExceptionType(
-      name -> class_2561.method_43470(name + " is not a valid option.")
+      name -> Text.literal(name + " is not a valid option.")
    );
    private final Collection<String> EXAMPLES;
 
@@ -45,6 +45,6 @@ public class EnumStringArgumentType implements ArgumentType<String> {
    }
 
    public <S> CompletableFuture<Suggestions> listSuggestions(CommandContext<S> context, SuggestionsBuilder builder) {
-      return class_2172.method_9265(this.EXAMPLES, builder);
+      return CommandSource.suggestMatching(this.EXAMPLES, builder);
    }
 }

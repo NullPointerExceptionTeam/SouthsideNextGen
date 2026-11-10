@@ -24,9 +24,9 @@ import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import net.minecraft.class_1297;
-import net.minecraft.class_1657;
-import net.minecraft.class_2663;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.network.packet.s2c.play.EntityStatusS2CPacket;
 
 public class KillSay extends Module {
    private static final long ATTACK_TTL_MS = 15000L;
@@ -61,10 +61,10 @@ public class KillSay extends Module {
    @EventHandler
    public void onAttack(AttackEvent event) {
       if (event.stage == Stage.POST) {
-         if (event.target != null && event.target instanceof class_1657) {
-            if (event.target != mc.field_1724) {
+         if (event.target != null && event.target instanceof PlayerEntity) {
+            if (event.target != mc.player) {
                if (!AntiBot.isBot(event.target)) {
-                  this.attackedEntities.put(event.target.method_5628(), System.currentTimeMillis());
+                  this.attackedEntities.put(event.target.getId(), System.currentTimeMillis());
                }
             }
          }
@@ -80,10 +80,10 @@ public class KillSay extends Module {
 
    @EventHandler
    public void onPacket(PacketEvent event) {
-      if (event.getPacket() instanceof class_2663 packet) {
-         if (mc.field_1687 != null && mc.field_1724 != null) {
-            if (packet.method_11470() == 3) {
-               class_1297 entity = packet.method_11469(mc.field_1687);
+      if (event.getPacket() instanceof EntityStatusS2CPacket packet) {
+         if (mc.world != null && mc.player != null) {
+            if (packet.getStatus() == 3) {
+               Entity entity = packet.getEntity(mc.world);
                if (this.shouldTrigger(entity)) {
                   this.sendKillMessage(entity);
                }
@@ -102,32 +102,32 @@ public class KillSay extends Module {
       }
    }
 
-   private boolean shouldTrigger(class_1297 entity) {
-      if (entity == null || mc.field_1687 == null || mc.field_1724 == null) {
+   private boolean shouldTrigger(Entity entity) {
+      if (entity == null || mc.world == null || mc.player == null) {
          return false;
-      } else if (!(entity instanceof class_1657)) {
+      } else if (!(entity instanceof PlayerEntity)) {
          return false;
-      } else if (entity == mc.field_1724) {
+      } else if (entity == mc.player) {
          return false;
       } else {
-         return AntiBot.isBot(entity) ? false : this.attackedEntities.containsKey(entity.method_5628());
+         return AntiBot.isBot(entity) ? false : this.attackedEntities.containsKey(entity.getId());
       }
    }
 
-   private void sendKillMessage(class_1297 entity) {
-      if (this.attackedEntities.containsKey(entity.method_5628())) {
-         this.attackedEntities.remove(entity.method_5628());
-         if (mc.method_1562() != null) {
+   private void sendKillMessage(Entity entity) {
+      if (this.attackedEntities.containsKey(entity.getId())) {
+         this.attackedEntities.remove(entity.getId());
+         if (mc.getNetworkHandler() != null) {
             if (!this.messages.isEmpty()) {
-               String name = entity.method_5477().getString();
-               if (entity instanceof class_1657 player && player.method_7334() != null) {
-                  name = player.method_7334().getName();
+               String name = entity.getName().getString();
+               if (entity instanceof PlayerEntity player && player.getGameProfile() != null) {
+                  name = player.getGameProfile().getName();
                }
 
                String msg = this.messages.get(this.random.nextInt(this.messages.size()));
                msg = msg.replace("{name}", name);
                msg = this.replaceRandom(msg);
-               mc.method_1562().method_45729(msg);
+               mc.getNetworkHandler().sendChatMessage(msg);
             }
          }
       }

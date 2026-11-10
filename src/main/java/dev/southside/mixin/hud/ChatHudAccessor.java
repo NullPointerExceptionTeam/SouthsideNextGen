@@ -1,84 +1,84 @@
 package dev.southside.mixin.hud;
 
 import java.util.List;
-import net.minecraft.class_2561;
-import net.minecraft.class_303;
-import net.minecraft.class_310;
-import net.minecraft.class_332;
-import net.minecraft.class_338;
-import net.minecraft.class_303.class_7590;
-import net.minecraft.class_7591.class_7592;
+import net.minecraft.text.Text;
+import net.minecraft.client.gui.hud.ChatHudLine;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.hud.ChatHud;
+import net.minecraft.client.gui.hud.ChatHudLine.Visible;
+import net.minecraft.client.gui.hud.MessageIndicator.Icon;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.gen.Invoker;
 
-@Mixin({class_338.class})
+@Mixin({ChatHud.class})
 public interface ChatHudAccessor {
-   @Accessor("field_2062")
-   class_310 getClient();
+   @Accessor("client")
+   MinecraftClient getClient();
 
-   @Accessor("field_2061")
-   List<class_303> getMessages();
+   @Accessor("messages")
+   List<ChatHudLine> getMessages();
 
-   @Accessor("field_2064")
-   List<class_7590> getVisibleMessages();
+   @Accessor("visibleMessages")
+   List<Visible> getVisibleMessages();
 
-   @Accessor("field_2066")
+   @Accessor("scrolledLines")
    int getScrolledLines();
 
-   @Accessor("field_2066")
+   @Accessor("scrolledLines")
    void setScrolledLines(int var1);
 
-   @Accessor("field_2067")
+   @Accessor("hasUnreadNewMessages")
    boolean getHasUnreadNewMessages();
 
-   @Accessor("field_2067")
+   @Accessor("hasUnreadNewMessages")
    void setHasUnreadNewMessages(boolean var1);
 
-   @Invoker("method_44722")
+   @Invoker("toChatLineX")
    double invokeToChatLineX(double var1);
 
-   @Invoker("method_44724")
+   @Invoker("toChatLineY")
    double invokeToChatLineY(double var1);
 
-   @Invoker("method_23677")
+   @Invoker("isChatHidden")
    boolean invokeIsChatHidden();
 
-   @Invoker("method_44719")
-   void invokeDrawIndicatorIcon(class_332 var1, int var2, int var3, class_7592 var4);
+   @Invoker("drawIndicatorIcon")
+   void invokeDrawIndicatorIcon(DrawContext var1, int var2, int var3, Icon var4);
 
-   @Invoker("method_44720")
-   int invokeGetIndicatorX(class_7590 var1);
+   @Invoker("getIndicatorX")
+   int invokeGetIndicatorX(Visible var1);
 
-   @Invoker("method_19348")
+   @Invoker("getMessageOpacityMultiplier")
    static double invokeGetMessageOpacityMultiplier(int age) {
       return 0.0;
    }
 
-   @Invoker("method_1819")
+   @Invoker("isChatFocused")
    boolean invokeIsChatFocused();
 
-   @Invoker("method_44752")
+   @Invoker("getLineHeight")
    int invokeGetLineHeight();
 
-   @Invoker("method_1814")
+   @Invoker("getChatScale")
    double invokeGetChatScale();
 
-   @Invoker("method_1811")
+   @Invoker("getWidth")
    int invokeGetWidth();
 
-   @Invoker("method_1810")
+   @Invoker("getHeight")
    int invokeGetHeight();
 
-   @Invoker("method_1813")
+   @Invoker("getVisibleLineCount")
    int invokeGetVisibleLineCount();
 
-   @Invoker("method_1812")
-   void invokeAddMessage(class_2561 var1);
+   @Invoker("addMessage")
+   void invokeAddMessage(Text var1);
 
-   @Invoker("method_45588")
+   @Invoker("getMessageIndex")
    int invokeGetMessageIndex(double var1, double var3);
 
-   @Invoker("method_27146")
+   @Invoker("mouseClicked")
    boolean invokeMouseClicked(double var1, double var3);
 }

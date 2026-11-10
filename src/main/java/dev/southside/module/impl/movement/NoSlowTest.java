@@ -19,23 +19,23 @@ import dev.southside.utils.misc.MSTimer;
 import dev.southside.utils.network.PacketUtils;
 import dev.southside.utils.rotation.RotationUtils;
 import dev.southside.utils.world.EntityUtils;
-import net.minecraft.class_1268;
-import net.minecraft.class_1269;
-import net.minecraft.class_1799;
-import net.minecraft.class_1802;
-import net.minecraft.class_1839;
-import net.minecraft.class_2338;
-import net.minecraft.class_2350;
-import net.minecraft.class_2846;
-import net.minecraft.class_2885;
-import net.minecraft.class_2886;
-import net.minecraft.class_1269.class_9860;
-import net.minecraft.class_239.class_240;
-import net.minecraft.class_2846.class_2847;
+import net.minecraft.util.Hand;
+import net.minecraft.util.ActionResult;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.item.consume.UseAction;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerInteractBlockC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerInteractItemC2SPacket;
+import net.minecraft.util.ActionResult.Success;
+import net.minecraft.util.hit.HitResult.Type;
+import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket.Action;
 
 public class NoSlowTest extends Module {
-   private class_1268 currentHand = class_1268.field_5808;
-   private class_1268 lastHand = class_1268.field_5808;
+   private Hand currentHand = Hand.MAIN_HAND;
+   private Hand lastHand = Hand.MAIN_HAND;
    private final MSTimer timer = new MSTimer();
    public static boolean shouldEnable = false;
    private boolean special = false;
@@ -58,7 +58,7 @@ public class NoSlowTest extends Module {
 
    @EventHandler
    public void onTick(TickEvent event) {
-      if (mc.field_1724 != null && event.getState() != Stage.POST) {
+      if (mc.player != null && event.getState() != Stage.POST) {
          this.skip = false;
          if (this.shouldRelease) {
             this.resetState();
@@ -83,64 +83,64 @@ public class NoSlowTest extends Module {
 
    @EventHandler
    public void onSlowDown(PlayerSlowdownEvent event) {
-      if (mc.field_1724 != null && !this.special && !this.skip && shouldEnable) {
-         class_1839 useAction = mc.field_1724.method_6030().method_7976();
+      if (mc.player != null && !this.special && !this.skip && shouldEnable) {
+         UseAction useAction = mc.player.getActiveItem().getUseAction();
          if (this.isValidActionForNoSlow(useAction)) {
             event.setCancelled(true);
-            mc.field_1724.method_5728(true);
+            mc.player.setSprinting(true);
          }
       }
    }
 
    @EventHandler
    public void onItemUse(ItemUseEvent event) {
-      if (mc.field_1765 != null && mc.field_1765.method_17783() != class_240.field_1333) {
+      if (mc.crosshairTarget != null && mc.crosshairTarget.getType() != Type.MISS) {
          this.skip = true;
       }
    }
 
    private void handleItemUseRelease() {
-      if (mc.field_1724 != null) {
-         int maxTick = EntityUtils.isRemote(mc.field_1724.method_6030().method_7976()) ? 35 : 32;
+      if (mc.player != null) {
+         int maxTick = EntityUtils.isRemote(mc.player.getActiveItem().getUseAction()) ? 35 : 32;
          if (ServerPacketManager.deSyncing && ServerPacketManager.deSyncTick >= maxTick) {
             this.shouldRelease = true;
-            mc.field_1690.field_1904.method_23481(false);
+            mc.options.useKey.setPressed(false);
          }
       }
    }
 
    private void handleSpecialStateSwap() {
-      if (mc.field_1724 != null) {
-         if (this.special && mc.field_1724.method_6115() && !EntityUtils.isConflict() && !EntityUtils.isCharged(mc.field_1724.method_6030())) {
-            this.swap(mc.field_1724.method_6058(), 0);
+      if (mc.player != null) {
+         if (this.special && mc.player.isUsingItem() && !EntityUtils.isConflict() && !EntityUtils.isCharged(mc.player.getActiveItem())) {
+            this.swap(mc.player.getActiveHand(), 0);
          }
       }
    }
 
    private void handleSwapRecovery() {
-      if (mc.field_1724 != null) {
-         if (this.swapped && !shouldEnable && !mc.field_1724.method_6115() && !ServerPacketManager.deSyncing) {
-            PacketUtils.sendPacketNoEvent(new class_2846(class_2847.field_12969, new class_2338(0, 0, 0), class_2350.field_11033));
+      if (mc.player != null) {
+         if (this.swapped && !shouldEnable && !mc.player.isUsingItem() && !ServerPacketManager.deSyncing) {
+            PacketUtils.sendPacketNoEvent(new PlayerActionC2SPacket(Action.SWAP_ITEM_WITH_OFFHAND, new BlockPos(0, 0, 0), Direction.DOWN));
             PacketOrderManager.swap = true;
             this.swapped = false;
          }
       }
    }
 
-   private boolean isStew(class_1799 stack) {
-      return stack.method_31574(class_1802.field_8208)
-         || stack.method_31574(class_1802.field_8308)
-         || stack.method_31574(class_1802.field_8515)
-         || stack.method_31574(class_1802.field_8766);
+   private boolean isStew(ItemStack stack) {
+      return stack.isOf(Items.MUSHROOM_STEW)
+         || stack.isOf(Items.RABBIT_STEW)
+         || stack.isOf(Items.BEETROOT_SOUP)
+         || stack.isOf(Items.SUSPICIOUS_STEW);
    }
 
-   private boolean isValidActionForNoSlow(class_1839 action) {
-      if (mc.field_1724 != null && this.isStew(mc.field_1724.method_6030())) {
+   private boolean isValidActionForNoSlow(UseAction action) {
+      if (mc.player != null && this.isStew(mc.player.getActiveItem())) {
          return false;
       } else {
          return switch (action) {
-            case field_8950, field_8946, field_8951 -> true;
-            case field_8953, field_8947 -> this.bowNoSlow.getValue();
+            case EAT, DRINK, SPEAR -> true;
+            case BOW, CROSSBOW -> this.bowNoSlow.getValue();
             default -> false;
          };
       }
@@ -148,41 +148,41 @@ public class NoSlowTest extends Module {
 
    @EventHandler
    public void onPacket(PacketEvent event) {
-      if (mc.field_1724 != null && !this.skip) {
+      if (mc.player != null && !this.skip) {
          this.handlePlayerActionPacket(event);
          this.handlePlayerInteractItemPacket(event);
       }
    }
 
    private void handlePlayerActionPacket(PacketEvent event) {
-      if (event.getPacket() instanceof class_2846 packet && packet.method_12363() == class_2847.field_12974 && shouldEnable) {
+      if (event.getPacket() instanceof PlayerActionC2SPacket packet && packet.getAction() == Action.RELEASE_USE_ITEM && shouldEnable) {
          this.shouldRelease = true;
       }
    }
 
    private void handlePlayerInteractBlockPacket(PacketEvent event) {
-      if (event.getPacket() instanceof class_2885 packet
-         && mc.field_1724 != null
+      if (event.getPacket() instanceof PlayerInteractBlockC2SPacket packet
+         && mc.player != null
          && shouldEnable
-         && packet.method_12546() == this.currentHand
-         && mc.field_1724.method_31548().field_7545 == this.oldSlot) {
-         class_1268 nextHand = packet.method_12546() == class_1268.field_5808 ? class_1268.field_5810 : class_1268.field_5808;
-         PacketUtils.sendPacketNoEvent(new class_2885(nextHand, packet.method_12543(), packet.method_42080()));
+         && packet.getHand() == this.currentHand
+         && mc.player.getInventory().selectedSlot == this.oldSlot) {
+         Hand nextHand = packet.getHand() == Hand.MAIN_HAND ? Hand.OFF_HAND : Hand.MAIN_HAND;
+         PacketUtils.sendPacketNoEvent(new PlayerInteractBlockC2SPacket(nextHand, packet.getBlockHitResult(), packet.getSequence()));
       }
    }
 
    @EventHandler
    public void onInteractItem(InteractItemEvent event) {
-      if (event.getInteractHand().equals(class_1268.field_5808)
+      if (event.getInteractHand().equals(Hand.MAIN_HAND)
          && !this.isValidItem(event.getItem())
-         && this.isValidItem(mc.field_1724.method_5998(class_1268.field_5810))) {
-         if (event.getItem().method_7909().equals(class_1802.field_8814)) {
+         && this.isValidItem(mc.player.getStackInHand(Hand.OFF_HAND))) {
+         if (event.getItem().getItem().equals(Items.FIRE_CHARGE)) {
             this.skip = true;
             return;
          }
 
-         class_1269 result = event.getItem().method_7972().method_7909().method_7836(mc.field_1687, mc.field_1724, class_1268.field_5808);
-         if (result instanceof class_9860) {
+         ActionResult result = event.getItem().copy().getItem().use(mc.world, mc.player, Hand.MAIN_HAND);
+         if (result instanceof Success) {
             this.skip = true;
             return;
          }
@@ -191,14 +191,14 @@ public class NoSlowTest extends Module {
       }
    }
 
-   private boolean isValidItem(class_1799 item) {
-      if (item.method_7976() != null) {
-         switch (item.method_7976()) {
-            case field_8950:
-            case field_8946:
-            case field_8951:
-            case field_8953:
-            case field_8947:
+   private boolean isValidItem(ItemStack item) {
+      if (item.getUseAction() != null) {
+         switch (item.getUseAction()) {
+            case EAT:
+            case DRINK:
+            case SPEAR:
+            case BOW:
+            case CROSSBOW:
                return true;
             default:
                return false;
@@ -209,10 +209,10 @@ public class NoSlowTest extends Module {
    }
 
    private void handlePlayerInteractItemPacket(PacketEvent event) {
-      if (event.getPacket() instanceof class_2886 packet) {
-         class_1799 stack = null;
-         if (mc.field_1724 != null) {
-            stack = mc.field_1724.method_5998(packet.method_12551());
+      if (event.getPacket() instanceof PlayerInteractItemC2SPacket packet) {
+         ItemStack stack = null;
+         if (mc.player != null) {
+            stack = mc.player.getStackInHand(packet.getHand());
          }
 
          if (EntityUtils.isCharged(stack)) {
@@ -220,23 +220,23 @@ public class NoSlowTest extends Module {
             return;
          }
 
-         class_1839 useAction = null;
+         UseAction useAction = null;
          if (stack != null) {
-            useAction = stack.method_7976();
+            useAction = stack.getUseAction();
          }
 
          if (EntityUtils.isConflict()) {
             if (useAction != null && !this.isStew(stack)) {
                switch (useAction) {
-                  case field_8950:
-                  case field_8946:
-                  case field_8951:
+                  case EAT:
+                  case DRINK:
+                  case SPEAR:
                      this.special = false;
                      shouldEnable = true;
                      ServerPacketManager.setup();
                      break;
-                  case field_8953:
-                  case field_8947:
+                  case BOW:
+                  case CROSSBOW:
                      if (this.bowNoSlow.getValue()) {
                         this.special = false;
                         shouldEnable = true;
@@ -254,18 +254,18 @@ public class NoSlowTest extends Module {
             }
 
             switch (useAction) {
-               case field_8950:
-               case field_8946:
+               case EAT:
+               case DRINK:
                   event.setCancelled(true);
-                  this.swap(packet.method_12551(), packet.method_42081());
+                  this.swap(packet.getHand(), packet.getSequence());
                   break;
-               case field_8951:
+               case SPEAR:
                   this.special = false;
                   shouldEnable = true;
                   ServerPacketManager.setup();
                   break;
-               case field_8953:
-               case field_8947:
+               case BOW:
+               case CROSSBOW:
                   if (this.bowNoSlow.getValue()) {
                      this.special = false;
                      shouldEnable = true;
@@ -286,7 +286,7 @@ public class NoSlowTest extends Module {
       }
 
       if (this.swapped) {
-         PacketUtils.sendPacketNoEvent(new class_2846(class_2847.field_12969, new class_2338(0, 0, 0), class_2350.field_11033));
+         PacketUtils.sendPacketNoEvent(new PlayerActionC2SPacket(Action.SWAP_ITEM_WITH_OFFHAND, new BlockPos(0, 0, 0), Direction.DOWN));
          PacketOrderManager.swap = true;
          this.swapped = false;
       }
@@ -294,19 +294,19 @@ public class NoSlowTest extends Module {
 
    private void handleHandReset() {
       if (this.swapped) {
-         PacketUtils.sendPacketNoEvent(new class_2846(class_2847.field_12969, new class_2338(0, 0, 0), class_2350.field_11033));
+         PacketUtils.sendPacketNoEvent(new PlayerActionC2SPacket(Action.SWAP_ITEM_WITH_OFFHAND, new BlockPos(0, 0, 0), Direction.DOWN));
          PacketOrderManager.swap = true;
          this.swapped = false;
       }
    }
 
-   private void swap(class_1268 targetHand, int sequence) {
-      if (mc.field_1724 != null) {
+   private void swap(Hand targetHand, int sequence) {
+      if (mc.player != null) {
          shouldEnable = true;
          this.special = false;
          this.lastHand = targetHand;
-         this.oldSlot = mc.field_1724.method_31548().field_7545;
-         this.currentHand = this.lastHand == class_1268.field_5808 ? class_1268.field_5810 : class_1268.field_5808;
+         this.oldSlot = mc.player.getInventory().selectedSlot;
+         this.currentHand = this.lastHand == Hand.MAIN_HAND ? Hand.OFF_HAND : Hand.MAIN_HAND;
          this.sendHandSwapPacket();
          this.swapped = true;
          this.sendItemInteractPacket(this.currentHand, sequence);
@@ -315,13 +315,13 @@ public class NoSlowTest extends Module {
    }
 
    private void sendHandSwapPacket() {
-      PacketUtils.sendPacketNoEvent(new class_2846(class_2847.field_12969, new class_2338(0, 0, 0), class_2350.field_11033));
+      PacketUtils.sendPacketNoEvent(new PlayerActionC2SPacket(Action.SWAP_ITEM_WITH_OFFHAND, new BlockPos(0, 0, 0), Direction.DOWN));
       PacketOrderManager.swap = true;
    }
 
-   private void sendItemInteractPacket(class_1268 hand, int sequence) {
-      if (mc.field_1724 != null) {
-         PacketUtils.sendPacketNoEvent(new class_2886(hand, sequence, RotationUtils.getRotationSafely().getYaw(), RotationUtils.getRotationSafely().getPitch()));
+   private void sendItemInteractPacket(Hand hand, int sequence) {
+      if (mc.player != null) {
+         PacketUtils.sendPacketNoEvent(new PlayerInteractItemC2SPacket(hand, sequence, RotationUtils.getRotationSafely().getYaw(), RotationUtils.getRotationSafely().getPitch()));
       }
    }
 }

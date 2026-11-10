@@ -7,10 +7,10 @@ import cc.polyfrost.oneconfig.renderer.font.Fonts;
 import dev.southside.utils.misc.BezierUtil;
 import dev.southside.utils.render.animation.TimerUtil;
 import java.awt.Color;
-import net.minecraft.class_332;
-import net.minecraft.class_4587;
-import net.minecraft.class_742;
-import net.minecraft.class_7532;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.network.AbstractClientPlayerEntity;
+import net.minecraft.client.gui.PlayerSkinDrawer;
 
 public class TargetHudSimple extends Hud {
    private static final float BASE_WIDTH = 170.0F;
@@ -24,7 +24,7 @@ public class TargetHudSimple extends Hud {
    private static final Color TEXT_SECONDARY = new Color(180, 180, 180);
 
    @Override
-   protected void draw(class_332 context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
+   protected void draw(DrawContext context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
    }
 
    @Override
@@ -41,9 +41,9 @@ public class TargetHudSimple extends Hud {
       public final TimerUtil updateTimer = new TimerUtil();
       public final BezierUtil y = new BezierUtil(3.0F, 0.0F);
       private final BezierUtil health = new BezierUtil(3.0F, 1.0F);
-      public class_742 entity;
+      public AbstractClientPlayerEntity entity;
 
-      public TargetHUDComponent(class_742 entity) {
+      public TargetHUDComponent(AbstractClientPlayerEntity entity) {
          this.entity = entity;
       }
 
@@ -64,10 +64,10 @@ public class TargetHudSimple extends Hud {
             float nameSize = 10.0F * scale;
             float nameH = helper.getTextHeight(vg, nameSize, Fonts.SEMIBOLD);
             float nameY = headTop + nameH / 2.0F;
-            helper.drawTextWithFormatting(vg, this.entity.method_5476().getString(), textX, nameY, Color.WHITE.getRGB(), nameSize, Fonts.SEMIBOLD);
-            float healthPercentage = this.entity.method_6032() / this.entity.method_6063();
+            helper.drawTextWithFormatting(vg, this.entity.getDisplayName().getString(), textX, nameY, Color.WHITE.getRGB(), nameSize, Fonts.SEMIBOLD);
+            float healthPercentage = this.entity.getHealth() / this.entity.getMaxHealth();
             this.health.update(healthPercentage);
-            String hpText = String.format("%.1f HP", this.entity.method_6032());
+            String hpText = String.format("%.1f HP", this.entity.getHealth());
             float hpSize = 8.0F * scale;
             float hpY = headTop + headSize * 0.5F;
             helper.drawText(vg, hpText, textX, hpY, TargetHudSimple.TEXT_SECONDARY.getRGB(), hpSize, Fonts.REGULAR);
@@ -79,16 +79,16 @@ public class TargetHudSimple extends Hud {
          }
       }
 
-      public void drawBigHead(class_332 context, float scale, float x, float y) {
-         class_4587 matrices = context.method_51448();
-         matrices.method_22903();
-         matrices.method_46416(x, y + this.y.get(), 0.0F);
+      public void drawBigHead(DrawContext context, float scale, float x, float y) {
+         MatrixStack matrices = context.getMatrices();
+         matrices.push();
+         matrices.translate(x, y + this.y.get(), 0.0F);
          float headSize = 32.0F * scale;
          float height = 44.0F * scale;
          float headX = (44.0F * scale - headSize) / 2.0F;
          float headY = (height - headSize) / 2.0F;
-         class_7532.method_52722(context, this.entity.method_52814(), (int)headX, (int)headY, (int)headSize);
-         matrices.method_22909();
+         PlayerSkinDrawer.draw(context, this.entity.getSkinTextures(), (int)headX, (int)headY, (int)headSize);
+         matrices.pop();
       }
    }
 }

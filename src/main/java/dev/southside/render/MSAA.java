@@ -7,11 +7,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import net.minecraft.class_276;
-import net.minecraft.class_310;
+import net.minecraft.client.gl.Framebuffer;
+import net.minecraft.client.MinecraftClient;
 import org.lwjgl.opengl.GL30;
 
-public class MSAA extends class_276 {
+public class MSAA extends Framebuffer {
    public static final int MIN_SAMPLES = 2;
    public static final int MAX_SAMPLES = GL30.glGetInteger(36183);
    private static final Map<Integer, MSAA> INSTANCES = new HashMap<>();
@@ -29,7 +29,7 @@ public class MSAA extends class_276 {
          throw new IllegalArgumentException("The number of samples must be a power of two.");
       } else {
          this.samples = samples;
-         this.method_1236(1.0F, 1.0F, 1.0F, 0.0F);
+         this.setClearColor(1.0F, 1.0F, 1.0F, 0.0F);
       }
    }
 
@@ -43,45 +43,45 @@ public class MSAA extends class_276 {
 
    public static void use(Runnable drawAction) {
       if (Renders.useMSAA()) {
-         use(Math.min(16, MAX_SAMPLES), class_310.method_1551().method_1522(), drawAction);
+         use(Math.min(16, MAX_SAMPLES), MinecraftClient.getInstance().getFramebuffer(), drawAction);
       } else {
          drawAction.run();
       }
    }
 
-   public static void use(int samples, class_276 mainBuffer, Runnable drawAction) {
+   public static void use(int samples, Framebuffer mainBuffer, Runnable drawAction) {
       RenderSystem.assertOnRenderThreadOrInit();
       MSAA msaaBuffer = getInstance(samples);
-      msaaBuffer.method_1234(mainBuffer.field_1482, mainBuffer.field_1481);
-      GlStateManager._glBindFramebuffer(36008, mainBuffer.field_1476);
-      GlStateManager._glBindFramebuffer(36009, msaaBuffer.field_1476);
-      GlStateManager._glBlitFrameBuffer(0, 0, msaaBuffer.field_1482, msaaBuffer.field_1481, 0, 0, msaaBuffer.field_1482, msaaBuffer.field_1481, 16384, 9729);
-      msaaBuffer.method_1235(true);
+      msaaBuffer.resize(mainBuffer.textureWidth, mainBuffer.textureHeight);
+      GlStateManager._glBindFramebuffer(36008, mainBuffer.fbo);
+      GlStateManager._glBindFramebuffer(36009, msaaBuffer.fbo);
+      GlStateManager._glBlitFrameBuffer(0, 0, msaaBuffer.textureWidth, msaaBuffer.textureHeight, 0, 0, msaaBuffer.textureWidth, msaaBuffer.textureHeight, 16384, 9729);
+      msaaBuffer.beginWrite(true);
       drawAction.run();
-      msaaBuffer.method_1240();
-      GlStateManager._glBindFramebuffer(36008, msaaBuffer.field_1476);
-      GlStateManager._glBindFramebuffer(36009, mainBuffer.field_1476);
-      GlStateManager._glBlitFrameBuffer(0, 0, msaaBuffer.field_1482, msaaBuffer.field_1481, 0, 0, msaaBuffer.field_1482, msaaBuffer.field_1481, 16384, 9729);
-      msaaBuffer.method_1230();
-      mainBuffer.method_1235(false);
+      msaaBuffer.endWrite();
+      GlStateManager._glBindFramebuffer(36008, msaaBuffer.fbo);
+      GlStateManager._glBindFramebuffer(36009, mainBuffer.fbo);
+      GlStateManager._glBlitFrameBuffer(0, 0, msaaBuffer.textureWidth, msaaBuffer.textureHeight, 0, 0, msaaBuffer.textureWidth, msaaBuffer.textureHeight, 16384, 9729);
+      msaaBuffer.clear();
+      mainBuffer.beginWrite(false);
    }
 
-   public void method_1234(int width, int height) {
-      if (this.field_1482 != width || this.field_1481 != height) {
-         super.method_1234(width, height);
+   public void resize(int width, int height) {
+      if (this.textureWidth != width || this.textureHeight != height) {
+         super.resize(width, height);
       }
    }
 
-   public void method_1231(int width, int height) {
+   public void initFbo(int width, int height) {
       RenderSystem.assertOnRenderThreadOrInit();
       int maxSize = RenderSystem.maxSupportedTextureSize();
       if (width > 0 && width <= maxSize && height > 0 && height <= maxSize) {
-         this.field_1480 = width;
-         this.field_1477 = height;
-         this.field_1482 = width;
-         this.field_1481 = height;
-         this.field_1476 = GlStateManager.glGenFramebuffers();
-         GlStateManager._glBindFramebuffer(36160, this.field_1476);
+         this.viewportWidth = width;
+         this.viewportHeight = height;
+         this.textureWidth = width;
+         this.textureHeight = height;
+         this.fbo = GlStateManager.glGenFramebuffers();
+         GlStateManager._glBindFramebuffer(36160, this.fbo);
          this.rboColor = GlStateManager.glGenRenderbuffers();
          GlStateManager._glBindRenderbuffer(36161, this.rboColor);
          GL30.glRenderbufferStorageMultisample(36161, this.samples, 32856, width, height);
@@ -92,24 +92,24 @@ public class MSAA extends class_276 {
          GlStateManager._glBindRenderbuffer(36161, 0);
          GL30.glFramebufferRenderbuffer(36160, 36064, 36161, this.rboColor);
          GL30.glFramebufferRenderbuffer(36160, 36096, 36161, this.rboDepth);
-         this.field_1475 = class_310.method_1551().method_1522().method_30277();
-         this.field_1474 = class_310.method_1551().method_1522().method_30278();
-         this.method_1239();
-         this.method_1230();
-         this.method_1242();
+         this.colorAttachment = MinecraftClient.getInstance().getFramebuffer().getColorAttachment();
+         this.depthAttachment = MinecraftClient.getInstance().getFramebuffer().getDepthAttachment();
+         this.checkFramebufferStatus();
+         this.clear();
+         this.endRead();
       } else {
          throw new IllegalArgumentException("Window " + width + "x" + height + " size out of bounds (max. size: " + maxSize + ")");
       }
    }
 
-   public void method_1238() {
+   public void delete() {
       RenderSystem.assertOnRenderThreadOrInit();
-      this.method_1242();
-      this.method_1240();
-      if (this.field_1476 > -1) {
+      this.endRead();
+      this.endWrite();
+      if (this.fbo > -1) {
          GlStateManager._glBindFramebuffer(36160, 0);
-         GlStateManager._glDeleteFramebuffers(this.field_1476);
-         this.field_1476 = -1;
+         GlStateManager._glDeleteFramebuffers(this.fbo);
+         this.fbo = -1;
       }
 
       if (this.rboColor > -1) {
@@ -122,22 +122,22 @@ public class MSAA extends class_276 {
          this.rboDepth = -1;
       }
 
-      this.field_1475 = -1;
-      this.field_1474 = -1;
-      this.field_1482 = -1;
-      this.field_1481 = -1;
+      this.colorAttachment = -1;
+      this.depthAttachment = -1;
+      this.textureWidth = -1;
+      this.textureHeight = -1;
    }
 
-   public void method_1235(boolean setViewport) {
-      super.method_1235(setViewport);
+   public void beginWrite(boolean setViewport) {
+      super.beginWrite(setViewport);
       if (!this.inUse) {
          ACTIVE_INSTANCES.add(this);
          this.inUse = true;
       }
    }
 
-   public void method_1240() {
-      super.method_1240();
+   public void endWrite() {
+      super.endWrite();
       if (this.inUse) {
          this.inUse = false;
          ACTIVE_INSTANCES.remove(this);

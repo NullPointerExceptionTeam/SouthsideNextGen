@@ -11,13 +11,13 @@ import dev.southside.Southside;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
-import net.minecraft.class_2172;
-import net.minecraft.class_2561;
+import net.minecraft.command.CommandSource;
+import net.minecraft.text.Text;
 
 public class ConfigsArgumentType implements ArgumentType<String> {
    private static final ConfigsArgumentType INSTANCE = new ConfigsArgumentType();
    private static final DynamicCommandExceptionType NO_SUCH_MODULE = new DynamicCommandExceptionType(
-      name -> class_2561.method_43470("Config with name " + name + " doesn't exist.")
+      name -> Text.literal("Config with name " + name + " doesn't exist.")
    );
    private static final Collection<String> EXAMPLES = Southside.get()
       .getConfigManager()
@@ -48,7 +48,7 @@ public class ConfigsArgumentType implements ArgumentType<String> {
    }
 
    public <S> CompletableFuture<Suggestions> listSuggestions(CommandContext<S> context, SuggestionsBuilder builder) {
-      return class_2172.method_9264(Southside.get().getConfigManager().configs.stream().map(c -> c.name), builder);
+      return CommandSource.suggestMatching(Southside.get().getConfigManager().configs.stream().map(c -> c.name), builder);
    }
 
    public Collection<String> getExamples() {

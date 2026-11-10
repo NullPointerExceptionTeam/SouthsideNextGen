@@ -23,12 +23,12 @@ import dev.southside.utils.timer.StopWatch;
 import dev.southside.utils.types.Rotation;
 import dev.southside.utils.world.ProjectileUtil;
 import java.awt.Color;
-import net.minecraft.class_1268;
-import net.minecraft.class_1776;
-import net.minecraft.class_2338;
-import net.minecraft.class_2708;
-import net.minecraft.class_3532;
-import net.minecraft.class_2828.class_2831;
+import net.minecraft.util.Hand;
+import net.minecraft.item.EnderPearlItem;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket.LookAndOnGround;
 
 public class AntiVoid extends Module {
    public final Slider fallDistValue = new Slider("Fall Distance", 3, 1, 10, 1);
@@ -56,18 +56,18 @@ public class AntiVoid extends Module {
 
    @EventHandler
    public void onRender(Render2DEvent event) {
-      if (this.debugValue.getValue() && mc.field_1724 != null) {
+      if (this.debugValue.getValue() && mc.player != null) {
          NanoVGHelper nanoVGHelper = NanoVGHelper.INSTANCE;
          String assessmentText = "assessment: "
             + new ProjectileUtil.EnderPearlPredictor(
-                  mc.field_1724.method_23317(),
-                  mc.field_1724.method_23318(),
-                  mc.field_1724.method_23321(),
-                  mc.field_1724.method_18798().field_1351 - 0.01,
-                  mc.field_1724.method_18798().field_1351 + 0.02
+                  mc.player.getX(),
+                  mc.player.getY(),
+                  mc.player.getZ(),
+                  mc.player.getVelocity().y - 0.01,
+                  mc.player.getVelocity().y + 0.02
                )
                .assessRotation(RotationUtils.getRotationSafely());
-         String rotationText = "(" + mc.field_1724.method_36454() + ", " + mc.field_1724.method_36455() + ")";
+         String rotationText = "(" + mc.player.getYaw() + ", " + mc.player.getPitch() + ")";
          nanoVGHelper.setupAndDraw(true, vg -> {
             nanoVGHelper.drawText(vg, assessmentText, 20.0F, 20.0F, Color.WHITE.getRGB(), 12.0F, Fonts.REGULAR);
             nanoVGHelper.drawText(vg, rotationText, 20.0F, 35.0F, Color.WHITE.getRGB(), 12.0F, Fonts.REGULAR);
@@ -77,8 +77,8 @@ public class AntiVoid extends Module {
 
    @EventHandler
    public void onMotion(MotionEvent event) {
-      if (mc.field_1724 != null) {
-         if (mc.field_1724.method_24828()) {
+      if (mc.player != null) {
+         if (mc.player.isOnGround()) {
             this.attempted = 0;
             this.pearlThrownThisFall = false;
             this.waitingServerSync = false;
@@ -91,7 +91,7 @@ public class AntiVoid extends Module {
          if (event.getState() == Stage.POST) {
             if (this.calculateThread != null && this.calculateThread.completed) {
                Rotation solution = this.calculateThread.solution;
-               class_2338 landingBlock = this.calculateThread.landingBlock;
+               BlockPos landingBlock = this.calculateThread.landingBlock;
                double score = this.calculateThread.solutionE;
                boolean requireScaffold = isLandingVoid(landingBlock);
                boolean hasSolution = solution != null && score >= 0.15;
@@ -113,12 +113,12 @@ public class AntiVoid extends Module {
                }
             }
          } else if (!this.calculating && !this.waitingServerSync && !this.pearlThrownThisFall) {
-            boolean fallingIntoVoid = mc.field_1724.method_18798().field_1351 < 0.1
-               && new FallingPlayer(mc.field_1724).findCollision(60) == null
-               && !BlockUtils.isSolidBlockUnder(mc.field_1724.method_23318() + mc.field_1724.method_18381(mc.field_1724.method_18376()))
-               && mc.field_1724.field_6017 > this.fallDistValue.getValue().floatValue();
+            boolean fallingIntoVoid = mc.player.getVelocity().y < 0.1
+               && new FallingPlayer(mc.player).findCollision(60) == null
+               && !BlockUtils.isSolidBlockUnder(mc.player.getY() + mc.player.getEyeHeight(mc.player.getPose()))
+               && mc.player.fallDistance > this.fallDistValue.getValue().floatValue();
             if (fallingIntoVoid) {
-               if (!(mc.field_1724.method_18798().field_1351 >= -1.0) && !mc.field_1724.method_24828()) {
+               if (!(mc.player.getVelocity().y >= -1.0) && !mc.player.isOnGround()) {
                   if (this.attempted < this.attemptTime.getValue().intValue()) {
                      int pearlSlot = this.findPearlSlot();
                      if (pearlSlot == -1) {
@@ -127,7 +127,7 @@ public class AntiVoid extends Module {
                         }
                      } else {
                         this.attempted++;
-                        mc.field_1724.method_31548().field_7545 = pearlSlot;
+                        mc.player.getInventory().selectedSlot = pearlSlot;
                         this.startCalculation();
                      }
                   }
@@ -140,9 +140,9 @@ public class AntiVoid extends Module {
    @EventHandler
    public void onPacket(PacketEvent event) {
       if (event.getOrigin() == TransferOrigin.RECEIVE) {
-         if (event.getPacket() instanceof class_2708) {
+         if (event.getPacket() instanceof PlayerPositionLookS2CPacket) {
             this.waitingServerSync = false;
-            if (this.awaitScaffoldAfterSync && mc.field_1724 != null && !mc.field_1724.method_24828()) {
+            if (this.awaitScaffoldAfterSync && mc.player != null && !mc.player.isOnGround()) {
                this.enableScaffoldSupport();
             }
 
@@ -169,15 +169,15 @@ public class AntiVoid extends Module {
 
    private void startCalculation() {
       this.calculating = true;
-      double velocityY = mc.field_1724.method_18798().field_1351;
+      double velocityY = mc.player.getVelocity().y;
       this.calculateThread = new AntiVoid.CalculateThread(
-         mc.field_1724.method_23317(),
-         mc.field_1724.method_23318(),
-         mc.field_1724.method_23321(),
+         mc.player.getX(),
+         mc.player.getY(),
+         mc.player.getZ(),
          velocityY - 0.05,
          velocityY + 0.05,
-         mc.field_1724.method_36454(),
-         mc.field_1724.method_36455(),
+         mc.player.getYaw(),
+         mc.player.getPitch(),
          this.debugValue.getValue()
       );
       this.calculateThread.start();
@@ -205,7 +205,7 @@ public class AntiVoid extends Module {
 
    private int findPearlSlot() {
       for (int i = 0; i < 9; i++) {
-         if (mc.field_1724.method_31548().method_5438(i).method_7909() instanceof class_1776) {
+         if (mc.player.getInventory().getStack(i).getItem() instanceof EnderPearlItem) {
             return i;
          }
       }
@@ -222,7 +222,7 @@ public class AntiVoid extends Module {
 
    private void enableScaffoldSupport() {
       Scaffold scaffold = Southside.INSTANCE.getModuleManager().get(Scaffold.class);
-      if (mc.field_1724 != null && mc.field_1687 != null) {
+      if (mc.player != null && mc.world != null) {
          if (scaffold.getBlockCountInventory() > 0) {
             if (!scaffold.isEnabled()) {
                scaffold.setEnable(true);
@@ -241,22 +241,22 @@ public class AntiVoid extends Module {
       }
    }
 
-   private static boolean isLandingVoid(class_2338 landingBlock) {
-      if (landingBlock != null && mc.field_1687 != null) {
-         class_2338 below = landingBlock.method_10074();
-         return !mc.field_1687.method_8320(below).method_26212(mc.field_1687, below);
+   private static boolean isLandingVoid(BlockPos landingBlock) {
+      if (landingBlock != null && mc.world != null) {
+         BlockPos below = landingBlock.down();
+         return !mc.world.getBlockState(below).isSolidBlock(mc.world, below);
       } else {
          return false;
       }
    }
 
    private void throwPearl(Rotation rotation) {
-      if (rotation != null && mc.field_1724 != null && mc.field_1761 != null) {
+      if (rotation != null && mc.player != null && mc.interactionManager != null) {
          rotation.apply();
-         rotation.fixedSensitivity(((Double)mc.field_1690.method_42495().method_41753()).floatValue());
-         mc.field_1724.field_3944.method_52787(new class_2831(rotation.yaw, rotation.pitch, mc.field_1724.method_24828(), mc.field_1724.field_5976));
-         mc.field_1724.method_6104(class_1268.field_5808);
-         mc.field_1761.method_2919(mc.field_1724, class_1268.field_5808);
+         rotation.fixedSensitivity(((Double)mc.options.getMouseSensitivity().getValue()).floatValue());
+         mc.player.networkHandler.sendPacket(new LookAndOnGround(rotation.yaw, rotation.pitch, mc.player.isOnGround(), mc.player.horizontalCollision));
+         mc.player.swingHand(Hand.MAIN_HAND);
+         mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
          if (this.debugValue.getValue()) {
             ChatUtils.info(String.format("§a[AntiVoid] §f投掷珍珠 yaw=%.1f pitch=%.1f", rotation.yaw, rotation.pitch));
          }
@@ -272,7 +272,7 @@ public class AntiVoid extends Module {
       private volatile boolean cancelled;
       private double solutionE;
       private Rotation solution;
-      private class_2338 landingBlock;
+      private BlockPos landingBlock;
       private boolean completed;
       private int totalEvaluations;
 
@@ -280,7 +280,7 @@ public class AntiVoid extends Module {
          double predictX, double predictY, double predictZ, double minMotionY, double maxMotionY, float baseYaw, float basePitch, boolean debug
       ) {
          this.predictor = new ProjectileUtil.EnderPearlPredictor(predictX, predictY, predictZ, minMotionY, maxMotionY);
-         this.baseYaw = class_3532.method_15393(baseYaw);
+         this.baseYaw = MathHelper.wrapDegrees(baseYaw);
          this.basePitch = clampPitch(basePitch);
          this.debug = debug;
          this.completed = false;
@@ -299,7 +299,7 @@ public class AntiVoid extends Module {
             float[] candidateYaws = new float[9];
 
             for (int i = 0; i < 8; i++) {
-               candidateYaws[i] = class_3532.method_15393(i * 45.0F);
+               candidateYaws[i] = MathHelper.wrapDegrees(i * 45.0F);
             }
 
             candidateYaws[8] = this.baseYaw;
@@ -365,7 +365,7 @@ public class AntiVoid extends Module {
 
                for (float yaw = centerYaw - 15.0F; yaw <= centerYaw + 15.0F; yaw += 3.0F) {
                   for (float pitchx = centerPitch - 10.0F; pitchx <= centerPitch + 10.0F && !this.cancelled && timer.getElapsedTime() <= 30L; pitchx += 3.0F) {
-                     Rotation candidate = new Rotation(class_3532.method_15393(yaw), clampPitch(pitchx));
+                     Rotation candidate = new Rotation(MathHelper.wrapDegrees(yaw), clampPitch(pitchx));
 
                      double score;
                      try {
@@ -410,7 +410,7 @@ public class AntiVoid extends Module {
 
                for (float yaw = fineYawCenter - 4.0F; yaw <= fineYawCenter + 4.0F; yaw++) {
                   for (float pitchx = finePitchCenter - 4.0F; pitchx <= finePitchCenter + 4.0F && !this.cancelled && timer.getElapsedTime() <= 30L; pitchx++) {
-                     Rotation candidate = new Rotation(class_3532.method_15393(yaw), clampPitch(pitchx));
+                     Rotation candidate = new Rotation(MathHelper.wrapDegrees(yaw), clampPitch(pitchx));
 
                      double scorex;
                      try {
@@ -450,7 +450,7 @@ public class AntiVoid extends Module {
                long elapsed = timer.getElapsedTime();
                if (bestRotation != null) {
                   String landingInfo = this.landingBlock != null
-                     ? String.format("(%d, %d, %d)", this.landingBlock.method_10263(), this.landingBlock.method_10264(), this.landingBlock.method_10260())
+                     ? String.format("(%d, %d, %d)", this.landingBlock.getX(), this.landingBlock.getY(), this.landingBlock.getZ())
                      : "unknown";
                   boolean needScaffold = AntiVoid.isLandingVoid(this.landingBlock);
                   ChatUtils.info(
@@ -477,28 +477,28 @@ public class AntiVoid extends Module {
       }
 
       private static float clampPitch(float pitch) {
-         return class_3532.method_15363(pitch, -89.9F, 89.9F);
+         return MathHelper.clamp(pitch, -89.9F, 89.9F);
       }
 
       private ProjectileUtil.ProjectileHit simulateLanding(Rotation rotation) {
-         if (rotation != null && AntiVoid.mc.field_1724 != null) {
+         if (rotation != null && AntiVoid.mc.player != null) {
             Rotation adjusted = rotation.copy();
             adjusted.fixPitch();
             float motionFactor = 1.5F;
             float gravity = 0.03F;
             float size = 0.25F;
             float motionSlowdown = 0.99F;
-            double posX = this.predictor.predictX - class_3532.method_15362(adjusted.yaw / 180.0F * (float) Math.PI) * 0.16F;
-            double posY = this.predictor.predictY + AntiVoid.mc.field_1724.method_18381(AntiVoid.mc.field_1724.method_18376()) - 0.1F;
-            double posZ = this.predictor.predictZ - class_3532.method_15374(adjusted.yaw / 180.0F * (float) Math.PI) * 0.16F;
-            double motionX = -class_3532.method_15374(adjusted.yaw / 180.0F * (float) Math.PI)
-                  * class_3532.method_15362(adjusted.pitch / 180.0F * (float) Math.PI)
+            double posX = this.predictor.predictX - MathHelper.cos(adjusted.yaw / 180.0F * (float) Math.PI) * 0.16F;
+            double posY = this.predictor.predictY + AntiVoid.mc.player.getEyeHeight(AntiVoid.mc.player.getPose()) - 0.1F;
+            double posZ = this.predictor.predictZ - MathHelper.sin(adjusted.yaw / 180.0F * (float) Math.PI) * 0.16F;
+            double motionX = -MathHelper.sin(adjusted.yaw / 180.0F * (float) Math.PI)
+                  * MathHelper.cos(adjusted.pitch / 180.0F * (float) Math.PI)
                * 0.4;
-            double motionY = -class_3532.method_15374(adjusted.pitch / 180.0F * (float) Math.PI) * 0.4;
-            double motionZ = class_3532.method_15362(adjusted.yaw / 180.0F * (float) Math.PI)
-                  * class_3532.method_15362(adjusted.pitch / 180.0F * (float) Math.PI)
+            double motionY = -MathHelper.sin(adjusted.pitch / 180.0F * (float) Math.PI) * 0.4;
+            double motionZ = MathHelper.cos(adjusted.yaw / 180.0F * (float) Math.PI)
+                  * MathHelper.cos(adjusted.pitch / 180.0F * (float) Math.PI)
                * 0.4;
-            float distance = class_3532.method_15355((float)(motionX * motionX + motionY * motionY + motionZ * motionZ));
+            float distance = MathHelper.sqrt((float)(motionX * motionX + motionY * motionY + motionZ * motionZ));
             motionX /= distance;
             motionY /= distance;
             motionZ /= distance;
@@ -513,9 +513,9 @@ public class AntiVoid extends Module {
          }
       }
 
-      private class_2338 resolveLandingBlock(Rotation rotation) {
+      private BlockPos resolveLandingBlock(Rotation rotation) {
          ProjectileUtil.ProjectileHit hit = this.simulateLanding(rotation);
-         return hit != null && hit.landingPosition() != null ? hit.landingPosition().method_17777() : null;
+         return hit != null && hit.landingPosition() != null ? hit.landingPosition().getBlockPos() : null;
       }
    }
 }

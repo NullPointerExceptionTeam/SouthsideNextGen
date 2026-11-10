@@ -17,16 +17,16 @@ import dev.southside.utils.misc.ClassUtils;
 import dev.southside.utils.misc.ClientUtils;
 import java.util.List;
 import lombok.Generated;
-import net.minecraft.class_310;
-import net.minecraft.class_3419;
-import net.minecraft.class_5819;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.util.math.random.Random;
 import org.jetbrains.annotations.NotNull;
 
 public abstract class Module extends Config implements ChatAdapter, ISerializable<Module>, Comparable<Module> {
    protected Runnable initPostRunnable;
-   protected static final class_310 mc = class_310.method_1551();
+   protected static final MinecraftClient mc = MinecraftClient.getInstance();
    protected boolean notifyOnToggle = true;
-   private final class_5819 random = class_5819.method_43047();
+   private final Random random = Random.create();
    private final Category category;
    private final boolean autoEnable;
    private final String name;
@@ -84,7 +84,7 @@ public abstract class Module extends Config implements ChatAdapter, ISerializabl
    public void initialize() {
       super.initialize();
       this.registerKeyBind(this.keyBind.getValue(), () -> {
-         if (mc.field_1755 == null) {
+         if (mc.currentScreen == null) {
             this.toggle();
          }
       });
@@ -101,15 +101,15 @@ public abstract class Module extends Config implements ChatAdapter, ISerializabl
                String var3 = ClientSettings.style.getMode();
                switch (var3) {
                   case "Sigma":
-                     mc.field_1687.method_8396(mc.field_1724, mc.field_1724.method_24515(), Sounds.SIGMA_ACTIVATE_SOUNDEVENT, class_3419.field_15245, v, 1.0F);
+                     mc.world.playSound(mc.player, mc.player.getBlockPos(), Sounds.SIGMA_ACTIVATE_SOUNDEVENT, SoundCategory.BLOCKS, v, 1.0F);
                      break;
                   case "Piano":
-                     mc.field_1687
-                        .method_8396(mc.field_1724, mc.field_1724.method_24515(), Sounds.SOUTHSIDE_TOGGLE2_ON_SOUNDEVENT, class_3419.field_15245, v, 1.0F);
+                     mc.world
+                        .playSound(mc.player, mc.player.getBlockPos(), Sounds.SOUTHSIDE_TOGGLE2_ON_SOUNDEVENT, SoundCategory.BLOCKS, v, 1.0F);
                      break;
                   case "Default":
-                     mc.field_1687
-                        .method_8396(mc.field_1724, mc.field_1724.method_24515(), Sounds.SOUTHSIDE_TOGGLE_ON_SOUNDEVENT, class_3419.field_15245, v, 1.0F);
+                     mc.world
+                        .playSound(mc.player, mc.player.getBlockPos(), Sounds.SOUTHSIDE_TOGGLE_ON_SOUNDEVENT, SoundCategory.BLOCKS, v, 1.0F);
                }
             }
 
@@ -122,16 +122,16 @@ public abstract class Module extends Config implements ChatAdapter, ISerializabl
                String var5 = ClientSettings.style.getMode();
                switch (var5) {
                   case "Sigma":
-                     mc.field_1687
-                        .method_8396(mc.field_1724, mc.field_1724.method_24515(), Sounds.SIGMA_DEACTIVATE_SOUNDEVENT, class_3419.field_15245, v, 1.0F);
+                     mc.world
+                        .playSound(mc.player, mc.player.getBlockPos(), Sounds.SIGMA_DEACTIVATE_SOUNDEVENT, SoundCategory.BLOCKS, v, 1.0F);
                      break;
                   case "Piano":
-                     mc.field_1687
-                        .method_8396(mc.field_1724, mc.field_1724.method_24515(), Sounds.SOUTHSIDE_TOGGLE2_OFF_SOUNDEVENT, class_3419.field_15245, v, 1.0F);
+                     mc.world
+                        .playSound(mc.player, mc.player.getBlockPos(), Sounds.SOUTHSIDE_TOGGLE2_OFF_SOUNDEVENT, SoundCategory.BLOCKS, v, 1.0F);
                      break;
                   case "Default":
-                     mc.field_1687
-                        .method_8396(mc.field_1724, mc.field_1724.method_24515(), Sounds.SOUTHSIDE_TOGGLE_OFF_SOUNDEVENT, class_3419.field_15245, v, 1.0F);
+                     mc.world
+                        .playSound(mc.player, mc.player.getBlockPos(), Sounds.SOUTHSIDE_TOGGLE_OFF_SOUNDEVENT, SoundCategory.BLOCKS, v, 1.0F);
                }
             }
 
@@ -224,7 +224,7 @@ public abstract class Module extends Config implements ChatAdapter, ISerializabl
    }
 
    @Generated
-   public class_5819 getRandom() {
+   public Random getRandom() {
       return this.random;
    }
 

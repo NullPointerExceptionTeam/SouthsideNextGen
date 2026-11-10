@@ -14,19 +14,19 @@ import dev.southside.utils.timer.StopWatch;
 import dev.southside.utils.types.Rotation;
 import java.util.HashSet;
 import java.util.Set;
-import net.minecraft.class_1268;
-import net.minecraft.class_1294;
-import net.minecraft.class_1713;
-import net.minecraft.class_1799;
-import net.minecraft.class_1802;
-import net.minecraft.class_1842;
-import net.minecraft.class_1844;
-import net.minecraft.class_1847;
-import net.minecraft.class_2879;
-import net.minecraft.class_6880;
-import net.minecraft.class_9334;
-import net.minecraft.class_1269.class_9860;
-import net.minecraft.class_1269.class_9861;
+import net.minecraft.util.Hand;
+import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.screen.slot.SlotActionType;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.potion.Potion;
+import net.minecraft.component.type.PotionContentsComponent;
+import net.minecraft.potion.Potions;
+import net.minecraft.network.packet.c2s.play.HandSwingC2SPacket;
+import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.util.ActionResult.Success;
+import net.minecraft.util.ActionResult.SwingSource;
 
 public class AutoPot extends Module {
    public final Slider health = new Slider("Health", 15, 0, 20, 1);
@@ -66,43 +66,43 @@ public class AutoPot extends Module {
 
    @EventHandler
    public void onRotation(RotationEvent event) {
-      if (mc.field_1724 != null && mc.field_1687 != null) {
+      if (mc.player != null && mc.world != null) {
          if (this.restoreTicks >= 0) {
             if (this.restoreTicks > 0) {
-               RotationUtils.setRotation(new Rotation(mc.field_1724.method_36454(), 89.0F), this.rotationPriority());
+               RotationUtils.setRotation(new Rotation(mc.player.getYaw(), 89.0F), this.rotationPriority());
                this.restoreTicks--;
             } else {
                this.restoreTicks = -1;
             }
-         } else if (mc.field_1724.field_6012 > 10) {
-            if (!this.onlyGround.getValue() || mc.field_1724.method_24828()) {
+         } else if (mc.player.age > 10) {
+            if (!this.onlyGround.getValue() || mc.player.isOnGround()) {
                if (this.timer.finished(this.delay.getValue().longValue())) {
-                  if (this.autoRefill.getValue() && !mc.field_1724.field_3919 && this.refillTimer.finished(50L)) {
+                  if (this.autoRefill.getValue() && !mc.player.lastSprinting && this.refillTimer.finished(50L)) {
                      this.refillPotions();
                      this.refillTimer.reset();
                   }
 
                   this.potSlot = -1;
-                  if (this.healing.getValue() && mc.field_1724.method_6032() < this.health.getValue().floatValue()) {
+                  if (this.healing.getValue() && mc.player.getHealth() < this.health.getValue().floatValue()) {
                      this.potSlot = this.findHealingPotionInHotbar();
                   }
 
-                  if (this.potSlot == -1 && this.speed.getValue() && !mc.field_1724.method_6059(class_1294.field_5904)) {
-                     this.potSlot = this.findPotionInHotbar(class_1847.field_9005, class_1847.field_8983, class_1847.field_8966);
+                  if (this.potSlot == -1 && this.speed.getValue() && !mc.player.hasStatusEffect(StatusEffects.SPEED)) {
+                     this.potSlot = this.findPotionInHotbar(Potions.SWIFTNESS, Potions.LONG_SWIFTNESS, Potions.STRONG_SWIFTNESS);
                   }
 
-                  if (this.potSlot == -1 && this.jumpBoost.getValue() && !mc.field_1724.method_6059(class_1294.field_5913)) {
-                     this.potSlot = this.findPotionInHotbar(class_1847.field_8979, class_1847.field_8971, class_1847.field_8998);
+                  if (this.potSlot == -1 && this.jumpBoost.getValue() && !mc.player.hasStatusEffect(StatusEffects.JUMP_BOOST)) {
+                     this.potSlot = this.findPotionInHotbar(Potions.LEAPING, Potions.LONG_LEAPING, Potions.STRONG_LEAPING);
                   }
 
-                  if (this.potSlot == -1 && this.fireResistance.getValue() && !mc.field_1724.method_6059(class_1294.field_5918)) {
-                     this.potSlot = this.findPotionInHotbar(class_1847.field_8987, class_1847.field_8969);
+                  if (this.potSlot == -1 && this.fireResistance.getValue() && !mc.player.hasStatusEffect(StatusEffects.FIRE_RESISTANCE)) {
+                     this.potSlot = this.findPotionInHotbar(Potions.FIRE_RESISTANCE, Potions.LONG_FIRE_RESISTANCE);
                   }
 
                   if (this.potSlot == -1) {
                      this.throwReady = false;
                   } else {
-                     RotationUtils.setRotation(new Rotation(mc.field_1724.method_36454(), 80.0F), this.rotationPriority());
+                     RotationUtils.setRotation(new Rotation(mc.player.getYaw(), 80.0F), this.rotationPriority());
                      this.throwReady = true;
                   }
                }
@@ -113,16 +113,16 @@ public class AutoPot extends Module {
 
    @EventHandler
    public void onRotationApplied(RotationAppliedEvent event) {
-      if (this.throwReady && this.potSlot != -1 && mc.field_1724 != null) {
+      if (this.throwReady && this.potSlot != -1 && mc.player != null) {
          this.throwReady = false;
-         this.oldSlot = mc.field_1724.method_31548().field_7545;
-         mc.field_1724.method_31548().field_7545 = this.potSlot;
-         if (mc.field_1761.method_2919(mc.field_1724, class_1268.field_5808) instanceof class_9860 success && success.comp_2909() == class_9861.field_52427) {
-            PacketUtils.sendPacket(new class_2879(class_1268.field_5808));
+         this.oldSlot = mc.player.getInventory().selectedSlot;
+         mc.player.getInventory().selectedSlot = this.potSlot;
+         if (mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND) instanceof Success success && success.swingSource() == SwingSource.CLIENT) {
+            PacketUtils.sendPacket(new HandSwingC2SPacket(Hand.MAIN_HAND));
          }
 
-         mc.field_1724.method_31548().field_7545 = this.oldSlot;
-         mc.field_1761.method_2911();
+         mc.player.getInventory().selectedSlot = this.oldSlot;
+         mc.interactionManager.syncSelectedSlot();
          this.potSlot = -1;
          this.oldSlot = -1;
          this.restoreTicks = 1;
@@ -133,13 +133,13 @@ public class AutoPot extends Module {
    }
 
    private int findHealingPotionInHotbar() {
-      return this.findPotionInHotbar(class_1847.field_8963, class_1847.field_8980);
+      return this.findPotionInHotbar(Potions.HEALING, Potions.STRONG_HEALING);
    }
 
    @SafeVarargs
-   private int findPotionInHotbar(class_6880<class_1842>... potions) {
+   private int findPotionInHotbar(RegistryEntry<Potion>... potions) {
       for (int i = 0; i < 9; i++) {
-         class_1799 stack = mc.field_1724.method_31548().method_5438(i);
+         ItemStack stack = mc.player.getInventory().getStack(i);
          if (this.isSplashPotion(stack, potions)) {
             return i;
          }
@@ -149,9 +149,9 @@ public class AutoPot extends Module {
    }
 
    @SafeVarargs
-   private int findPotionInInventory(class_6880<class_1842>... potions) {
+   private int findPotionInInventory(RegistryEntry<Potion>... potions) {
       for (int i = 9; i < 36; i++) {
-         class_1799 stack = mc.field_1724.method_31548().method_5438(i);
+         ItemStack stack = mc.player.getInventory().getStack(i);
          if (this.isSplashPotion(stack, potions)) {
             return i;
          }
@@ -161,14 +161,14 @@ public class AutoPot extends Module {
    }
 
    @SafeVarargs
-   private boolean isSplashPotion(class_1799 stack, class_6880<class_1842>... potions) {
-      if (!stack.method_7960() && stack.method_7909() == class_1802.field_8436) {
-         class_1844 contents = (class_1844)stack.method_57824(class_9334.field_49651);
+   private boolean isSplashPotion(ItemStack stack, RegistryEntry<Potion>... potions) {
+      if (!stack.isEmpty() && stack.getItem() == Items.SPLASH_POTION) {
+         PotionContentsComponent contents = (PotionContentsComponent)stack.get(DataComponentTypes.POTION_CONTENTS);
          if (contents == null) {
             return false;
          } else {
-            for (class_6880<class_1842> potion : potions) {
-               if (contents.method_57401(potion)) {
+            for (RegistryEntry<Potion> potion : potions) {
+               if (contents.matches(potion)) {
                   return true;
                }
             }
@@ -199,52 +199,52 @@ public class AutoPot extends Module {
          reservedSlots.add(this.fireResRefillSlot);
       }
 
-      this.healingRefillSlot = this.validateRefillSlot(this.healingRefillSlot, class_1847.field_8963, class_1847.field_8980);
-      this.speedRefillSlot = this.validateRefillSlot(this.speedRefillSlot, class_1847.field_9005, class_1847.field_8983, class_1847.field_8966);
-      this.jumpBoostRefillSlot = this.validateRefillSlot(this.jumpBoostRefillSlot, class_1847.field_8979, class_1847.field_8971, class_1847.field_8998);
-      this.fireResRefillSlot = this.validateRefillSlot(this.fireResRefillSlot, class_1847.field_8987, class_1847.field_8969);
+      this.healingRefillSlot = this.validateRefillSlot(this.healingRefillSlot, Potions.HEALING, Potions.STRONG_HEALING);
+      this.speedRefillSlot = this.validateRefillSlot(this.speedRefillSlot, Potions.SWIFTNESS, Potions.LONG_SWIFTNESS, Potions.STRONG_SWIFTNESS);
+      this.jumpBoostRefillSlot = this.validateRefillSlot(this.jumpBoostRefillSlot, Potions.LEAPING, Potions.LONG_LEAPING, Potions.STRONG_LEAPING);
+      this.fireResRefillSlot = this.validateRefillSlot(this.fireResRefillSlot, Potions.FIRE_RESISTANCE, Potions.LONG_FIRE_RESISTANCE);
       if (this.healing.getValue() && this.findHealingPotionInHotbar() == -1) {
-         int invSlot = this.findPotionInInventory(class_1847.field_8963, class_1847.field_8980);
+         int invSlot = this.findPotionInInventory(Potions.HEALING, Potions.STRONG_HEALING);
          if (invSlot != -1) {
             int freeSlot = this.findFreeHotbarSlot(reservedSlots);
             if (freeSlot != -1) {
-               mc.field_1761.method_2906(0, invSlot, freeSlot, class_1713.field_7791, mc.field_1724);
+               mc.interactionManager.clickSlot(0, invSlot, freeSlot, SlotActionType.SWAP, mc.player);
                this.healingRefillSlot = freeSlot;
                return;
             }
          }
       }
 
-      if (this.speed.getValue() && this.findPotionInHotbar(class_1847.field_9005, class_1847.field_8983, class_1847.field_8966) == -1) {
-         int invSlot = this.findPotionInInventory(class_1847.field_9005, class_1847.field_8983, class_1847.field_8966);
+      if (this.speed.getValue() && this.findPotionInHotbar(Potions.SWIFTNESS, Potions.LONG_SWIFTNESS, Potions.STRONG_SWIFTNESS) == -1) {
+         int invSlot = this.findPotionInInventory(Potions.SWIFTNESS, Potions.LONG_SWIFTNESS, Potions.STRONG_SWIFTNESS);
          if (invSlot != -1) {
             int freeSlot = this.findFreeHotbarSlot(reservedSlots);
             if (freeSlot != -1) {
-               mc.field_1761.method_2906(0, invSlot, freeSlot, class_1713.field_7791, mc.field_1724);
+               mc.interactionManager.clickSlot(0, invSlot, freeSlot, SlotActionType.SWAP, mc.player);
                this.speedRefillSlot = freeSlot;
                return;
             }
          }
       }
 
-      if (this.jumpBoost.getValue() && this.findPotionInHotbar(class_1847.field_8979, class_1847.field_8971, class_1847.field_8998) == -1) {
-         int invSlot = this.findPotionInInventory(class_1847.field_8979, class_1847.field_8971, class_1847.field_8998);
+      if (this.jumpBoost.getValue() && this.findPotionInHotbar(Potions.LEAPING, Potions.LONG_LEAPING, Potions.STRONG_LEAPING) == -1) {
+         int invSlot = this.findPotionInInventory(Potions.LEAPING, Potions.LONG_LEAPING, Potions.STRONG_LEAPING);
          if (invSlot != -1) {
             int freeSlot = this.findFreeHotbarSlot(reservedSlots);
             if (freeSlot != -1) {
-               mc.field_1761.method_2906(0, invSlot, freeSlot, class_1713.field_7791, mc.field_1724);
+               mc.interactionManager.clickSlot(0, invSlot, freeSlot, SlotActionType.SWAP, mc.player);
                this.jumpBoostRefillSlot = freeSlot;
                return;
             }
          }
       }
 
-      if (this.fireResistance.getValue() && this.findPotionInHotbar(class_1847.field_8987, class_1847.field_8969) == -1) {
-         int invSlot = this.findPotionInInventory(class_1847.field_8987, class_1847.field_8969);
+      if (this.fireResistance.getValue() && this.findPotionInHotbar(Potions.FIRE_RESISTANCE, Potions.LONG_FIRE_RESISTANCE) == -1) {
+         int invSlot = this.findPotionInInventory(Potions.FIRE_RESISTANCE, Potions.LONG_FIRE_RESISTANCE);
          if (invSlot != -1) {
             int freeSlot = this.findFreeHotbarSlot(reservedSlots);
             if (freeSlot != -1) {
-               mc.field_1761.method_2906(0, invSlot, freeSlot, class_1713.field_7791, mc.field_1724);
+               mc.interactionManager.clickSlot(0, invSlot, freeSlot, SlotActionType.SWAP, mc.player);
                this.fireResRefillSlot = freeSlot;
             }
          }
@@ -252,18 +252,18 @@ public class AutoPot extends Module {
    }
 
    @SafeVarargs
-   private int validateRefillSlot(int slot, class_6880<class_1842>... potions) {
+   private int validateRefillSlot(int slot, RegistryEntry<Potion>... potions) {
       if (slot == -1) {
          return -1;
       } else {
-         class_1799 stack = mc.field_1724.method_31548().method_5438(slot);
+         ItemStack stack = mc.player.getInventory().getStack(slot);
          return this.isSplashPotion(stack, potions) ? slot : -1;
       }
    }
 
    private int findFreeHotbarSlot(Set<Integer> usedSlots) {
       for (int i = 0; i < 9; i++) {
-         if (!usedSlots.contains(i) && mc.field_1724.method_31548().method_5438(i).method_7960()) {
+         if (!usedSlots.contains(i) && mc.player.getInventory().getStack(i).isEmpty()) {
             return i;
          }
       }

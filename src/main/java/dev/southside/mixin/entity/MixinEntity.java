@@ -8,15 +8,15 @@ import dev.southside.mixininterfaces.IBoxUpdate;
 import dev.southside.module.impl.combat.HitBox;
 import dev.southside.module.impl.movement.NoPush;
 import dev.southside.utils.player.FakePlayerEntity;
-import net.minecraft.class_1297;
-import net.minecraft.class_1313;
-import net.minecraft.class_238;
-import net.minecraft.class_243;
-import net.minecraft.class_2561;
-import net.minecraft.class_310;
-import net.minecraft.class_5569;
-import net.minecraft.class_745;
-import net.minecraft.class_746;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.MovementType;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.text.Text;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.world.entity.EntityChangeListener;
+import net.minecraft.client.network.OtherClientPlayerEntity;
+import net.minecraft.client.network.ClientPlayerEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -27,106 +27,106 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
-@Mixin({class_1297.class})
+@Mixin({Entity.class})
 public abstract class MixinEntity {
    @Shadow
-   private class_243 field_22467;
+   private Vec3d pos;
    @Shadow
-   private class_238 field_6005;
+   private Box boundingBox;
    @Shadow
-   private class_243 field_18276;
+   private Vec3d velocity;
    @Shadow
-   private int field_5986;
+   private int id;
    @Shadow
-   private class_5569 field_26996;
+   private EntityChangeListener changeListener;
 
    @Shadow
-   public abstract int method_5628();
+   public abstract int getId();
 
    @Shadow
-   public abstract float method_36454();
+   public abstract float getYaw();
 
    @Shadow
-   protected static class_243 method_18795(class_243 movementInput, float speed, float yaw) {
+   protected static Vec3d movementInputToVelocity(Vec3d movementInput, float speed, float yaw) {
       return null;
    }
 
    @Shadow
-   public abstract class_243 method_18798();
+   public abstract Vec3d getVelocity();
 
    @Shadow
-   public abstract boolean method_5753();
+   public abstract boolean isFireImmune();
 
    @Shadow
-   public abstract boolean method_32314();
+   public abstract boolean isFrozen();
 
    @Shadow
-   protected abstract void method_63613();
+   protected abstract void updatePrevPosition();
 
    @Shadow
-   public abstract class_238 method_33332();
+   public abstract Box calculateBoundingBox();
 
    @Shadow
-   public abstract void method_5857(class_238 var1);
+   public abstract void setBoundingBox(Box var1);
 
    @Shadow
-   public abstract class_2561 method_5477();
+   public abstract Text getName();
 
    @Shadow
-   public abstract void method_23327(double var1, double var3, double var5);
+   public abstract void setPos(double var1, double var3, double var5);
 
    @Shadow
-   protected abstract void method_5710(float var1, float var2);
+   protected abstract void setRotation(float var1, float var2);
 
    @Shadow
-   protected abstract class_238 method_65341(class_243 var1);
+   protected abstract Box calculateDefaultBoundingBox(Vec3d var1);
 
    @Shadow
-   public abstract void method_33574(class_243 var1);
+   public abstract void setPosition(Vec3d var1);
 
    @Redirect(
-      method = {"method_5784(Lnet/minecraft/class_1313;Lnet/minecraft/class_243;)V"},
+      method = {"move(Lnet/minecraft/entity/MovementType;Lnet/minecraft/util/math/Vec3d;)V"},
       at = @At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_1297;method_65038()Z"
+         target = "Lnet/minecraft/entity/Entity;isControlledByPlayer()Z"
       )
    )
-   public boolean fall_disabler(class_1297 instance) {
-      return instance instanceof class_746 ? false : instance.method_65038();
+   public boolean fall_disabler(Entity instance) {
+      return instance instanceof ClientPlayerEntity ? false : instance.isControlledByPlayer();
    }
 
    @Redirect(
-      method = {"method_5724(FLnet/minecraft/class_243;)V"},
+      method = {"updateVelocity(FLnet/minecraft/util/math/Vec3d;)V"},
       at = @At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_1297;method_18795(Lnet/minecraft/class_243;FF)Lnet/minecraft/class_243;"
+         target = "Lnet/minecraft/entity/Entity;movementInputToVelocity(Lnet/minecraft/util/math/Vec3d;FF)Lnet/minecraft/util/math/Vec3d;"
       )
    )
-   public class_243 hookVelocity(class_243 movementInput, float speed, float yaw) {
-      if ((class_1297)(Object)this == class_310.method_1551().field_1724) {
+   public Vec3d hookVelocity(Vec3d movementInput, float speed, float yaw) {
+      if ((Entity)(Object)this == MinecraftClient.getInstance().player) {
          StrafeEvent event = Southside.INSTANCE.getEventBus().post(new StrafeEvent(yaw));
-         return method_18795(movementInput, speed, event.getYaw());
+         return movementInputToVelocity(movementInput, speed, event.getYaw());
       } else {
-         return method_18795(movementInput, speed, yaw);
+         return movementInputToVelocity(movementInput, speed, yaw);
       }
    }
 
    @Inject(
-      method = {"method_5724(FLnet/minecraft/class_243;)V"},
+      method = {"updateVelocity(FLnet/minecraft/util/math/Vec3d;)V"},
       at = {@At("TAIL")}
    )
-   public void callPostStrafe(float speed, class_243 movementInput, CallbackInfo ci) {
+   public void callPostStrafe(float speed, Vec3d movementInput, CallbackInfo ci) {
       Southside.INSTANCE.getEventBus().post(new PostStrafeEvent());
    }
 
    @ModifyArgs(
-      method = {"method_5697(Lnet/minecraft/class_1297;)V"},
+      method = {"pushAwayFrom(Lnet/minecraft/entity/Entity;)V"},
       at = @At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_1297;method_5762(DDD)V"
+         target = "Lnet/minecraft/entity/Entity;addVelocity(DDD)V"
       )
    )
-   private void onPushAwayFrom(Args args, class_1297 entity) {
+   private void onPushAwayFrom(Args args, Entity entity) {
       if (Southside.INSTANCE.getModuleManager().get(NoPush.class).isEnabled()) {
          args.set(0, 0.0);
          args.set(2, 0.0);
@@ -139,11 +139,11 @@ public abstract class MixinEntity {
    }
 
    @Inject(
-      method = {"method_5784(Lnet/minecraft/class_1313;Lnet/minecraft/class_243;)V"},
+      method = {"move(Lnet/minecraft/entity/MovementType;Lnet/minecraft/util/math/Vec3d;)V"},
       at = {@At("HEAD")},
       cancellable = true
    )
-   public void move(class_1313 movementType, class_243 movement, CallbackInfo ci) {
+   public void move(MovementType movementType, Vec3d movement, CallbackInfo ci) {
       EntityMoveEvent event = new EntityMoveEvent();
       Southside.INSTANCE.getEventBus().call(event);
       if (event.isCancelled()) {
@@ -152,42 +152,42 @@ public abstract class MixinEntity {
    }
 
    @Inject(
-      method = {"method_5829()Lnet/minecraft/class_238;"},
+      method = {"getBoundingBox()Lnet/minecraft/util/math/Box;"},
       at = {@At("HEAD")},
       cancellable = true
    )
-   public final void getBoundingBox(CallbackInfoReturnable<class_238> cir) {
+   public final void getBoundingBox(CallbackInfoReturnable<Box> cir) {
       HitBox hitBox = Southside.INSTANCE.getModuleManager().get(HitBox.class);
       if (hitBox.isEnabled()
-         && class_310.method_1551() != null
-         && class_310.method_1551().field_1724 != null
-         && this.method_5628() != class_310.method_1551().field_1724.method_5628()) {
+         && MinecraftClient.getInstance() != null
+         && MinecraftClient.getInstance().player != null
+         && this.getId() != MinecraftClient.getInstance().player.getId()) {
          cir.setReturnValue(
-            new class_238(
-               this.field_6005.field_1323 - hitBox.XZExpand.getValue().floatValue() / 2.0F,
-               this.field_6005.field_1322 - hitBox.YExpand.getValue().floatValue() / 2.0F,
-               this.field_6005.field_1321 - hitBox.XZExpand.getValue().floatValue() / 2.0F,
-               this.field_6005.field_1320 + hitBox.XZExpand.getValue().floatValue() / 2.0F,
-               this.field_6005.field_1325 + hitBox.YExpand.getValue().floatValue() / 2.0F,
-               this.field_6005.field_1324 + hitBox.XZExpand.getValue().floatValue() / 2.0F
+            new Box(
+               this.boundingBox.minX - hitBox.XZExpand.getValue().floatValue() / 2.0F,
+               this.boundingBox.minY - hitBox.YExpand.getValue().floatValue() / 2.0F,
+               this.boundingBox.minZ - hitBox.XZExpand.getValue().floatValue() / 2.0F,
+               this.boundingBox.maxX + hitBox.XZExpand.getValue().floatValue() / 2.0F,
+               this.boundingBox.maxY + hitBox.YExpand.getValue().floatValue() / 2.0F,
+               this.boundingBox.maxZ + hitBox.XZExpand.getValue().floatValue() / 2.0F
             )
          );
       }
    }
 
    @Inject(
-      method = {"method_23311()V"},
+      method = {"refreshPosition()V"},
       at = {@At("HEAD")},
       cancellable = true
    )
    public final void redirectRefreshPosition(CallbackInfo ci) {
-      if ((Object)this instanceof class_745 entity) {
-         class_243 boxPos = ((IBoxUpdate)entity).getServerBoxPos();
+      if ((Object)this instanceof OtherClientPlayerEntity entity) {
+         Vec3d boxPos = ((IBoxUpdate)entity).getServerBoxPos();
          if (boxPos == null) {
             return;
          }
 
-         this.method_5857(this.method_65341(boxPos));
+         this.setBoundingBox(this.calculateDefaultBoundingBox(boxPos));
          ci.cancel();
       }
    }

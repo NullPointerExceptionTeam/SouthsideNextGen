@@ -50,31 +50,31 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import net.minecraft.class_10185;
-import net.minecraft.class_1268;
-import net.minecraft.class_1269;
-import net.minecraft.class_1297;
-import net.minecraft.class_1657;
-import net.minecraft.class_1747;
-import net.minecraft.class_1792;
-import net.minecraft.class_1799;
-import net.minecraft.class_1802;
-import net.minecraft.class_2189;
-import net.minecraft.class_2246;
-import net.minecraft.class_2248;
-import net.minecraft.class_2323;
-import net.minecraft.class_2338;
-import net.minecraft.class_2349;
-import net.minecraft.class_2350;
-import net.minecraft.class_238;
-import net.minecraft.class_243;
-import net.minecraft.class_2533;
-import net.minecraft.class_2846;
-import net.minecraft.class_2879;
-import net.minecraft.class_3532;
-import net.minecraft.class_3965;
-import net.minecraft.class_4587;
-import net.minecraft.class_2846.class_2847;
+import net.minecraft.util.PlayerInput;
+import net.minecraft.util.Hand;
+import net.minecraft.util.ActionResult;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.BlockItem;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.block.AirBlock;
+import net.minecraft.block.Blocks;
+import net.minecraft.block.Block;
+import net.minecraft.block.DoorBlock;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.block.FenceGateBlock;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.block.TrapdoorBlock;
+import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
+import net.minecraft.network.packet.c2s.play.HandSwingC2SPacket;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket.Action;
 import org.lwjgl.nanovg.NVGPaint;
 import org.lwjgl.nanovg.NanoVG;
 
@@ -112,49 +112,49 @@ public class Scaffold extends Module {
     public final Switch blockCount = new Switch("BlockCount", "BlockCount", true);
     public final Dropdown blockCountStyle = new Dropdown("BlockCount Style", "Retro", "Retro", "Old", "Dark");
     public final Slider blockCountOffset = new Slider("BlockCount Y Offset", 0, 0, 200, 1);
-    public static final List<class_2248> invalidBlocks = Arrays.asList(
-            class_2246.field_10485,
-            class_2246.field_10121,
-            class_2246.field_10034,
-            class_2246.field_10443,
-            class_2246.field_10380,
-            class_2246.field_10535,
-            class_2246.field_10102,
-            class_2246.field_10343,
-            class_2246.field_10336,
-            class_2246.field_9980,
-            class_2246.field_10181,
-            class_2246.field_27097,
-            class_2246.field_10200,
-            class_2246.field_10158,
-            class_2246.field_40284,
-            class_2246.field_10179,
-            class_2246.field_10228,
-            class_2246.field_10375,
-            class_2246.field_10523,
-            class_2246.field_10429,
-            class_2246.field_10121,
-            class_2246.field_10231,
-            class_2246.field_10411,
-            class_2246.field_10544,
-            class_2246.field_10284,
-            class_2246.field_10330,
-            class_2246.field_37554,
-            class_2246.field_42735,
-            class_2246.field_40277,
-            class_2246.field_22104,
-            class_2246.field_22105,
-            class_2246.field_40262,
-            class_2246.field_40264,
-            class_2246.field_40263,
-            class_2246.field_40266,
-            class_2246.field_40265,
-            class_2246.field_40267,
-            class_2246.field_40270,
-            class_2246.field_42738,
-            class_2246.field_40271,
-            class_2246.field_40268,
-            class_2246.field_40269
+    public static final List<Block> invalidBlocks = Arrays.asList(
+            Blocks.ENCHANTING_TABLE,
+            Blocks.OAK_SIGN,
+            Blocks.CHEST,
+            Blocks.ENDER_CHEST,
+            Blocks.TRAPPED_CHEST,
+            Blocks.ANVIL,
+            Blocks.SAND,
+            Blocks.COBWEB,
+            Blocks.TORCH,
+            Blocks.CRAFTING_TABLE,
+            Blocks.FURNACE,
+            Blocks.WATER_CAULDRON,
+            Blocks.DISPENSER,
+            Blocks.STONE_PRESSURE_PLATE,
+            Blocks.BAMBOO_PRESSURE_PLATE,
+            Blocks.NOTE_BLOCK,
+            Blocks.DROPPER,
+            Blocks.TNT,
+            Blocks.REDSTONE_TORCH,
+            Blocks.DAYLIGHT_DETECTOR,
+            Blocks.OAK_SIGN,
+            Blocks.BIRCH_SIGN,
+            Blocks.SPRUCE_SIGN,
+            Blocks.JUNGLE_SIGN,
+            Blocks.ACACIA_SIGN,
+            Blocks.DARK_OAK_SIGN,
+            Blocks.MANGROVE_SIGN,
+            Blocks.CHERRY_SIGN,
+            Blocks.BAMBOO_SIGN,
+            Blocks.CRIMSON_SIGN,
+            Blocks.WARPED_SIGN,
+            Blocks.OAK_HANGING_SIGN,
+            Blocks.BIRCH_HANGING_SIGN,
+            Blocks.SPRUCE_HANGING_SIGN,
+            Blocks.JUNGLE_HANGING_SIGN,
+            Blocks.ACACIA_HANGING_SIGN,
+            Blocks.DARK_OAK_HANGING_SIGN,
+            Blocks.MANGROVE_HANGING_SIGN,
+            Blocks.CHERRY_HANGING_SIGN,
+            Blocks.BAMBOO_HANGING_SIGN,
+            Blocks.CRIMSON_HANGING_SIGN,
+            Blocks.WARPED_HANGING_SIGN
     );
     private Scaffold.SlotData slot;
     private Scaffold.SlotData blockSlot;
@@ -167,7 +167,7 @@ public class Scaffold extends Module {
     private int rotateCount = 0;
     private boolean holdingInput = false;
     private double posY;
-    private class_2338 lastPlacePosition = null;
+    private BlockPos lastPlacePosition = null;
     private int tellyJumpTicks;
     private boolean waitingForEagleSneak;
     private Rotation lastRotation;
@@ -185,15 +185,15 @@ public class Scaffold extends Module {
     public void onEnable() {
         this.placeCount = 0;
         this.ups = 0;
-        if (mc.field_1724 != null) {
+        if (mc.player != null) {
             if (this.blockFly.getValue()) {
                 ServerPacketManager.reset(true);
             }
 
             this.boxExpand = RandomUtils.nextDouble(0.1, 0.2);
-            this.lastRotation = new Rotation(mc.field_1724.method_36454(), mc.field_1724.method_36455());
-            this.slot = new Scaffold.SlotData(mc.field_1724.method_31548().field_7545, class_1268.field_5808);
-            this.oldSlot = mc.field_1724.method_31548().field_7545;
+            this.lastRotation = new Rotation(mc.player.getYaw(), mc.player.getPitch());
+            this.slot = new Scaffold.SlotData(mc.player.getInventory().selectedSlot, Hand.MAIN_HAND);
+            this.oldSlot = mc.player.getInventory().selectedSlot;
             this.blockSlot = null;
             this.startHotbarCount = Math.max(1, this.getBlockCountHotbar());
             this.blockData = null;
@@ -223,10 +223,10 @@ public class Scaffold extends Module {
 
     @Override
     public void onDisable() {
-        if (mc.field_1724 != null) {
-            mc.field_1724.method_31548().field_7545 = this.slot.slot();
-            mc.field_1724.method_31548().field_7545 = this.oldSlot;
-            mc.field_1690.field_1832.method_23481(false);
+        if (mc.player != null) {
+            mc.player.getInventory().selectedSlot = this.slot.slot();
+            mc.player.getInventory().selectedSlot = this.oldSlot;
+            mc.options.sneakKey.setPressed(false);
             MovementUtils.resetMove();
             super.onDisable();
         }
@@ -242,7 +242,7 @@ public class Scaffold extends Module {
     @EventHandler
     public void onRender3D(Render3DEvent event) {
         if (this.lastPlacePosition != null && this.mark.getValue()) {
-            class_238 box = new class_238(this.lastPlacePosition);
+            Box box = new Box(this.lastPlacePosition);
             Render3D.boxLines(box, this.markLineColor.getValue().toJavaColor());
             Render3D.boxSides(box, this.markSideColor.getValue().toJavaColor());
         }
@@ -250,25 +250,25 @@ public class Scaffold extends Module {
 
     @EventHandler
     public void onRender2D(Render2DEvent event) {
-        if (this.isEnabled() && mc.field_1724 != null && this.blockCount.getValue()) {
+        if (this.isEnabled() && mc.player != null && this.blockCount.getValue()) {
             int newCount = Math.max(0, this.getBlockCountHotbar());
             if (newCount > this.startHotbarCount) {
                 this.startHotbarCount = newCount;
             }
 
-            float rate = class_3532.method_15363((float)newCount / this.startHotbarCount, 0.0F, 1.0F);
-            float centerX = mc.method_22683().method_4486() / 2.0F;
-            float centerY = mc.method_22683().method_4502() / 2.0F;
+            float rate = MathHelper.clamp((float)newCount / this.startHotbarCount, 0.0F, 1.0F);
+            float centerX = mc.getWindow().getScaledWidth() / 2.0F;
+            float centerY = mc.getWindow().getScaledHeight() / 2.0F;
             float y = centerY + 15.0F + this.blockCountOffset.getValue().floatValue();
             if (this.blockCountStyle.isMode("Old")) {
                 String text = newCount + " Blocks";
-                int x = Math.round(centerX - mc.field_1772.method_1727(text) / 2.0F);
-                event.getDrawContext().method_51433(mc.field_1772, text, x, Math.round(y), this.getBlockCountColor(newCount), true);
+                int x = Math.round(centerX - mc.textRenderer.getWidth(text) / 2.0F);
+                event.getDrawContext().drawText(mc.textRenderer, text, x, Math.round(y), this.getBlockCountColor(newCount), true);
                 this.lastCount = newCount;
                 this.count = newCount;
             } else {
                 if (this.blockCountStyle.isMode("Retro")) {
-                    class_1799 displayStack = this.getHeldBlockStack();
+                    ItemStack displayStack = this.getHeldBlockStack();
                     float scale = 1.0F;
                     float height = 26.0F * scale;
                     float radius = 5.0F * scale;
@@ -364,25 +364,25 @@ public class Scaffold extends Module {
                     float itemX = x + itemOffsetX;
                     float itemY = y + (height - itemSize) / 2.0F;
                     float itemScale = itemSize / 16.0F;
-                    if (!displayStack.method_7960() && this.getBlockCountHotbar() > 0) {
-                        class_4587 matrices = event.getDrawContext().method_51448();
-                        matrices.method_22903();
-                        matrices.method_46416(itemX, itemY, 0.0F);
-                        matrices.method_22905(itemScale, itemScale, 1.0F);
-                        event.getDrawContext().method_51427(displayStack, 0, 0);
-                        matrices.method_22909();
+                    if (!displayStack.isEmpty() && this.getBlockCountHotbar() > 0) {
+                        MatrixStack matrices = event.getDrawContext().getMatrices();
+                        matrices.push();
+                        matrices.translate(itemX, itemY, 0.0F);
+                        matrices.scale(itemScale, itemScale, 1.0F);
+                        event.getDrawContext().drawItem(displayStack, 0, 0);
+                        matrices.pop();
                     } else {
-                        class_4587 matrices = event.getDrawContext().method_51448();
-                        matrices.method_22903();
-                        matrices.method_46416(itemX, itemY, 0.0F);
-                        matrices.method_22905(itemScale, itemScale, 1.0F);
-                        event.getDrawContext().method_51427(new class_1799(class_1802.field_8077), 0, 0);
-                        matrices.method_22909();
+                        MatrixStack matrices = event.getDrawContext().getMatrices();
+                        matrices.push();
+                        matrices.translate(itemX, itemY, 0.0F);
+                        matrices.scale(itemScale, itemScale, 1.0F);
+                        event.getDrawContext().drawItem(new ItemStack(Items.BARRIER), 0, 0);
+                        matrices.pop();
                     }
                 }
 
                 if (this.blockCountStyle.isMode("Dark")) {
-                    class_1799 displayStack = this.getHeldBlockStack();
+                    ItemStack displayStack = this.getHeldBlockStack();
                     float scale = 1.0F;
                     float height = 22.0F * scale;
                     float pad = 5.0F * scale;
@@ -494,20 +494,20 @@ public class Scaffold extends Module {
                     float itemX = x + itemPad + accentWidth + accentGap;
                     float itemY = y + (height - itemSize) / 2.0F;
                     float itemScale = itemSize / 16.0F;
-                    if (!displayStack.method_7960() && this.getBlockCountHotbar() > 0) {
-                        class_4587 matrices = event.getDrawContext().method_51448();
-                        matrices.method_22903();
-                        matrices.method_46416(itemX, itemY, 0.0F);
-                        matrices.method_22905(itemScale, itemScale, 1.0F);
-                        event.getDrawContext().method_51427(displayStack, 0, 0);
-                        matrices.method_22909();
+                    if (!displayStack.isEmpty() && this.getBlockCountHotbar() > 0) {
+                        MatrixStack matrices = event.getDrawContext().getMatrices();
+                        matrices.push();
+                        matrices.translate(itemX, itemY, 0.0F);
+                        matrices.scale(itemScale, itemScale, 1.0F);
+                        event.getDrawContext().drawItem(displayStack, 0, 0);
+                        matrices.pop();
                     } else {
-                        class_4587 matrices = event.getDrawContext().method_51448();
-                        matrices.method_22903();
-                        matrices.method_46416(itemX, itemY, 0.0F);
-                        matrices.method_22905(itemScale, itemScale, 1.0F);
-                        event.getDrawContext().method_51427(new class_1799(class_1802.field_8077), 0, 0);
-                        matrices.method_22909();
+                        MatrixStack matrices = event.getDrawContext().getMatrices();
+                        matrices.push();
+                        matrices.translate(itemX, itemY, 0.0F);
+                        matrices.scale(itemScale, itemScale, 1.0F);
+                        event.getDrawContext().drawItem(new ItemStack(Items.BARRIER), 0, 0);
+                        matrices.pop();
                     }
                 }
 
@@ -519,8 +519,8 @@ public class Scaffold extends Module {
 
     @EventHandler
     public void onHeldItem(UpdateHeldItemEvent event) {
-        if (this.spoofItem.getValue() && event.getHand() == class_1268.field_5808) {
-            event.setItem(mc.field_1724.method_31548().method_5438(this.oldSlot));
+        if (this.spoofItem.getValue() && event.getHand() == Hand.MAIN_HAND) {
+            event.setItem(mc.player.getInventory().getStack(this.oldSlot));
         }
     }
 
@@ -529,7 +529,7 @@ public class Scaffold extends Module {
         this.setSuffix(this.mode.getMode());
         if (this.blockSlot != null && !this.blockSlot.check()) {
             if (PlayerUtils.onGroundTicks > (this.smoothed.getValue() && this.safeMode.getValue() && !this.testOnGround.getValue() ? 1 : 0)
-                    && !mc.field_1690.field_1903.method_1434()
+                    && !mc.options.jumpKey.isPressed()
                     && PlayerUtils.isMoving()
                     && this.mode.isMode("Telly")) {
                 String var2 = this.jumpMode.getMode();
@@ -538,24 +538,24 @@ public class Scaffold extends Module {
                     default:
                         break;
                     case "Normal":
-                        mc.field_1724.method_6043();
+                        mc.player.jump();
                         this.spoofJumpInput();
                         break;
                     case "Parkour":
-                        double yaw = Math.toRadians(mc.field_1724.method_36454());
+                        double yaw = Math.toRadians(mc.player.getYaw());
                         double forwardX = -Math.sin(yaw);
                         double forwardZ = Math.cos(yaw);
-                        class_2338 frontPos1 = new class_2338(
-                                (int)(mc.field_1724.method_23317() + forwardX), (int)(mc.field_1724.method_23318() - 0.1), (int)(mc.field_1724.method_23321() + forwardZ)
+                        BlockPos frontPos1 = new BlockPos(
+                                (int)(mc.player.getX() + forwardX), (int)(mc.player.getY() - 0.1), (int)(mc.player.getZ() + forwardZ)
                         );
-                        class_2338 frontPos2 = new class_2338(
-                                (int)(mc.field_1724.method_23317() + forwardX * 2.0),
-                                (int)(mc.field_1724.method_23318() - 0.1),
-                                (int)(mc.field_1724.method_23321() + forwardZ * 2.0)
+                        BlockPos frontPos2 = new BlockPos(
+                                (int)(mc.player.getX() + forwardX * 2.0),
+                                (int)(mc.player.getY() - 0.1),
+                                (int)(mc.player.getZ() + forwardZ * 2.0)
                         );
-                        if (mc.field_1687.method_8320(frontPos1).method_26204() instanceof class_2189
-                                || mc.field_1687.method_8320(frontPos2).method_26204() instanceof class_2189) {
-                            mc.field_1724.method_6043();
+                        if (mc.world.getBlockState(frontPos1).getBlock() instanceof AirBlock
+                                || mc.world.getBlockState(frontPos2).getBlock() instanceof AirBlock) {
+                            mc.player.jump();
                             this.spoofJumpInput();
                         }
                 }
@@ -569,11 +569,11 @@ public class Scaffold extends Module {
     }
 
     private void spoofJumpInput() {
-        if (mc.field_1724 != null) {
-            class_10185 current = mc.field_1724.field_3913.field_54155;
+        if (mc.player != null) {
+            PlayerInput current = mc.player.input.playerInput;
 
-            mc.field_1724.field_3913.field_54155 = new class_10185(
-                    current.comp_3159(), current.comp_3160(), current.comp_3161(), current.comp_3162(), true, current.comp_3164(), current.comp_3165()
+            mc.player.input.playerInput = new PlayerInput(
+                    current.forward(), current.backward(), current.left(), current.right(), true, current.sneak(), current.sprint()
             );
         }
     }
@@ -585,11 +585,11 @@ public class Scaffold extends Module {
         )
                 : null;
         if (rotation == null) {
-            if (RotationUtils.normalizeYawDiff(mc.field_1724.method_36454() + 100.0F, RotationUtils.getServerRotation().yaw)
-                    < RotationUtils.normalizeYawDiff(mc.field_1724.method_36454() - 100.0F, RotationUtils.getServerRotation().yaw)) {
-                rotation = new Rotation(mc.field_1724.method_36454() + 100.0F, RotationUtils.getServerRotation().pitch);
+            if (RotationUtils.normalizeYawDiff(mc.player.getYaw() + 100.0F, RotationUtils.getServerRotation().yaw)
+                    < RotationUtils.normalizeYawDiff(mc.player.getYaw() - 100.0F, RotationUtils.getServerRotation().yaw)) {
+                rotation = new Rotation(mc.player.getYaw() + 100.0F, RotationUtils.getServerRotation().pitch);
             } else {
-                rotation = new Rotation(mc.field_1724.method_36454() - 100.0F, RotationUtils.getServerRotation().pitch);
+                rotation = new Rotation(mc.player.getYaw() - 100.0F, RotationUtils.getServerRotation().pitch);
             }
         }
 
@@ -602,11 +602,11 @@ public class Scaffold extends Module {
         } else {
             double diff = RotationUtils.yawDiffDirectly(rotation.yaw, RotationUtils.getServerRotation().yaw);
             if (this.mode.isMode("Telly")) {
-                if (mc.field_1690.field_1903.method_1434() && this.noUptelly.getValue()) {
+                if (mc.options.jumpKey.isPressed() && this.noUptelly.getValue()) {
                     return rotation;
                 }
 
-                if (mc.field_1690.field_1903.method_1434() && this.randomSlow.getValue()) {
+                if (mc.options.jumpKey.isPressed() && this.randomSlow.getValue()) {
                     this.ups++;
                     if (this.ups % 2 == 0) {
                         return rotation;
@@ -614,16 +614,16 @@ public class Scaffold extends Module {
                 }
 
                 if (!this.smoothed.getValue() || PlayerUtils.offGroundTicks >= this.rotTick.getValue().intValue() && !this.safeMode.getValue()) {
-                    if (this.snap.getValue() && mc.field_1690.field_1903.method_1434()) {
+                    if (this.snap.getValue() && mc.options.jumpKey.isPressed()) {
                         if (this.lastBlockData == null || PlayerUtils.offGroundTicks < this.rotTick.getValue().intValue()) {
-                            return new Rotation(mc.field_1724.method_36454(), 85.0F + (float)Math.random());
+                            return new Rotation(mc.player.getYaw(), 85.0F + (float)Math.random());
                         }
                     } else if (PlayerUtils.offGroundTicks < this.rotTick.getValue().intValue()) {
-                        return new Rotation(mc.field_1724.method_36454(), 85.0F + (float)Math.random());
+                        return new Rotation(mc.player.getYaw(), 85.0F + (float)Math.random());
                     }
                 } else if (PlayerUtils.onGroundTicks > 0) {
-                    if (!this.safeMode.getValue() || this.testOnGround.getValue() && !mc.field_1690.field_1903.method_1434()) {
-                        return new Rotation(mc.field_1724.method_36454(), 75.5F);
+                    if (!this.safeMode.getValue() || this.testOnGround.getValue() && !mc.options.jumpKey.isPressed()) {
+                        return new Rotation(mc.player.getYaw(), 75.5F);
                     }
 
                     switch (PlayerUtils.onGroundTicks) {
@@ -633,14 +633,14 @@ public class Scaffold extends Module {
                                 rotation.pitch = 75.5F;
                             } else if (this.blockData != null) {
                                 rotation = RotationUtils.getClosestToBlockFace(
-                                        this.blockData.pos(), this.blockData.facing(), mc.field_1724.method_36454(), RotationUtils.getServerRotation().pitch
+                                        this.blockData.pos(), this.blockData.facing(), mc.player.getYaw(), RotationUtils.getServerRotation().pitch
                                 );
                             }
 
-                            mc.field_1724.field_6228 = 2;
+                            mc.player.jumpingCooldown = 2;
                             break;
                         case 2:
-                            return new Rotation(mc.field_1724.method_36454(), 75.5F);
+                            return new Rotation(mc.player.getYaw(), 75.5F);
                     }
                 } else {
                     float smooth = switch (PlayerUtils.offGroundTicks) {
@@ -655,13 +655,13 @@ public class Scaffold extends Module {
             if (this.lastRotation != null
                     && this.blockData != null
                     && ClientRayTraceUtil.didHitBlockFace(
-                    mc.field_1724, this.lastRotation.yaw, this.lastRotation.pitch, this.blockData.pos(), this.blockData.facing(), true
+                    mc.player, this.lastRotation.yaw, this.lastRotation.pitch, this.blockData.pos(), this.blockData.facing(), true
             )) {
                 return this.lastRotation;
             } else if (this.blockData != null
                     && !this.alwaysUpdateRot.getValue()
                     && PlayerUtils.offGroundTicks >= this.rotTick.getValue().intValue()
-                    && !ClientRayTraceUtil.didHitBlockFace(mc.field_1724, rotation.yaw, rotation.pitch, this.blockData.pos(), this.blockData.facing(), true)
+                    && !ClientRayTraceUtil.didHitBlockFace(mc.player, rotation.yaw, rotation.pitch, this.blockData.pos(), this.blockData.facing(), true)
                     && PlayerUtils.offGroundTicks >= this.rotTick.getValue().intValue()) {
                 this.lastRotation.yaw = this.lastRotation.yaw + (float)Math.random();
                 return this.lastRotation;
@@ -678,7 +678,7 @@ public class Scaffold extends Module {
                 return;
             }
 
-            if (mc.field_1761 == null) {
+            if (mc.interactionManager == null) {
                 return;
             }
 
@@ -686,15 +686,15 @@ public class Scaffold extends Module {
                 return;
             }
 
-            class_3965 block = ClientRayTraceUtil.getFacedBlock(RotationUtils.getRotation().yaw, RotationUtils.getRotation().pitch);
+            BlockHitResult block = ClientRayTraceUtil.getFacedBlock(RotationUtils.getRotation().yaw, RotationUtils.getRotation().pitch);
             if (!ClientRayTraceUtil.didHitBlockFace(
-                    mc.field_1724, RotationUtils.getRotation().yaw, RotationUtils.getRotation().pitch, this.blockData.pos(), this.blockData.facing(), true
+                    mc.player, RotationUtils.getRotation().yaw, RotationUtils.getRotation().pitch, this.blockData.pos(), this.blockData.facing(), true
             )) {
                 return;
             }
 
-            if (this.blockSlot.hand().equals(class_1268.field_5808)) {
-                mc.field_1724.method_31548().field_7545 = this.blockSlot.slot();
+            if (this.blockSlot.hand().equals(Hand.MAIN_HAND)) {
+                mc.player.getInventory().selectedSlot = this.blockSlot.slot();
             }
 
             if (this.duplicateRotPlace.getValue() && PlayerUtils.lastPitchDiff > 2.0) {
@@ -710,28 +710,28 @@ public class Scaffold extends Module {
                 }
 
                 if (this.placeCount == 0) {
-                    PacketUtils.sendPacketNoEvent(new class_2846(class_2847.field_12969, new class_2338(0, 0, 0), class_2350.field_11033));
+                    PacketUtils.sendPacketNoEvent(new PlayerActionC2SPacket(Action.SWAP_ITEM_WITH_OFFHAND, new BlockPos(0, 0, 0), Direction.DOWN));
                     PacketOrderManager.swap = true;
                 }
             }
 
             if (this.interactItem.getValue()) {
-                mc.field_1761.method_2919(mc.field_1724, class_1268.field_5808);
+                mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
             }
 
-            class_1269 result = mc.field_1761.method_2896(mc.field_1724, this.blockSlot.hand(), block);
+            ActionResult result = mc.interactionManager.interactBlock(mc.player, this.blockSlot.hand(), block);
             PacketOrderManager.rightClicking = true;
-            if (result == class_1269.field_5812) {
+            if (result == ActionResult.SUCCESS) {
                 this.placeCount++;
-                this.lastPlacePosition = this.blockData.pos().method_10093(this.blockData.facing());
+                this.lastPlacePosition = this.blockData.pos().offset(this.blockData.facing());
                 if (PlayerUtils.lastPitchDiff > 0.0) {
                     PlayerUtils.lastPlacePitchDiff = PlayerUtils.lastPitchDiff;
                 }
 
                 if (this.noSwing.getValue()) {
-                    PacketUtils.sendPacket(new class_2879(this.blockSlot.hand()));
+                    PacketUtils.sendPacket(new HandSwingC2SPacket(this.blockSlot.hand()));
                 } else {
-                    mc.field_1724.method_6104(this.blockSlot.hand());
+                    mc.player.swingHand(this.blockSlot.hand());
                 }
             }
         }
@@ -761,45 +761,45 @@ public class Scaffold extends Module {
     @EventHandler
     public void onRotation(RotationEvent event) {
         this.blockSlot = null;
-        if (InventoryUtil.isFullBlock(mc.field_1724.method_6079()) && this.isValid(mc.field_1724.method_6079().method_7909())) {
-            this.blockSlot = new Scaffold.SlotData(45, class_1268.field_5810);
+        if (InventoryUtil.isFullBlock(mc.player.getOffHandStack()) && this.isValid(mc.player.getOffHandStack().getItem())) {
+            this.blockSlot = new Scaffold.SlotData(45, Hand.OFF_HAND);
         }
 
         if (this.blockSlot == null
                 && !this.blockSlotMode.isMode("Most Blocks")
-                && InventoryUtil.isFullBlock(mc.field_1724.method_6047())
-                && this.isValid(mc.field_1724.method_6047().method_7909())) {
-            this.blockSlot = new Scaffold.SlotData(mc.field_1724.method_31548().field_7545, class_1268.field_5808);
+                && InventoryUtil.isFullBlock(mc.player.getMainHandStack())
+                && this.isValid(mc.player.getMainHandStack().getItem())) {
+            this.blockSlot = new Scaffold.SlotData(mc.player.getInventory().selectedSlot, Hand.MAIN_HAND);
         }
 
         if (this.blockSlot == null) {
             int hotbarSlot = this.getHotbarBlockSlot();
             if (hotbarSlot != -1) {
-                this.blockSlot = new Scaffold.SlotData(hotbarSlot, class_1268.field_5808);
+                this.blockSlot = new Scaffold.SlotData(hotbarSlot, Hand.MAIN_HAND);
             }
         }
 
         if (this.blockSlot != null && !this.blockSlot.check()) {
             if (RotationUtils.accepted(this.rotationPriority())) {
-                if (mc.field_1724.method_24828()) {
-                    this.posY = Math.floor(mc.field_1724.method_23318() - 1.0);
+                if (mc.player.isOnGround()) {
+                    this.posY = Math.floor(mc.player.getY() - 1.0);
                 }
 
-                if (mc.field_1690.field_1903.method_1434()) {
-                    this.posY = mc.field_1724.method_31478() - 1;
+                if (mc.options.jumpKey.isPressed()) {
+                    this.posY = mc.player.getBlockY() - 1;
                 }
 
                 BlockData possible = ClientRayTraceUtil.isIgnoredBlock(
-                        mc.field_1687
-                                .method_8320(
-                                        new class_2338(
-                                                (int)Math.floor(mc.field_1724.method_23317()),
-                                                (int)Math.floor(mc.field_1724.method_23318()),
-                                                (int)Math.floor(mc.field_1724.method_23321())
+                        mc.world
+                                .getBlockState(
+                                        new BlockPos(
+                                                (int)Math.floor(mc.player.getX()),
+                                                (int)Math.floor(mc.player.getY()),
+                                                (int)Math.floor(mc.player.getZ())
                                         )
                                 )
                 )
-                        ? this.getBlockData(new class_2338((int)Math.floor(mc.field_1724.method_23317()), (int)this.posY, (int)Math.floor(mc.field_1724.method_23321())))
+                        ? this.getBlockData(new BlockPos((int)Math.floor(mc.player.getX()), (int)this.posY, (int)Math.floor(mc.player.getZ())))
                         : null;
                 if (possible != null) {
                     this.blockData = possible;
@@ -812,31 +812,31 @@ public class Scaffold extends Module {
                     this.canPlace = this.doesNotContainBlock(1);
                 } else {
                     this.canPlace = PlayerUtils.offGroundTicks >= this.placeTick.getValue().intValue();
-                    if (this.safeMode.getValue() && this.testOnGround.getValue() && !this.canPlace && mc.field_1690.field_1903.method_1434()) {
+                    if (this.safeMode.getValue() && this.testOnGround.getValue() && !this.canPlace && mc.options.jumpKey.isPressed()) {
                         this.canPlace = PlayerUtils.onGroundTicks == 1;
                     }
                 }
 
-                if (this.blockSlot.hand().equals(class_1268.field_5808)) {
-                    mc.field_1724.method_31548().field_7545 = this.blockSlot.slot;
+                if (this.blockSlot.hand().equals(Hand.MAIN_HAND)) {
+                    mc.player.getInventory().selectedSlot = this.blockSlot.slot;
                 }
 
-                FallingPlayer fallingPlayer = new FallingPlayer(mc.field_1724);
+                FallingPlayer fallingPlayer = new FallingPlayer(mc.player);
                 boolean reachable = true;
                 fallingPlayer.calculate(1);
-                class_243 nextEyePos = fallingPlayer.getEyePos();
+                Vec3d nextEyePos = fallingPlayer.getEyePos();
                 fallingPlayer.calculate(1);
                 BlockData placement = this.getBlockData(
-                        new class_2338((int)Math.floor(mc.field_1724.method_23317()), mc.field_1724.method_31478() - 1, (int)Math.floor(mc.field_1724.method_23321()))
+                        new BlockPos((int)Math.floor(mc.player.getX()), mc.player.getBlockY() - 1, (int)Math.floor(mc.player.getZ()))
                 );
                 boolean forceRotation = false;
                 if (placement != null) {
-                    if (this.safeMode.getValue() && this.testOnGround.getValue() && PlayerUtils.onGroundTicks == 1 && mc.field_1690.field_1903.method_1434()) {
+                    if (this.safeMode.getValue() && this.testOnGround.getValue() && PlayerUtils.onGroundTicks == 1 && mc.options.jumpKey.isPressed()) {
                         forceRotation = true;
                     }
 
-                    double distance = nextEyePos.method_1022(placement.pos().method_46558());
-                    if (distance >= this.safeDistance.getDouble() || placement.pos().method_10264() > fallingPlayer.getY()) {
+                    double distance = nextEyePos.distanceTo(placement.pos().toCenterPos());
+                    if (distance >= this.safeDistance.getDouble() || placement.pos().getY() > fallingPlayer.getY()) {
                         this.canPlace = true;
                         reachable = false;
                         this.blockData = this.lastBlockData = placement;
@@ -844,15 +844,15 @@ public class Scaffold extends Module {
                 }
 
                 if (this.blockData != null) {
-                    class_238 box = new class_238(this.blockData.pos())
-                            .method_35575(this.blockData.pos().method_10264() - 1)
-                            .method_35578(this.blockData.pos().method_10264() + 1);
-                    if (this.blockData.pos().method_10264() > fallingPlayer.getY() && !box.method_1006(mc.field_1724.method_19538())) {
+                    Box box = new Box(this.blockData.pos())
+                            .withMinY(this.blockData.pos().getY() - 1)
+                            .withMaxY(this.blockData.pos().getY() + 1);
+                    if (this.blockData.pos().getY() > fallingPlayer.getY() && !box.contains(mc.player.getPos())) {
                         this.canPlace = true;
                         reachable = false;
-                        this.posY = mc.field_1724.method_31478() - 1;
+                        this.posY = mc.player.getBlockY() - 1;
                         this.blockData = this.lastBlockData = this.getBlockData(
-                                new class_2338((int)Math.floor(mc.field_1724.method_23317()), (int)Math.floor(this.posY), (int)Math.floor(mc.field_1724.method_23321()))
+                                new BlockPos((int)Math.floor(mc.player.getX()), (int)Math.floor(this.posY), (int)Math.floor(mc.player.getZ()))
                         );
                     }
                 }
@@ -892,24 +892,24 @@ public class Scaffold extends Module {
                 }
 
                 if (this.fixRotation.getValue() && this.rot != null) {
-                    this.rot.fixedSensitivity(((Double)mc.field_1690.method_42495().method_41753()).floatValue());
+                    this.rot.fixedSensitivity(((Double)mc.options.getMouseSensitivity().getValue()).floatValue());
                 }
 
                 RotationUtils.setRotation(this.rot, this.rotationPriority(), MoveFixMode.Silent);
                 if (this.blockData != null) {
-                    if (mc.field_1724.method_7325()) {
+                    if (mc.player.isSpectator()) {
                         this.setEnable(false);
                     }
 
                     if (!this.mode.isMode("Telly")) {
                         if (this.waitingForEagleSneak) {
                             this.tellyJumpTicks++;
-                            if (this.tellyJumpTicks == this.tellyEagleTick.getValue().intValue() && !mc.field_1690.field_1832.method_1434()) {
-                                mc.field_1690.field_1832.method_23481(true);
+                            if (this.tellyJumpTicks == this.tellyEagleTick.getValue().intValue() && !mc.options.sneakKey.isPressed()) {
+                                mc.options.sneakKey.setPressed(true);
                             }
 
                             if (this.tellyJumpTicks == this.tellyEagleTick.getValue().intValue() + this.keepEagleSneakTick.getValue().intValue()) {
-                                mc.field_1690.field_1832.method_23481(false);
+                                mc.options.sneakKey.setPressed(false);
                                 this.waitingForEagleSneak = false;
                                 this.tellyJumpTicks = 0;
                             }
@@ -934,43 +934,43 @@ public class Scaffold extends Module {
                 && this.smoothed.getValue()
                 && !this.noUptelly.getValue()
                 && this.safeMode.getValue()
-                && mc.field_1690.field_1903.method_1434()) {
-            mc.field_1724.field_3913.field_3905 *= 0.2F;
-            mc.field_1724.field_3913.field_3907 *= 0.2F;
+                && mc.options.jumpKey.isPressed()) {
+            mc.player.input.movementForward *= 0.2F;
+            mc.player.input.movementSideways *= 0.2F;
         }
     }
 
     public boolean doesNotContainBlock(int down) {
-        return PlayerUtils.blockRelativeToPlayer(0.0, -down, 0.0).method_9564().method_26167();
+        return PlayerUtils.blockRelativeToPlayer(0.0, -down, 0.0).getDefaultState().isTransparent();
     }
 
-    public static class_243 getVec3(class_2338 pos, class_2350 face) {
-        double x = pos.method_10263() + 0.5;
-        double y = pos.method_10264() + 0.5;
-        double z = pos.method_10260() + 0.5;
-        if (face != class_2350.field_11036 && face != class_2350.field_11033) {
+    public static Vec3d getVec3(BlockPos pos, Direction face) {
+        double x = pos.getX() + 0.5;
+        double y = pos.getY() + 0.5;
+        double z = pos.getZ() + 0.5;
+        if (face != Direction.UP && face != Direction.DOWN) {
             y += MathUtils.getRandomInRange(0.3, -0.3);
         } else {
             x += MathUtils.getRandomInRange(0.3, -0.3);
             z += MathUtils.getRandomInRange(0.3, -0.3);
         }
 
-        if (face == class_2350.field_11039 || face == class_2350.field_11034) {
+        if (face == Direction.WEST || face == Direction.EAST) {
             z += MathUtils.getRandomInRange(0.3, -0.3);
         }
 
-        if (face == class_2350.field_11035 || face == class_2350.field_11043) {
+        if (face == Direction.SOUTH || face == Direction.NORTH) {
             x += MathUtils.getRandomInRange(0.3, -0.3);
         }
 
-        return new class_243(x, y, z);
+        return new Vec3d(x, y, z);
     }
 
     public void getBlock(int switchSlot) {
         for (int i = 9; i < 45; i++) {
-            if (mc.field_1724.method_31548().method_5438(i).method_7946() && mc.field_1755 == null) {
-                class_1799 is = mc.field_1724.method_31548().method_5438(i);
-                if (is.method_7909() instanceof class_1747 block && this.isValid(block)) {
+            if (mc.player.getInventory().getStack(i).isStackable() && mc.currentScreen == null) {
+                ItemStack is = mc.player.getInventory().getStack(i);
+                if (is.getItem() instanceof BlockItem block && this.isValid(block)) {
                     if (36 + switchSlot != i) {
                         InventoryUtil.swap(i, switchSlot);
                     }
@@ -980,18 +980,18 @@ public class Scaffold extends Module {
         }
     }
 
-    public Rotation getRotation(class_243 vec, class_243 eyes) {
-        double diffX = vec.field_1352 - eyes.field_1352;
-        double diffY = vec.field_1351 - eyes.field_1351;
-        double diffZ = vec.field_1350 - eyes.field_1350;
+    public Rotation getRotation(Vec3d vec, Vec3d eyes) {
+        double diffX = vec.x - eyes.x;
+        double diffY = vec.y - eyes.y;
+        double diffZ = vec.z - eyes.z;
         return new Rotation(
-                class_3532.method_15393((float)Math.toDegrees(Math.atan2(diffZ, diffX)) - 90.0F),
-                class_3532.method_15393((float)(-Math.toDegrees(Math.atan2(diffY, Math.sqrt(diffX * diffX + diffZ * diffZ)))))
+                MathHelper.wrapDegrees((float)Math.toDegrees(Math.atan2(diffZ, diffX)) - 90.0F),
+                MathHelper.wrapDegrees((float)(-Math.toDegrees(Math.atan2(diffY, Math.sqrt(diffX * diffX + diffZ * diffZ)))))
         );
     }
 
-    private boolean isValid(class_1792 item) {
-        return item instanceof class_1747 && !invalidBlocks.contains(((class_1747)item).method_7711()) && SlotUtils.isGoodForBridging(item);
+    private boolean isValid(Item item) {
+        return item instanceof BlockItem && !invalidBlocks.contains(((BlockItem)item).getBlock()) && SlotUtils.isGoodForBridging(item);
     }
 
     private int getHotbarBlockSlot() {
@@ -1001,8 +1001,8 @@ public class Scaffold extends Module {
             int slot = -1;
 
             for (int i = 0; i <= 8; i++) {
-                class_1799 stack = mc.field_1724.method_31548().method_5438(i);
-                if (InventoryUtil.isFullBlock(stack) && this.isValid(stack.method_7909())) {
+                ItemStack stack = mc.player.getInventory().getStack(i);
+                if (InventoryUtil.isFullBlock(stack) && this.isValid(stack.getItem())) {
                     slot = i;
                 }
             }
@@ -1012,36 +1012,36 @@ public class Scaffold extends Module {
     }
 
     private int getMostBlocksHotbarSlot() {
-        int selectedSlot = mc.field_1724.method_31548().field_7545;
+        int selectedSlot = mc.player.getInventory().selectedSlot;
         int bestSlot = -1;
         int bestCount = -1;
-        class_1799 selectedStack = mc.field_1724.method_31548().method_5438(selectedSlot);
-        if (InventoryUtil.isFullBlock(selectedStack) && this.isValid(selectedStack.method_7909())) {
+        ItemStack selectedStack = mc.player.getInventory().getStack(selectedSlot);
+        if (InventoryUtil.isFullBlock(selectedStack) && this.isValid(selectedStack.getItem())) {
             bestSlot = selectedSlot;
-            bestCount = selectedStack.method_7947();
+            bestCount = selectedStack.getCount();
         }
 
         for (int i = 0; i <= 8; i++) {
-            class_1799 stack = mc.field_1724.method_31548().method_5438(i);
-            if (InventoryUtil.isFullBlock(stack) && this.isValid(stack.method_7909()) && stack.method_7947() > bestCount) {
+            ItemStack stack = mc.player.getInventory().getStack(i);
+            if (InventoryUtil.isFullBlock(stack) && this.isValid(stack.getItem()) && stack.getCount() > bestCount) {
                 bestSlot = i;
-                bestCount = stack.method_7947();
+                bestCount = stack.getCount();
             }
         }
 
         return bestSlot;
     }
 
-    private class_1799 getHeldBlockStack() {
-        if (mc.field_1724 == null) {
-            return class_1799.field_8037;
+    private ItemStack getHeldBlockStack() {
+        if (mc.player == null) {
+            return ItemStack.EMPTY;
         } else {
             if (this.blockSlot != null) {
-                class_1799 blockSlotStack;
-                if (this.blockSlot.hand() == class_1268.field_5810) {
-                    blockSlotStack = mc.field_1724.method_6079();
+                ItemStack blockSlotStack;
+                if (this.blockSlot.hand() == Hand.OFF_HAND) {
+                    blockSlotStack = mc.player.getOffHandStack();
                 } else {
-                    blockSlotStack = mc.field_1724.method_31548().method_5438(this.blockSlot.slot());
+                    blockSlotStack = mc.player.getInventory().getStack(this.blockSlot.slot());
                 }
 
                 if (this.isDisplayBlock(blockSlotStack)) {
@@ -1049,23 +1049,23 @@ public class Scaffold extends Module {
                 }
             }
 
-            class_1799 main = mc.field_1724.method_6047();
+            ItemStack main = mc.player.getMainHandStack();
             if (this.isDisplayBlock(main)) {
                 return main;
             } else {
-                class_1799 offhand = mc.field_1724.method_6079();
+                ItemStack offhand = mc.player.getOffHandStack();
                 if (this.isDisplayBlock(offhand)) {
                     return offhand;
                 } else {
                     int hotbarSlot = this.getHotbarBlockSlot();
-                    return hotbarSlot != -1 ? mc.field_1724.method_31548().method_5438(hotbarSlot) : class_1799.field_8037;
+                    return hotbarSlot != -1 ? mc.player.getInventory().getStack(hotbarSlot) : ItemStack.EMPTY;
                 }
             }
         }
     }
 
-    private boolean isDisplayBlock(class_1799 stack) {
-        return stack != null && !stack.method_7960() ? this.isValid(stack.method_7909()) : false;
+    private boolean isDisplayBlock(ItemStack stack) {
+        return stack != null && !stack.isEmpty() ? this.isValid(stack.getItem()) : false;
     }
 
     private int getBlockCountColor(int count) {
@@ -1088,14 +1088,14 @@ public class Scaffold extends Module {
         int blockCount = 0;
 
         for (int i = 9; i < 45; i++) {
-            if (mc.field_1724 == null) {
+            if (mc.player == null) {
                 return -1;
             }
 
-            if (mc.field_1724.method_31548().method_5438(i).method_7946()) {
-                class_1799 is = mc.field_1724.method_31548().method_5438(i);
-                if (is.method_7909() instanceof class_1747 block && this.isValid(block)) {
-                    blockCount += is.method_7947();
+            if (mc.player.getInventory().getStack(i).isStackable()) {
+                ItemStack is = mc.player.getInventory().getStack(i);
+                if (is.getItem() instanceof BlockItem block && this.isValid(block)) {
+                    blockCount += is.getCount();
                 }
             }
         }
@@ -1104,36 +1104,36 @@ public class Scaffold extends Module {
     }
 
     public int getBlockCountHotbar() {
-        if (mc.field_1724 == null) {
+        if (mc.player == null) {
             return 0;
         } else {
             int blockCount = 0;
 
             for (int i = 0; i <= 8; i++) {
-                class_1799 stack = mc.field_1724.method_31548().method_5438(i);
-                if (!stack.method_7960() && stack.method_7909() instanceof class_1747 blockItem && this.isValid(blockItem)) {
-                    blockCount += stack.method_7947();
+                ItemStack stack = mc.player.getInventory().getStack(i);
+                if (!stack.isEmpty() && stack.getItem() instanceof BlockItem blockItem && this.isValid(blockItem)) {
+                    blockCount += stack.getCount();
                 }
             }
 
-            class_1799 offhandStack = mc.field_1724.method_6079();
-            if (!offhandStack.method_7960() && offhandStack.method_7909() instanceof class_1747 offhandBlock && this.isValid(offhandBlock)) {
-                blockCount += offhandStack.method_7947();
+            ItemStack offhandStack = mc.player.getOffHandStack();
+            if (!offhandStack.isEmpty() && offhandStack.getItem() instanceof BlockItem offhandBlock && this.isValid(offhandBlock)) {
+                blockCount += offhandStack.getCount();
             }
 
             return blockCount;
         }
     }
 
-    private BlockData getBlockData(class_2338 pos) {
+    private BlockData getBlockData(BlockPos pos) {
         BlockData data;
         if (this.getPos(pos) == null) {
-            class_2338 blockPos = this.getBlockPos();
+            BlockPos blockPos = this.getBlockPos();
             if (blockPos == null) {
                 return null;
             }
 
-            class_2350 direction = this.getPlaceSide(blockPos);
+            Direction direction = this.getPlaceSide(blockPos);
             if (direction == null) {
                 return null;
             }
@@ -1143,87 +1143,87 @@ public class Scaffold extends Module {
             data = this.getPos(pos);
         }
 
-        return ClientRayTraceUtil.isIgnoredBlock(mc.field_1687.method_8320(data.pos().method_10093(data.facing()))) ? data : null;
+        return ClientRayTraceUtil.isIgnoredBlock(mc.world.getBlockState(data.pos().offset(data.facing()))) ? data : null;
     }
 
-    private class_2350 getPlaceSide(class_2338 blockPos) {
+    private Direction getPlaceSide(BlockPos blockPos) {
         List<BlockData> blockData = new ArrayList<>();
-        class_2338 pos = new class_2338(
-                (int)Math.floor(mc.field_1724.method_23317()), (int)Math.floor(mc.field_1724.method_23318()), (int)Math.floor(mc.field_1724.method_23321())
+        BlockPos pos = new BlockPos(
+                (int)Math.floor(mc.player.getX()), (int)Math.floor(mc.player.getY()), (int)Math.floor(mc.player.getZ())
         );
-        if (this.isAirBlock(blockPos.method_10078()) && !blockPos.method_10078().equals(pos)) {
-            blockData.add(new BlockData(blockPos.method_10078(), class_2350.field_11034));
+        if (this.isAirBlock(blockPos.east()) && !blockPos.east().equals(pos)) {
+            blockData.add(new BlockData(blockPos.east(), Direction.EAST));
         }
 
-        if (this.isAirBlock(blockPos.method_10095()) && !blockPos.method_10095().equals(pos)) {
-            blockData.add(new BlockData(blockPos.method_10095(), class_2350.field_11043));
+        if (this.isAirBlock(blockPos.north()) && !blockPos.north().equals(pos)) {
+            blockData.add(new BlockData(blockPos.north(), Direction.NORTH));
         }
 
-        if (this.isAirBlock(blockPos.method_10072()) && !blockPos.method_10072().equals(pos)) {
-            blockData.add(new BlockData(blockPos.method_10072(), class_2350.field_11035));
+        if (this.isAirBlock(blockPos.south()) && !blockPos.south().equals(pos)) {
+            blockData.add(new BlockData(blockPos.south(), Direction.SOUTH));
         }
 
-        if (this.isAirBlock(blockPos.method_10067()) && !blockPos.method_10067().equals(pos)) {
-            blockData.add(new BlockData(blockPos.method_10067(), class_2350.field_11039));
+        if (this.isAirBlock(blockPos.west()) && !blockPos.west().equals(pos)) {
+            blockData.add(new BlockData(blockPos.west(), Direction.WEST));
         }
 
         if (blockData.isEmpty()) {
             return null;
         } else {
-            blockData.sort(Comparator.comparingDouble(vec3 -> vec3.pos().method_10262(pos)));
-            blockData.removeIf(blockData1 -> !ClientRayTraceUtil.isIgnoredBlock(mc.field_1687.method_8320(blockData1.pos().method_10093(blockData1.facing()))));
+            blockData.sort(Comparator.comparingDouble(vec3 -> vec3.pos().getSquaredDistance(pos)));
+            blockData.removeIf(blockData1 -> !ClientRayTraceUtil.isIgnoredBlock(mc.world.getBlockState(blockData1.pos().offset(blockData1.facing()))));
             return ((BlockData)blockData.getFirst()).facing();
         }
     }
 
-    private class_2338 getBlockPos() {
-        class_2338 playerPos = new class_2338(
-                (int)Math.floor(mc.field_1724.method_23317()), (int)Math.floor(mc.field_1724.method_23318()), (int)Math.floor(mc.field_1724.method_23321())
+    private BlockPos getBlockPos() {
+        BlockPos playerPos = new BlockPos(
+                (int)Math.floor(mc.player.getX()), (int)Math.floor(mc.player.getY()), (int)Math.floor(mc.player.getZ())
         );
-        ArrayList<class_2338> positions = new ArrayList<>();
-        Map<class_2338, class_2248> searchBlock = this.searchBlocks(5);
+        ArrayList<BlockPos> positions = new ArrayList<>();
+        Map<BlockPos, Block> searchBlock = this.searchBlocks(5);
 
-        for (Entry<class_2338, class_2248> block : searchBlock.entrySet()) {
+        for (Entry<BlockPos, Block> block : searchBlock.entrySet()) {
             if (this.isPosSolid(block.getKey())) {
                 positions.add(block.getKey());
             }
         }
 
-        positions.removeIf(pos -> pos.method_10264() >= playerPos.method_10264());
+        positions.removeIf(pos -> pos.getY() >= playerPos.getY());
         if (positions.isEmpty()) {
             return null;
         } else {
-            positions.sort(Comparator.comparingDouble(vec3 -> vec3.method_10262(playerPos)));
-            return (class_2338)positions.getFirst();
+            positions.sort(Comparator.comparingDouble(vec3 -> vec3.getSquaredDistance(playerPos)));
+            return (BlockPos)positions.getFirst();
         }
     }
 
-    public boolean isAirBlock(class_2338 blockPos) {
-        return ClientRayTraceUtil.isIgnoredBlock(mc.field_1687.method_8320(blockPos));
+    public boolean isAirBlock(BlockPos blockPos) {
+        return ClientRayTraceUtil.isIgnoredBlock(mc.world.getBlockState(blockPos));
     }
 
-    public float distanceTo(class_1297 entity, class_2338 pos) {
-        float f = (float)(entity.method_23317() - pos.method_10263());
-        float g = (float)(entity.method_23318() - pos.method_10264());
-        float h = (float)(entity.method_23321() - pos.method_10260());
-        return class_3532.method_15355(f * f + g * g + h * h);
+    public float distanceTo(Entity entity, BlockPos pos) {
+        float f = (float)(entity.getX() - pos.getX());
+        float g = (float)(entity.getY() - pos.getY());
+        float h = (float)(entity.getZ() - pos.getZ());
+        return MathHelper.sqrt(f * f + g * g + h * h);
     }
 
-    public class_2248 getBlock(class_2338 pos) {
-        return mc.field_1687.method_8320(pos).method_26204();
+    public Block getBlock(BlockPos pos) {
+        return mc.world.getBlockState(pos).getBlock();
     }
 
-    public Map<class_2338, class_2248> searchBlocks(int radius) {
-        Map<class_2338, class_2248> blocks = new HashMap<>();
-        class_1657 player = mc.field_1724;
+    public Map<BlockPos, Block> searchBlocks(int radius) {
+        Map<BlockPos, Block> blocks = new HashMap<>();
+        PlayerEntity player = mc.player;
         if (player == null) {
             return blocks;
         } else {
             for (int x = radius; x >= -radius + 1; x--) {
                 for (int y = radius; y >= -radius + 1; y--) {
                     for (int z = radius; z >= -radius + 1; z--) {
-                        class_2338 blockPos = new class_2338(player.method_31477() + x, player.method_31478() + y, player.method_31479() + z);
-                        class_2248 block = this.getBlock(blockPos);
+                        BlockPos blockPos = new BlockPos(player.getBlockX() + x, player.getBlockY() + y, player.getBlockZ() + z);
+                        Block block = this.getBlock(blockPos);
                         if (block != null) {
                             blocks.put(blockPos, block);
                         }
@@ -1235,59 +1235,59 @@ public class Scaffold extends Module {
         }
     }
 
-    public BlockData getPos(class_2338 pos) {
-        if (this.isPosSolid(pos.method_10069(-1, 0, 0))) {
-            return new BlockData(pos.method_10069(-1, 0, 0), class_2350.field_11034);
-        } else if (this.isPosSolid(pos.method_10069(1, 0, 0))) {
-            return new BlockData(pos.method_10069(1, 0, 0), class_2350.field_11039);
-        } else if (this.isPosSolid(pos.method_10069(0, 0, 1))) {
-            return new BlockData(pos.method_10069(0, 0, 1), class_2350.field_11043);
-        } else if (this.isPosSolid(pos.method_10069(0, 0, -1))) {
-            return new BlockData(pos.method_10069(0, 0, -1), class_2350.field_11035);
+    public BlockData getPos(BlockPos pos) {
+        if (this.isPosSolid(pos.add(-1, 0, 0))) {
+            return new BlockData(pos.add(-1, 0, 0), Direction.EAST);
+        } else if (this.isPosSolid(pos.add(1, 0, 0))) {
+            return new BlockData(pos.add(1, 0, 0), Direction.WEST);
+        } else if (this.isPosSolid(pos.add(0, 0, 1))) {
+            return new BlockData(pos.add(0, 0, 1), Direction.NORTH);
+        } else if (this.isPosSolid(pos.add(0, 0, -1))) {
+            return new BlockData(pos.add(0, 0, -1), Direction.SOUTH);
         } else {
-            return this.isPosSolid(pos.method_10069(0, -1, 0)) ? new BlockData(pos.method_10069(0, -1, 0), class_2350.field_11036) : null;
+            return this.isPosSolid(pos.add(0, -1, 0)) ? new BlockData(pos.add(0, -1, 0), Direction.UP) : null;
         }
     }
 
-    public boolean isPosSolid(class_2338 pos) {
-        class_2248 block = mc.field_1687.method_8320(pos).method_26204();
-        return !(block instanceof class_2533) && !(block instanceof class_2323) && !(block instanceof class_2349)
+    public boolean isPosSolid(BlockPos pos) {
+        Block block = mc.world.getBlockState(pos).getBlock();
+        return !(block instanceof TrapdoorBlock) && !(block instanceof DoorBlock) && !(block instanceof FenceGateBlock)
                 ? !Arrays.asList(
-                        class_2246.field_10535,
-                        class_2246.field_10124,
-                        class_2246.field_10382,
-                        class_2246.field_10036,
-                        class_2246.field_10164,
-                        class_2246.field_10481,
-                        class_2246.field_10121,
-                        class_2246.field_10380,
-                        class_2246.field_10034,
-                        class_2246.field_10485,
-                        class_2246.field_10443,
-                        class_2246.field_9980,
-                        class_2246.field_10429,
-                        class_2246.field_10343,
-                        class_2246.field_10479,
-                        class_2246.field_10495,
-                        class_2246.field_10528,
-                        class_2246.field_10583,
-                        class_2246.field_9995,
-                        class_2246.field_42734,
-                        class_2246.field_10057,
-                        class_2246.field_10278,
-                        class_2246.field_10417,
-                        class_2246.field_22100,
-                        class_2246.field_42743,
-                        class_2246.field_10493,
-                        class_2246.field_10553,
-                        class_2246.field_10494,
-                        class_2246.field_22101,
-                        class_2246.field_10066,
-                        class_2246.field_10179,
-                        class_2246.field_10432
+                        Blocks.ANVIL,
+                        Blocks.AIR,
+                        Blocks.WATER,
+                        Blocks.FIRE,
+                        Blocks.LAVA,
+                        Blocks.SKELETON_SKULL,
+                        Blocks.OAK_SIGN,
+                        Blocks.TRAPPED_CHEST,
+                        Blocks.CHEST,
+                        Blocks.ENCHANTING_TABLE,
+                        Blocks.ENDER_CHEST,
+                        Blocks.CRAFTING_TABLE,
+                        Blocks.DAYLIGHT_DETECTOR,
+                        Blocks.COBWEB,
+                        Blocks.SHORT_GRASS,
+                        Blocks.FLOWER_POT,
+                        Blocks.CHORUS_FLOWER,
+                        Blocks.SUNFLOWER,
+                        Blocks.CORNFLOWER,
+                        Blocks.TORCHFLOWER,
+                        Blocks.OAK_BUTTON,
+                        Blocks.ACACIA_BUTTON,
+                        Blocks.BIRCH_BUTTON,
+                        Blocks.CRIMSON_BUTTON,
+                        Blocks.CHERRY_BUTTON,
+                        Blocks.DARK_OAK_BUTTON,
+                        Blocks.JUNGLE_BUTTON,
+                        Blocks.STONE_BUTTON,
+                        Blocks.WARPED_BUTTON,
+                        Blocks.SPRUCE_BUTTON,
+                        Blocks.NOTE_BLOCK,
+                        Blocks.PLAYER_HEAD
                 )
                 .contains(block)
-                && !ClientRayTraceUtil.isIgnoredBlock(mc.field_1687.method_8320(pos))
+                && !ClientRayTraceUtil.isIgnoredBlock(mc.world.getBlockState(pos))
                 : false;
     }
 
@@ -1300,7 +1300,7 @@ public class Scaffold extends Module {
             float smooth = RotationUtils.smooth((float)change, step);
             currentYaw += smooth;
             RotationUtils.rotation.yaw = currentYaw;
-            mc.field_1761.method_2919(mc.field_1724, class_1268.field_5808);
+            mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
             PacketOrderManager.rightClicking = true;
         }
 
@@ -1312,16 +1312,16 @@ public class Scaffold extends Module {
         return 5;
     }
 
-    record SlotData(int slot, class_1268 hand) {
+    record SlotData(int slot, Hand hand) {
         public boolean check() {
-            if (Scaffold.mc.field_1724 == null) {
+            if (Scaffold.mc.player == null) {
                 return false;
-            } else if (this.hand.equals(class_1268.field_5810)) {
-                class_1799 stack = Scaffold.mc.field_1724.method_6079();
-                return stack.method_7960() || !(stack.method_7909() instanceof class_1747);
+            } else if (this.hand.equals(Hand.OFF_HAND)) {
+                ItemStack stack = Scaffold.mc.player.getOffHandStack();
+                return stack.isEmpty() || !(stack.getItem() instanceof BlockItem);
             } else {
-                return Scaffold.mc.field_1724.method_31548().method_5438(this.slot).method_7960()
-                        || !(Scaffold.mc.field_1724.method_31548().method_5438(this.slot).method_7909() instanceof class_1747);
+                return Scaffold.mc.player.getInventory().getStack(this.slot).isEmpty()
+                        || !(Scaffold.mc.player.getInventory().getStack(this.slot).getItem() instanceof BlockItem);
             }
         }
     }

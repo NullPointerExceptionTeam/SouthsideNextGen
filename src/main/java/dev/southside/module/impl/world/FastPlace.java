@@ -5,9 +5,9 @@ import dev.southside.event.events.PlayerUpdateEvent;
 import dev.southside.module.Category;
 import dev.southside.module.Module;
 import dev.southside.orbit.EventHandler;
-import net.minecraft.class_1747;
-import net.minecraft.class_1792;
-import net.minecraft.class_1802;
+import net.minecraft.item.BlockItem;
+import net.minecraft.item.Item;
+import net.minecraft.item.Items;
 
 public class FastPlace extends Module {
    public Slider tick = new Slider("Speed", 1, 0, 6, 1);
@@ -18,20 +18,20 @@ public class FastPlace extends Module {
 
    @EventHandler
    public void onMotion(PlayerUpdateEvent event) {
-      if (mc.field_1724 != null) {
-         class_1792 mainHand = mc.field_1724.method_6047().method_7909();
-         class_1792 offHand = mc.field_1724.method_6079().method_7909();
-         if (mainHand instanceof class_1747
-               && mainHand != class_1802.field_8634
-               && mainHand != class_1802.field_8803
-               && mainHand != class_1802.field_8543
-               && mainHand != class_1802.field_8287
-            || offHand instanceof class_1747
-               && offHand != class_1802.field_8634
-               && offHand != class_1802.field_8803
-               && offHand != class_1802.field_8543
-               && offHand != class_1802.field_8287) {
-            mc.field_1752 = Math.min(mc.field_1752, this.tick.getValue().intValue());
+      if (mc.player != null) {
+         Item mainHand = mc.player.getMainHandStack().getItem();
+         Item offHand = mc.player.getOffHandStack().getItem();
+         if (mainHand instanceof BlockItem
+               && mainHand != Items.ENDER_PEARL
+               && mainHand != Items.EGG
+               && mainHand != Items.SNOWBALL
+               && mainHand != Items.EXPERIENCE_BOTTLE
+            || offHand instanceof BlockItem
+               && offHand != Items.ENDER_PEARL
+               && offHand != Items.EGG
+               && offHand != Items.SNOWBALL
+               && offHand != Items.EXPERIENCE_BOTTLE) {
+            mc.itemUseCooldown = Math.min(mc.itemUseCooldown, this.tick.getValue().intValue());
          }
       }
    }

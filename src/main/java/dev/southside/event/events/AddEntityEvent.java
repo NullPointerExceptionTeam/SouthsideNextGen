@@ -1,15 +1,15 @@
 package dev.southside.event.events;
 
 import lombok.Generated;
-import net.minecraft.class_1297;
-import net.minecraft.class_1937;
+import net.minecraft.entity.Entity;
+import net.minecraft.world.World;
 
 public class AddEntityEvent {
-   public class_1297 entity;
-   public class_1937 world;
+   public Entity entity;
+   public World world;
 
    @Generated
-   public AddEntityEvent(class_1297 entity, class_1937 world) {
+   public AddEntityEvent(Entity entity, World world) {
       this.entity = entity;
       this.world = world;
    }

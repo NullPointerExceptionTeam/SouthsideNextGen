@@ -7,12 +7,12 @@ import dev.southside.module.impl.world.Scaffold;
 import dev.southside.utils.player.SlotUtils;
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.class_1747;
-import net.minecraft.class_1792;
-import net.minecraft.class_1799;
-import net.minecraft.class_1802;
-import net.minecraft.class_332;
-import net.minecraft.class_4587;
+import net.minecraft.item.BlockItem;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.util.math.MatrixStack;
 
 public class ItemHud extends Hud {
    public final Switch showDiamond = new Switch("Diamond", true);
@@ -29,8 +29,8 @@ public class ItemHud extends Hud {
    }
 
    @Override
-   protected void draw(class_332 context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
-      if (mc.field_1772 != null) {
+   protected void draw(DrawContext context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
+      if (mc.textRenderer != null) {
          if (this.optionsReady()) {
             List<ItemHud.ItemEntry> entries = this.buildEntries(example);
             if (!entries.isEmpty()) {
@@ -43,11 +43,11 @@ public class ItemHud extends Hud {
                int panelColor = 1711276032;
                int textColor = -1;
                int countColor = -8064;
-               class_4587 matrix = context.method_51448();
-               matrix.method_22903();
-               matrix.method_46416(x, y, 0.0F);
-               matrix.method_22905(scale, scale, 1.0F);
-               context.method_25294(0, 0, Math.round(baseWidth), Math.round(baseHeight), 1711276032);
+               MatrixStack matrix = context.getMatrices();
+               matrix.push();
+               matrix.translate(x, y, 0.0F);
+               matrix.scale(scale, scale, 1.0F);
+               context.fill(0, 0, Math.round(baseWidth), Math.round(baseHeight), 1711276032);
                int countMaxWidth = this.getMaxCountWidth(entries);
                int nameX = 27;
                int countLeft = Math.round(baseWidth) - 5 - countMaxWidth;
@@ -57,14 +57,14 @@ public class ItemHud extends Hud {
                   int rowY = 5 + i * 20;
                   int iconY = rowY + 2;
                   int textY = rowY + (20 - 9) / 2;
-                  context.method_51427(entry.stack(), 5, iconY);
-                  context.method_51433(mc.field_1772, entry.name(), nameX, textY, -1, false);
-                  int countWidth = mc.field_1772.method_1727(entry.countText());
+                  context.drawItem(entry.stack(), 5, iconY);
+                  context.drawText(mc.textRenderer, entry.name(), nameX, textY, -1, false);
+                  int countWidth = mc.textRenderer.getWidth(entry.countText());
                   int countX = countLeft + (countMaxWidth - countWidth);
-                  context.method_51433(mc.field_1772, entry.countText(), countX, textY, -8064, false);
+                  context.drawText(mc.textRenderer, entry.countText(), countX, textY, -8064, false);
                }
 
-               matrix.method_22909();
+               matrix.pop();
             }
          }
       }
@@ -72,7 +72,7 @@ public class ItemHud extends Hud {
 
    @Override
    protected float getWidth(float scale, boolean example) {
-      if (mc.field_1772 == null) {
+      if (mc.textRenderer == null) {
          return 140.0F * scale;
       } else {
          return !this.optionsReady() ? 180.0F * scale : this.getBaseWidth(this.buildEntries(example)) * scale;
@@ -81,7 +81,7 @@ public class ItemHud extends Hud {
 
    @Override
    protected float getHeight(float scale, boolean example) {
-      if (mc.field_1772 == null) {
+      if (mc.textRenderer == null) {
          return 20.0F * scale;
       } else {
          return !this.optionsReady() ? 70.0F * scale : this.getBaseHeight(this.buildEntries(example)) * scale;
@@ -94,23 +94,23 @@ public class ItemHud extends Hud {
          return this.defaultEntries(example);
       } else {
          if (this.showDiamond.getValue()) {
-            this.addEntry(entries, new class_1799(class_1802.field_8477), "Diamond", this.getCount(class_1802.field_8477, example), example);
+            this.addEntry(entries, new ItemStack(Items.DIAMOND), "Diamond", this.getCount(Items.DIAMOND, example), example);
          }
 
          if (this.showEmerald.getValue()) {
-            this.addEntry(entries, new class_1799(class_1802.field_8687), "Emerald", this.getCount(class_1802.field_8687, example), example);
+            this.addEntry(entries, new ItemStack(Items.EMERALD), "Emerald", this.getCount(Items.EMERALD, example), example);
          }
 
          if (this.showIron.getValue()) {
-            this.addEntry(entries, new class_1799(class_1802.field_8620), "Iron", this.getCount(class_1802.field_8620, example), example);
+            this.addEntry(entries, new ItemStack(Items.IRON_INGOT), "Iron", this.getCount(Items.IRON_INGOT, example), example);
          }
 
          if (this.showGold.getValue()) {
-            this.addEntry(entries, new class_1799(class_1802.field_8695), "Gold", this.getCount(class_1802.field_8695, example), example);
+            this.addEntry(entries, new ItemStack(Items.GOLD_INGOT), "Gold", this.getCount(Items.GOLD_INGOT, example), example);
          }
 
          if (this.showMushroomStew.getValue()) {
-            this.addEntry(entries, new class_1799(class_1802.field_8208), "Stew", this.getCount(class_1802.field_8208, example), example);
+            this.addEntry(entries, new ItemStack(Items.MUSHROOM_STEW), "Stew", this.getCount(Items.MUSHROOM_STEW, example), example);
          }
 
          if (this.showBlocks.getValue()) {
@@ -118,17 +118,17 @@ public class ItemHud extends Hud {
          }
 
          if (this.showGodItems.getValue()) {
-            this.addEntry(entries, new class_1799(class_1802.field_8825), "God Axe", this.getGodAxeCount(example), example);
-            this.addEntry(entries, new class_1799(class_1802.field_49814), "Mace", this.getCount(class_1802.field_49814, example), example);
-            this.addEntry(entries, new class_1799(class_1802.field_8367), "E-GApple", this.getCount(class_1802.field_8367, example), example);
-            this.addEntry(entries, new class_1799(class_1802.field_8301), "Crystal", this.getCount(class_1802.field_8301, example), example);
+            this.addEntry(entries, new ItemStack(Items.GOLDEN_AXE), "God Axe", this.getGodAxeCount(example), example);
+            this.addEntry(entries, new ItemStack(Items.MACE), "Mace", this.getCount(Items.MACE, example), example);
+            this.addEntry(entries, new ItemStack(Items.ENCHANTED_GOLDEN_APPLE), "E-GApple", this.getCount(Items.ENCHANTED_GOLDEN_APPLE, example), example);
+            this.addEntry(entries, new ItemStack(Items.END_CRYSTAL), "Crystal", this.getCount(Items.END_CRYSTAL, example), example);
          }
 
          return entries;
       }
    }
 
-   private void addEntry(List<ItemHud.ItemEntry> entries, class_1799 stack, String name, int count, boolean example) {
+   private void addEntry(List<ItemHud.ItemEntry> entries, ItemStack stack, String name, int count, boolean example) {
       if (example || !this.hideZeroCount.getValue() || count > 0) {
          entries.add(new ItemHud.ItemEntry(stack, name, count));
       }
@@ -136,8 +136,8 @@ public class ItemHud extends Hud {
 
    private List<ItemHud.ItemEntry> defaultEntries(boolean example) {
       List<ItemHud.ItemEntry> entries = new ArrayList<>();
-      this.addEntry(entries, new class_1799(class_1802.field_8477), "Diamond", this.getCount(class_1802.field_8477, example), example);
-      this.addEntry(entries, new class_1799(class_1802.field_8687), "Emerald", this.getCount(class_1802.field_8687, example), example);
+      this.addEntry(entries, new ItemStack(Items.DIAMOND), "Diamond", this.getCount(Items.DIAMOND, example), example);
+      this.addEntry(entries, new ItemStack(Items.EMERALD), "Emerald", this.getCount(Items.EMERALD, example), example);
       this.addEntry(entries, this.getBlockDisplayStack(example), "Blocks", this.getScaffoldBlockCount(example), example);
       return entries;
    }
@@ -153,20 +153,20 @@ public class ItemHud extends Hud {
          && this.hideZeroCount != null;
    }
 
-   private int getCount(class_1792 item, boolean example) {
-      if (!example && mc.field_1724 != null) {
+   private int getCount(Item item, boolean example) {
+      if (!example && mc.player != null) {
          int total = 0;
 
          for (int i = 0; i <= 35; i++) {
-            class_1799 stack = mc.field_1724.method_31548().method_5438(i);
-            if (!stack.method_7960() && stack.method_7909() == item) {
-               total += stack.method_7947();
+            ItemStack stack = mc.player.getInventory().getStack(i);
+            if (!stack.isEmpty() && stack.getItem() == item) {
+               total += stack.getCount();
             }
          }
 
-         class_1799 offhand = mc.field_1724.method_6079();
-         if (!offhand.method_7960() && offhand.method_7909() == item) {
-            total += offhand.method_7947();
+         ItemStack offhand = mc.player.getOffHandStack();
+         if (!offhand.isEmpty() && offhand.getItem() == item) {
+            total += offhand.getCount();
          }
 
          return total;
@@ -176,19 +176,19 @@ public class ItemHud extends Hud {
    }
 
    private int getScaffoldBlockCount(boolean example) {
-      if (!example && mc.field_1724 != null) {
+      if (!example && mc.player != null) {
          int total = 0;
 
          for (int i = 0; i <= 35; i++) {
-            class_1799 stack = mc.field_1724.method_31548().method_5438(i);
+            ItemStack stack = mc.player.getInventory().getStack(i);
             if (this.isScaffoldValid(stack)) {
-               total += stack.method_7947();
+               total += stack.getCount();
             }
          }
 
-         class_1799 offhand = mc.field_1724.method_6079();
+         ItemStack offhand = mc.player.getOffHandStack();
          if (this.isScaffoldValid(offhand)) {
-            total += offhand.method_7947();
+            total += offhand.getCount();
          }
 
          return total;
@@ -198,19 +198,19 @@ public class ItemHud extends Hud {
    }
 
    private int getGodAxeCount(boolean example) {
-      if (!example && mc.field_1724 != null) {
+      if (!example && mc.player != null) {
          int total = 0;
 
          for (int i = 0; i <= 35; i++) {
-            class_1799 stack = mc.field_1724.method_31548().method_5438(i);
+            ItemStack stack = mc.player.getInventory().getStack(i);
             if (this.isGodAxe(stack)) {
-               total += stack.method_7947();
+               total += stack.getCount();
             }
          }
 
-         class_1799 offhand = mc.field_1724.method_6079();
+         ItemStack offhand = mc.player.getOffHandStack();
          if (this.isGodAxe(offhand)) {
-            total += offhand.method_7947();
+            total += offhand.getCount();
          }
 
          return total;
@@ -219,44 +219,44 @@ public class ItemHud extends Hud {
       }
    }
 
-   private boolean isGodAxe(class_1799 stack) {
-      if (stack != null && !stack.method_7960()) {
-         return !stack.method_7909().equals(class_1802.field_8825) ? false : stack.method_57353() != null && stack.method_57353().toString().contains("一刀999!");
+   private boolean isGodAxe(ItemStack stack) {
+      if (stack != null && !stack.isEmpty()) {
+         return !stack.getItem().equals(Items.GOLDEN_AXE) ? false : stack.getComponents() != null && stack.getComponents().toString().contains("一刀999!");
       } else {
          return false;
       }
    }
 
-   private class_1799 getBlockDisplayStack(boolean example) {
-      if (!example && mc.field_1724 != null) {
-         class_1799 main = mc.field_1724.method_6047();
+   private ItemStack getBlockDisplayStack(boolean example) {
+      if (!example && mc.player != null) {
+         ItemStack main = mc.player.getMainHandStack();
          if (this.isScaffoldValid(main)) {
             return main;
          } else {
-            class_1799 offhand = mc.field_1724.method_6079();
+            ItemStack offhand = mc.player.getOffHandStack();
             if (this.isScaffoldValid(offhand)) {
                return offhand;
             } else {
                for (int i = 0; i <= 35; i++) {
-                  class_1799 stack = mc.field_1724.method_31548().method_5438(i);
+                  ItemStack stack = mc.player.getInventory().getStack(i);
                   if (this.isScaffoldValid(stack)) {
                      return stack;
                   }
                }
 
-               return new class_1799(class_1802.field_20391);
+               return new ItemStack(Items.STONE);
             }
          }
       } else {
-         return new class_1799(class_1802.field_20391);
+         return new ItemStack(Items.STONE);
       }
    }
 
-   private boolean isScaffoldValid(class_1799 stack) {
-      if (stack != null && !stack.method_7960()) {
-         return !(stack.method_7909() instanceof class_1747 blockItem)
+   private boolean isScaffoldValid(ItemStack stack) {
+      if (stack != null && !stack.isEmpty()) {
+         return !(stack.getItem() instanceof BlockItem blockItem)
             ? false
-            : !Scaffold.invalidBlocks.contains(blockItem.method_7711()) && SlotUtils.isGoodForBridging(stack.method_7909());
+            : !Scaffold.invalidBlocks.contains(blockItem.getBlock()) && SlotUtils.isGoodForBridging(stack.getItem());
       } else {
          return false;
       }
@@ -287,13 +287,13 @@ public class ItemHud extends Hud {
    }
 
    private int getMaxNameWidth(List<ItemHud.ItemEntry> entries) {
-      if (mc.field_1772 == null) {
+      if (mc.textRenderer == null) {
          return 40;
       } else {
          int width = 0;
 
          for (ItemHud.ItemEntry entry : entries) {
-            width = Math.max(width, mc.field_1772.method_1727(entry.name()));
+            width = Math.max(width, mc.textRenderer.getWidth(entry.name()));
          }
 
          return width;
@@ -301,20 +301,20 @@ public class ItemHud extends Hud {
    }
 
    private int getMaxCountWidth(List<ItemHud.ItemEntry> entries) {
-      if (mc.field_1772 == null) {
+      if (mc.textRenderer == null) {
          return 20;
       } else {
          int width = 0;
 
          for (ItemHud.ItemEntry entry : entries) {
-            width = Math.max(width, mc.field_1772.method_1727(entry.countText()));
+            width = Math.max(width, mc.textRenderer.getWidth(entry.countText()));
          }
 
          return width;
       }
    }
 
-   private record ItemEntry(class_1799 stack, String name, int count) {
+   private record ItemEntry(ItemStack stack, String name, int count) {
       String countText() {
          return String.valueOf(this.count);
       }

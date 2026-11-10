@@ -1,15 +1,15 @@
 package dev.southside.utils.world;
 
-import net.minecraft.class_239;
-import net.minecraft.class_243;
-import net.minecraft.class_239.class_240;
+import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.hit.HitResult.Type;
 
-public class MissHitResult extends class_239 {
-   protected MissHitResult(class_243 pos) {
+public class MissHitResult extends HitResult {
+   protected MissHitResult(Vec3d pos) {
       super(pos);
    }
 
-   public class_240 method_17783() {
-      return class_240.field_1333;
+   public Type getType() {
+      return Type.MISS;
    }
 }

@@ -17,17 +17,17 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import net.minecraft.class_124;
-import net.minecraft.class_2583;
-import net.minecraft.class_3545;
-import net.minecraft.class_5224;
-import net.minecraft.class_5251;
-import net.minecraft.class_5481;
+import net.minecraft.util.Formatting;
+import net.minecraft.text.Style;
+import net.minecraft.util.Pair;
+import net.minecraft.text.CharacterVisitor;
+import net.minecraft.text.TextColor;
+import net.minecraft.text.OrderedText;
 
 public class TextReplacementUtils implements MinecraftAccessor {
    private static final List<TextReplacementUtils.ReplacementMapping> replacements = new CopyOnWriteArrayList<>();
    private static final Map<String, String> stringCache = new ConcurrentHashMap<>();
-   private static final int gray = class_124.field_1080.method_532();
+   private static final int gray = Formatting.GRAY.getColorValue();
    private static int lastStateHash = 0;
    public static TextReplacementUtils INSTANCE;
 
@@ -53,7 +53,7 @@ public class TextReplacementUtils implements MinecraftAccessor {
       String protectName = nameProtect.name.getValue();
       int protectColor = nameProtect.color.getValue().getRGB();
       int vipHash = VIPList.vips.hashCode();
-      String playerName = mc.field_1724 != null ? mc.field_1724.method_7334().getName() : "";
+      String playerName = mc.player != null ? mc.player.getGameProfile().getName() : "";
       int currentHash = Objects.hash(hudReplaceName, protectEnabled, protectName, protectColor, vipHash, playerName);
       if (currentHash != lastStateHash || replacements.isEmpty()) {
          lastStateHash = currentHash;
@@ -67,8 +67,8 @@ public class TextReplacementUtils implements MinecraftAccessor {
       replacements.add(new TextReplacementUtils.ReplacementMapping("布吉岛", hudReplaceName, List.of()));
       if (nameProtect.isEnabled() && !playerName.isEmpty()) {
          String replacementName = nameProtect.name.getValue();
-         List<class_3545<int[], Integer>> colorMap = new ArrayList<>();
-         colorMap.add(new class_3545(new int[]{0, replacementName.length() - 1}, nameProtect.color.getValue().getRGB()));
+         List<Pair<int[], Integer>> colorMap = new ArrayList<>();
+         colorMap.add(new Pair(new int[]{0, replacementName.length() - 1}, nameProtect.color.getValue().getRGB()));
          replacements.add(new TextReplacementUtils.ReplacementMapping(playerName, replacementName, colorMap));
       }
 
@@ -79,9 +79,9 @@ public class TextReplacementUtils implements MinecraftAccessor {
                   original,
                   replacement,
                   List.of(
-                     new class_3545(new int[]{0, 0}, gray),
-                     new class_3545(new int[]{1, replacement.length() - 2}, class_124.field_1060.method_532()),
-                     new class_3545(new int[]{replacement.length() - 1, replacement.length() - 1}, gray)
+                     new Pair(new int[]{0, 0}, gray),
+                     new Pair(new int[]{1, replacement.length() - 2}, Formatting.GREEN.getColorValue()),
+                     new Pair(new int[]{replacement.length() - 1, replacement.length() - 1}, gray)
                   )
                )
             )
@@ -171,13 +171,13 @@ public class TextReplacementUtils implements MinecraftAccessor {
       return charsIndex - index;
    }
 
-   public record ReplacementMapping(String originalName, String replacement, List<class_3545<int[], Integer>> colors) {
+   public record ReplacementMapping(String originalName, String replacement, List<Pair<int[], Integer>> colors) {
    }
 
-   public static class ReplacementOrderedText implements class_5481 {
+   public static class ReplacementOrderedText implements OrderedText {
       private final List<TextReplacementUtils.ReplacementOrderedText.MappedCharacter> mappedCharacters = new ArrayList<>();
 
-      public ReplacementOrderedText(class_5481 original) {
+      public ReplacementOrderedText(OrderedText original) {
          List<TextReplacementUtils.ReplacementOrderedText.MappedCharacter> originalCharacters = new ArrayList<>();
          original.accept((indexx, style, codePoint) -> {
             originalCharacters.add(new TextReplacementUtils.ReplacementOrderedText.MappedCharacter(style, false, codePoint));
@@ -201,7 +201,7 @@ public class TextReplacementUtils implements MinecraftAccessor {
       }
 
       private Integer tryReplaceNames(
-         int startIndex, List<TextReplacementUtils.ReplacementOrderedText.MappedCharacter> originalCharacters, class_2583 currentStyle
+         int startIndex, List<TextReplacementUtils.ReplacementOrderedText.MappedCharacter> originalCharacters, Style currentStyle
       ) {
          for (TextReplacementUtils.ReplacementMapping replacement : TextReplacementUtils.replacements) {
             if (!replacement.originalName.isEmpty()) {
@@ -219,11 +219,11 @@ public class TextReplacementUtils implements MinecraftAccessor {
                   int charIndex = 0;
 
                   for (char c : replacement.replacement.toCharArray()) {
-                     class_5251 color = this.getTextColor(charIndex, replacement.colors);
+                     TextColor color = this.getTextColor(charIndex, replacement.colors);
                      this.mappedCharacters
                         .add(
                            new TextReplacementUtils.ReplacementOrderedText.MappedCharacter(
-                              color != null ? currentStyle.method_27703(color) : currentStyle, false, c
+                              color != null ? currentStyle.withColor(color) : currentStyle, false, c
                            )
                         );
                      charIndex++;
@@ -237,17 +237,17 @@ public class TextReplacementUtils implements MinecraftAccessor {
          return null;
       }
 
-      private class_5251 getTextColor(int index, List<class_3545<int[], Integer>> map) {
+      private TextColor getTextColor(int index, List<Pair<int[], Integer>> map) {
          if (map == null) {
             return null;
          } else {
-            for (class_3545<int[], Integer> pair : map) {
-               int[] range = (int[])pair.method_15442();
-               Integer color = (Integer)pair.method_15441();
+            for (Pair<int[], Integer> pair : map) {
+               int[] range = (int[])pair.getLeft();
+               Integer color = (Integer)pair.getRight();
                int min = range[0];
                int max = range[1];
                if (index >= min && index <= max) {
-                  return class_5251.method_27717(color);
+                  return TextColor.fromRgb(color);
                }
             }
 
@@ -255,7 +255,7 @@ public class TextReplacementUtils implements MinecraftAccessor {
          }
       }
 
-      public boolean accept(class_5224 visitor) {
+      public boolean accept(CharacterVisitor visitor) {
          int index = 0;
 
          for (TextReplacementUtils.ReplacementOrderedText.MappedCharacter character : this.mappedCharacters) {
@@ -269,7 +269,7 @@ public class TextReplacementUtils implements MinecraftAccessor {
          return true;
       }
 
-      public record MappedCharacter(class_2583 style, boolean bypassesNameProtection, int codePoint) {
+      public record MappedCharacter(Style style, boolean bypassesNameProtection, int codePoint) {
       }
    }
 }

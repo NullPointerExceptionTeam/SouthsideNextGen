@@ -36,7 +36,7 @@ import java.lang.invoke.MethodHandles.Lookup;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.Generated;
 import net.fabricmc.api.ClientModInitializer;
-import net.minecraft.class_310;
+import net.minecraft.client.MinecraftClient;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -45,7 +45,7 @@ public class Southside implements ClientModInitializer, MinecraftAccessor {
    public static SVG LOGO = new SVG("logo.svg");
    public static String CLIENT_VERSION = "Development";
    public static Logger LOGGER = LogManager.getLogger("Southside");
-   public static final File FOLDER = new File(class_310.method_1551().field_1697, "Southside-nextgen");
+   public static final File FOLDER = new File(MinecraftClient.getInstance().runDirectory, "Southside-nextgen");
    public static Southside INSTANCE;
    public static final Gson PRETTY_GSON = new GsonBuilder().setPrettyPrinting().create();
    private final IEventBus eventBus = new EventBus() {

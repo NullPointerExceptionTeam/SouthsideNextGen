@@ -3,7 +3,7 @@ package dev.southside.nanovg;
 import dev.southside.nanovg.NanoLoader;
 import dev.southside.nanovg.gl.state.States;
 import java.awt.Color;
-import net.minecraft.class_310;
+import net.minecraft.client.MinecraftClient;
 import org.lwjgl.nanovg.NVGColor;
 import org.lwjgl.nanovg.NVGPaint;
 import org.lwjgl.nanovg.NanoVG;
@@ -12,8 +12,8 @@ public class NanoUtil {
     public static void beginFrame() {
         States.INSTANCE.push();
         NanoVG.nvgSave((long)NanoLoader.ctx);
-        NanoVG.nvgBeginFrame((long)NanoLoader.ctx, (float)class_310.method_1551().method_22683().method_4489(), (float)class_310.method_1551().method_22683().method_4506(), (float)1.0f);
-        NanoUtil.scaleStart(0.0f, 0.0f, (float)class_310.method_1551().method_22683().method_4495());
+        NanoVG.nvgBeginFrame((long)NanoLoader.ctx, (float)MinecraftClient.getInstance().getWindow().getFramebufferWidth(), (float)MinecraftClient.getInstance().getWindow().getFramebufferHeight(), (float)1.0f);
+        NanoUtil.scaleStart(0.0f, 0.0f, (float)MinecraftClient.getInstance().getWindow().getScaleFactor());
     }
 
     public static void endFrame() {

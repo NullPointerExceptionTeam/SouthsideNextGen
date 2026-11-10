@@ -9,13 +9,13 @@ import dev.southside.render.shader.UniformBuffer;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import lombok.Generated;
-import net.minecraft.class_1041;
-import net.minecraft.class_276;
-import net.minecraft.class_286;
-import net.minecraft.class_293;
-import net.minecraft.class_4184;
-import net.minecraft.class_293.class_5595;
-import net.minecraft.class_293.class_5596;
+import net.minecraft.client.util.Window;
+import net.minecraft.client.gl.Framebuffer;
+import net.minecraft.client.render.BufferRenderer;
+import net.minecraft.client.render.VertexFormat;
+import net.minecraft.client.render.Camera;
+import net.minecraft.client.render.VertexFormat.IndexType;
+import net.minecraft.client.render.VertexFormat.DrawMode;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.lwjgl.opengl.GL45C;
@@ -27,12 +27,12 @@ public class RenderPass {
    private final int vertexArrayId;
    private ByteBuffer vertexBuffer;
    private ByteBuffer indexBuffer;
-   private class_5595 indexType;
-   protected final class_293 vertexFormat;
-   protected final class_5596 mode;
+   private IndexType indexType;
+   protected final VertexFormat vertexFormat;
+   protected final DrawMode mode;
    protected Shader shader;
    protected Matrix4f model_mat;
-   protected class_276 framebuffer;
+   protected Framebuffer framebuffer;
    protected Matrix4f proj_mat;
    protected boolean disableMatrix;
    private FloatBuffer modelView;
@@ -44,12 +44,12 @@ public class RenderPass {
       this.vertexBuffer = indexBuffer;
    }
 
-   public void setIndexBuffer(ByteBuffer indexBuffer, class_5595 indexType) {
+   public void setIndexBuffer(ByteBuffer indexBuffer, IndexType indexType) {
       this.indexBuffer = indexBuffer;
       this.indexType = indexType;
    }
 
-   public RenderPass(class_293 vertexFormat, class_5596 mode) {
+   public RenderPass(VertexFormat vertexFormat, DrawMode mode) {
       this.vertexFormat = vertexFormat;
       this.mode = mode;
       this.vertexBufferId = GlStateManager._glGenBuffers();
@@ -59,7 +59,7 @@ public class RenderPass {
       GlStateManager._glBindVertexArray(this.vertexArrayId);
       GlStateManager._glBindBuffer(34962, this.vertexBufferId);
       GlStateManager._glBindBuffer(34963, this.indexBufferId);
-      vertexFormat.method_22649();
+      vertexFormat.setupState();
       GlStateManager._glBindBuffer(34962, 0);
       GlStateManager._glBindBuffer(34963, oldIBO);
       GlStateManager._glBindVertexArray(0);
@@ -71,7 +71,7 @@ public class RenderPass {
 
    public static void uploadMatrix(Matrix4f proj_mat) {
       UniformBuffer ubo = ShaderFactory.findOrCreateUBO("matrix", 136);
-      class_1041 window = MinecraftAccessor.mc.method_22683();
+      Window window = MinecraftAccessor.mc.getWindow();
       if (proj == null) {
          proj = MemoryUtil.memAllocFloat(64);
       }
@@ -82,8 +82,8 @@ public class RenderPass {
       }
 
       proj_mat.get(proj);
-      MemoryUtil.memPutFloat(screenSizeAddr, MinecraftAccessor.mc.method_1522().field_1482);
-      MemoryUtil.memPutFloat(screenSizeAddr + 4L, MinecraftAccessor.mc.method_1522().field_1481);
+      MemoryUtil.memPutFloat(screenSizeAddr, MinecraftAccessor.mc.getFramebuffer().textureWidth);
+      MemoryUtil.memPutFloat(screenSizeAddr + 4L, MinecraftAccessor.mc.getFramebuffer().textureHeight);
       ubo.upload(0L, 64L, MemoryUtil.memAddress0(proj));
       ubo.upload(128L, 8L, screenSizeAddr);
    }
@@ -92,8 +92,8 @@ public class RenderPass {
       return this.shader;
    }
 
-   private int getFBO(class_276 framebuffer) {
-      return framebuffer.field_1476;
+   private int getFBO(Framebuffer framebuffer) {
+      return framebuffer.fbo;
    }
 
    public void drawIndexed(int offset, int count) {
@@ -106,11 +106,11 @@ public class RenderPass {
          if (!this.disableMatrix) {
             if (!this.shader.useUniformBlock()) {
                this.shader.find("ProjMat").push(this.proj_mat == null ? RenderSystem.getProjectionMatrix() : this.proj_mat);
-               class_4184 camera = MinecraftAccessor.mc.field_1773.method_19418();
-               Matrix4f viewMat = new Matrix4f().rotation(camera.method_23767().conjugate(new Quaternionf()));
+               Camera camera = MinecraftAccessor.mc.gameRenderer.getCamera();
+               Matrix4f viewMat = new Matrix4f().rotation(camera.getRotation().conjugate(new Quaternionf()));
                viewMat.mul(RenderSystem.getModelViewStack());
                this.shader.find("ModelMat").push(viewMat);
-               this.shader.find("ScreenSize").push2f(MinecraftAccessor.mc.method_1522().field_1482, MinecraftAccessor.mc.method_1522().field_1481);
+               this.shader.find("ScreenSize").push2f(MinecraftAccessor.mc.getFramebuffer().textureWidth, MinecraftAccessor.mc.getFramebuffer().textureHeight);
             } else {
                UniformBuffer ubo = ShaderFactory.findOrCreateUBO("matrix", 136);
                ubo.bindBase(0);
@@ -118,8 +118,8 @@ public class RenderPass {
                   this.modelView = MemoryUtil.memAllocFloat(64);
                }
 
-               class_4184 camera = MinecraftAccessor.mc.field_1773.method_19418();
-               Matrix4f viewMat = new Matrix4f().rotation(camera.method_23767().conjugate(new Quaternionf()));
+               Camera camera = MinecraftAccessor.mc.gameRenderer.getCamera();
+               Matrix4f viewMat = new Matrix4f().rotation(camera.getRotation().conjugate(new Quaternionf()));
                viewMat.mul(RenderSystem.getModelViewStack());
                viewMat.get(this.modelView);
                ubo.upload(64L, 64L, MemoryUtil.memAddress0(this.modelView));
@@ -130,8 +130,8 @@ public class RenderPass {
          GlStateManager._glBindVertexArray(this.vertexArrayId);
          GlStateManager._glBindBuffer(34962, this.vertexBufferId);
          GlStateManager._glBindBuffer(34963, this.indexBufferId);
-         class_286.method_43436();
-         GlStateManager._drawElements(this.mode.field_27383, count, 5125, (long)offset * this.indexType.field_27375);
+         BufferRenderer.resetCurrentVertexBuffer();
+         GlStateManager._drawElements(this.mode.glMode, count, 5125, (long)offset * this.indexType.size);
          GlStateManager._glBindVertexArray(oldVertexArray);
          GlStateManager._glBindBuffer(34963, oldIBO);
          GlStateManager._glBindBuffer(34962, 0);
@@ -162,7 +162,7 @@ public class RenderPass {
    }
 
    @Generated
-   public void setFramebuffer(class_276 framebuffer) {
+   public void setFramebuffer(Framebuffer framebuffer) {
       this.framebuffer = framebuffer;
    }
 

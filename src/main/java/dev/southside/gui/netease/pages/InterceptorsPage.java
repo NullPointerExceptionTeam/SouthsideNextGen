@@ -17,10 +17,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import net.minecraft.class_412;
-import net.minecraft.class_639;
-import net.minecraft.class_642;
-import net.minecraft.class_642.class_8678;
+import net.minecraft.client.gui.screen.multiplayer.ConnectScreen;
+import net.minecraft.client.network.ServerAddress;
+import net.minecraft.client.network.ServerInfo;
+import net.minecraft.client.network.ServerInfo.ServerType;
 import org.jetbrains.annotations.NotNull;
 
 public class InterceptorsPage extends AbsPage {
@@ -100,11 +100,11 @@ public class InterceptorsPage extends AbsPage {
                   .execute(
                      () -> {
                         Notification.addNotification("Joining: '" + this.interceptor.address() + "'", "Join", Notification.NotificationType.DISABLED);
-                        class_412.method_36877(
-                           MinecraftAccessor.mc.field_1755,
+                        ConnectScreen.connect(
+                           MinecraftAccessor.mc.currentScreen,
                            MinecraftAccessor.mc,
-                           class_639.method_2950(this.interceptor.address()),
-                           new class_642("jiji岛", this.interceptor.address(), class_8678.field_45611),
+                           ServerAddress.parse(this.interceptor.address()),
+                           new ServerInfo("jiji岛", this.interceptor.address(), ServerType.OTHER),
                            false,
                            null
                         );

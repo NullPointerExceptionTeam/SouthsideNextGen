@@ -8,8 +8,8 @@ import dev.southside.command.args.KeybindingArgumentType;
 import dev.southside.command.args.ModuleArgumentType;
 import dev.southside.module.Module;
 import java.util.ArrayList;
-import net.minecraft.class_2172;
-import net.minecraft.class_3675;
+import net.minecraft.command.CommandSource;
+import net.minecraft.client.util.InputUtil;
 
 public class BindCommand
 extends Command {
@@ -18,14 +18,14 @@ extends Command {
     }
 
     @Override
-    public void build(LiteralArgumentBuilder<class_2172> builder) {
+    public void build(LiteralArgumentBuilder<CommandSource> builder) {
         builder.then(BindCommand.literal("list").executes(context -> {
             boolean hasBoundModules = false;
             for (Module module : Southside.get().getModuleManager().getModules()) {
                 Integer bind;
                 ArrayList<Integer> keyBinds = ((OneKeyBind)module.getKeyBind().getValue()).getKeyBinds();
                 if (keyBinds.isEmpty() || (bind = keyBinds.getFirst()) == 0 || bind == -1) continue;
-                this.info("- {}: {}", module.getDisplayName(), class_3675.method_15985((int)bind, (int)0).method_27445().getString());
+                this.info("- {}: {}", module.getDisplayName(), InputUtil.fromKeyCode((int)bind, (int)0).getLocalizedText().getString());
                 hasBoundModules = true;
             }
             if (!hasBoundModules) {

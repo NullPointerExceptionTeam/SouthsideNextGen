@@ -22,14 +22,14 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-import net.minecraft.class_1268;
-import net.minecraft.class_1297;
-import net.minecraft.class_1309;
-import net.minecraft.class_1764;
-import net.minecraft.class_1799;
-import net.minecraft.class_1802;
-import net.minecraft.class_238;
-import net.minecraft.class_243;
+import net.minecraft.util.Hand;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.item.CrossbowItem;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
 
 public class BowAimAssist extends Module {
    private final Slider fov = new Slider("Fov", 180, 10, 360);
@@ -38,8 +38,8 @@ public class BowAimAssist extends Module {
    private final Switch autoRelease = new Switch("AutoRelease", true);
    private final Switch rotationShot = new Switch("RotationShot", true);
    private final Switch prediction = new Switch("Prediction", true);
-   private class_1309 target;
-   private class_243 predictedPos;
+   private LivingEntity target;
+   private Vec3d predictedPos;
    private int crossbowAimTicks = 0;
    private boolean crossbowFirePending = false;
    private static final int AIM_TICKS_BEFORE_RELEASE = 3;
@@ -59,17 +59,17 @@ public class BowAimAssist extends Module {
 
    @EventHandler
    public void onTick(TickEvent event) {
-      if (event.getState() == Stage.PRE && mc.field_1724 != null) {
-         class_1799 heldItem = mc.field_1724.method_6047();
-         boolean holdingChargedCrossbow = heldItem != null && heldItem.method_7909() == class_1802.field_8399 && class_1764.method_7781(heldItem);
+      if (event.getState() == Stage.PRE && mc.player != null) {
+         ItemStack heldItem = mc.player.getMainHandStack();
+         boolean holdingChargedCrossbow = heldItem != null && heldItem.getItem() == Items.CROSSBOW && CrossbowItem.isCharged(heldItem);
          if (this.rotationShot.getValue()
             && holdingChargedCrossbow
-            && mc.field_1690.field_1904.method_1434()
+            && mc.options.useKey.isPressed()
             && this.target != null
             && !this.crossbowFirePending) {
             this.crossbowFirePending = true;
             this.crossbowAimTicks = 0;
-            mc.field_1690.field_1904.method_23481(false);
+            mc.options.useKey.setPressed(false);
          }
       }
    }
@@ -77,9 +77,9 @@ public class BowAimAssist extends Module {
    @EventHandler
    public void onRotation(RotationEvent event) {
       if (!ClientUtils.nullCheck()) {
-         class_1799 heldItem = mc.field_1724.method_6047();
-         boolean isBow = heldItem != null && heldItem.method_7909() == class_1802.field_8102 && mc.field_1724.method_6115();
-         boolean isCrossbow = heldItem != null && heldItem.method_7909() == class_1802.field_8399 && class_1764.method_7781(heldItem);
+         ItemStack heldItem = mc.player.getMainHandStack();
+         boolean isBow = heldItem != null && heldItem.getItem() == Items.BOW && mc.player.isUsingItem();
+         boolean isCrossbow = heldItem != null && heldItem.getItem() == Items.CROSSBOW && CrossbowItem.isCharged(heldItem);
          if (!isBow && !isCrossbow) {
             this.target = null;
             this.predictedPos = null;
@@ -96,14 +96,14 @@ public class BowAimAssist extends Module {
                   Rotation rotation = this.getAimRotation(this.target);
                   this.predictedPos = null;
                   RotationUtils.setRotation(rotation);
-                  if (this.autoRelease.getValue() && mc.field_1724.method_6048() >= 20) {
-                     mc.field_1761.method_2897(mc.field_1724);
+                  if (this.autoRelease.getValue() && mc.player.getItemUseTime() >= 20) {
+                     mc.interactionManager.stopUsingItem(mc.player);
                   }
                } else {
                   Rotation rotation;
                   if (this.prediction.getValue()) {
                      this.predictedPos = this.getPredictedPos(this.target);
-                     rotation = RotationUtils.getRotationTo(mc.field_1724.method_33571(), this.predictedPos);
+                     rotation = RotationUtils.getRotationTo(mc.player.getEyePos(), this.predictedPos);
                   } else {
                      this.predictedPos = null;
                      rotation = this.getAimRotation(this.target);
@@ -113,7 +113,7 @@ public class BowAimAssist extends Module {
                      if (this.crossbowFirePending) {
                         this.crossbowAimTicks++;
                         RotationUtils.setRotation(rotation);
-                        mc.field_1690.field_1904.method_23481(false);
+                        mc.options.useKey.setPressed(false);
                      }
                   } else {
                      RotationUtils.setRotation(rotation);
@@ -128,13 +128,13 @@ public class BowAimAssist extends Module {
       priority = -200
    )
    public void onRotationApplied(RotationAppliedEvent event) {
-      if (mc.field_1724 != null) {
-         class_1799 heldItem = mc.field_1724.method_6047();
+      if (mc.player != null) {
+         ItemStack heldItem = mc.player.getMainHandStack();
          if (heldItem != null) {
-            if (this.crossbowFirePending && heldItem.method_7909() == class_1802.field_8399 && class_1764.method_7781(heldItem) && this.crossbowAimTicks >= 3) {
+            if (this.crossbowFirePending && heldItem.getItem() == Items.CROSSBOW && CrossbowItem.isCharged(heldItem) && this.crossbowAimTicks >= 3) {
                this.crossbowFirePending = false;
                this.crossbowAimTicks = 0;
-               mc.field_1761.method_2919(mc.field_1724, class_1268.field_5808);
+               mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
             }
          }
       }
@@ -143,88 +143,88 @@ public class BowAimAssist extends Module {
    @EventHandler
    public void onRender3D(Render3DEvent event) {
       if (this.target != null) {
-         Color healthColor = ColorUtils.getHealthColor(this.target.method_6032(), 20.0F);
+         Color healthColor = ColorUtils.getHealthColor(this.target.getHealth(), 20.0F);
          float tickDelta = event.getTickCounter();
          if (this.prediction.getValue() && this.predictedPos != null) {
-            double halfW = this.target.method_17681() / 2.0;
-            double h = this.target.method_17682();
-            class_238 predictBox = new class_238(
-               this.predictedPos.field_1352 - halfW,
-               this.predictedPos.field_1351,
-               this.predictedPos.field_1350 - halfW,
-               this.predictedPos.field_1352 + halfW,
-               this.predictedPos.field_1351 + h,
-               this.predictedPos.field_1350 + halfW
+            double halfW = this.target.getWidth() / 2.0;
+            double h = this.target.getHeight();
+            Box predictBox = new Box(
+               this.predictedPos.x - halfW,
+               this.predictedPos.y,
+               this.predictedPos.z - halfW,
+               this.predictedPos.x + halfW,
+               this.predictedPos.y + h,
+               this.predictedPos.z + halfW
             );
             Render3D.boxSides(predictBox, new Color(100, 200, 255, 70));
             Render3D.boxLines(predictBox, new Color(100, 200, 255, 150));
          }
 
-         double moveX = this.target.method_23317() - this.target.field_6014;
-         double moveY = this.target.method_23318() - this.target.field_6036;
-         double moveZ = this.target.method_23321() - this.target.field_5969;
-         class_238 box = this.target
-            .method_5829()
-            .method_1014(0.2)
-            .method_989(-moveX + moveX * tickDelta, -moveY + moveY * tickDelta, -moveZ + moveZ * tickDelta);
+         double moveX = this.target.getX() - this.target.prevX;
+         double moveY = this.target.getY() - this.target.prevY;
+         double moveZ = this.target.getZ() - this.target.prevZ;
+         Box box = this.target
+            .getBoundingBox()
+            .expand(0.2)
+            .offset(-moveX + moveX * tickDelta, -moveY + moveY * tickDelta, -moveZ + moveZ * tickDelta);
          Render3D.boxSides(box, new Color(healthColor.getRed(), healthColor.getGreen(), healthColor.getBlue(), 100));
          Render3D.boxLines(box, new Color(healthColor.getRed(), healthColor.getGreen(), healthColor.getBlue(), 150));
       }
    }
 
-   private class_1309 getTarget() {
-      Stream<class_1309> stream = StreamSupport.<class_1297>stream(mc.field_1687.method_18112().spliterator(), false)
-         .filter(e -> e instanceof class_1309)
-         .map(e -> (class_1309)e)
+   private LivingEntity getTarget() {
+      Stream<LivingEntity> stream = StreamSupport.<Entity>stream(mc.world.getEntities().spliterator(), false)
+         .filter(e -> e instanceof LivingEntity)
+         .map(e -> (LivingEntity)e)
          .filter(e -> TargetUtils.isTarget(e, true, true))
-         .filter(e -> mc.field_1724.method_5739(e) <= this.range.getValue().doubleValue())
-         .filter(mc.field_1724::method_6057)
+         .filter(e -> mc.player.distanceTo(e) <= this.range.getValue().doubleValue())
+         .filter(mc.player::canSee)
          .filter(e -> RotationUtils.inFoV(e, this.fov.getValue().floatValue()));
       if (this.priority.isMode("Range")) {
-         stream = stream.sorted(Comparator.comparingDouble(e -> e.method_5739(mc.field_1724)));
+         stream = stream.sorted(Comparator.comparingDouble(e -> e.distanceTo(mc.player)));
       } else if (this.priority.isMode("Angle")) {
          stream = stream.sorted(Comparator.comparingDouble(RotationUtils::getYawToEntity));
       }
 
-      List<class_1309> list = stream.toList();
+      List<LivingEntity> list = stream.toList();
       return list.isEmpty() ? null : list.get(0);
    }
 
-   private class_243 getTargetPos(class_1309 target) {
-      return new class_243(target.method_53830(), target.method_53827(), target.method_53828());
+   private Vec3d getTargetPos(LivingEntity target) {
+      return new Vec3d(target.getLerpTargetX(), target.getLerpTargetY(), target.getLerpTargetZ());
    }
 
-   private Rotation getAimRotation(class_1309 target) {
-      class_243 pos = this.getTargetPos(target);
-      double distanceToEnt = mc.field_1724.method_5739(target);
-      class_243 velocity = new class_243(
-         target.method_23317() - target.field_6038, target.method_23318() - target.field_5971, target.method_23321() - target.field_5989
+   private Rotation getAimRotation(LivingEntity target) {
+      Vec3d pos = this.getTargetPos(target);
+      double distanceToEnt = mc.player.distanceTo(target);
+      Vec3d velocity = new Vec3d(
+         target.getX() - target.lastRenderX, target.getY() - target.lastRenderY, target.getZ() - target.lastRenderZ
       );
-      double predictX = pos.field_1352 + velocity.field_1352 * (distanceToEnt * 0.8);
-      double predictZ = pos.field_1350 + velocity.field_1350 * (distanceToEnt * 0.8);
-      double x = predictX - mc.field_1724.method_23317();
-      double z = predictZ - mc.field_1724.method_23321();
-      double h = pos.field_1351 + 1.0 - (mc.field_1724.method_23318() + mc.field_1724.method_18381(mc.field_1724.method_18376()));
+      double predictX = pos.x + velocity.x * (distanceToEnt * 0.8);
+      double predictZ = pos.z + velocity.z * (distanceToEnt * 0.8);
+      double x = predictX - mc.player.getX();
+      double z = predictZ - mc.player.getZ();
+      double h = pos.y + 1.0 - (mc.player.getY() + mc.player.getEyeHeight(mc.player.getPose()));
       double h1 = Math.sqrt(x * x + z * z);
       float yaw = (float)(Math.atan2(z, x) * 180.0 / Math.PI) - 90.0F;
       float pitch = -RotationUtils.getTrajAngleSolutionLow((float)h1, (float)h, 1.0F);
       return new Rotation(yaw, pitch);
    }
 
-   private class_243 getPredictedPos(class_1309 target) {
-      class_243 pos = this.getTargetPos(target);
-      class_243 targetCenter = pos.method_1031(0.0, target.method_17682() / 2.0, 0.0);
-      class_243 eyePos = mc.field_1724.method_33571();
-      double distance = eyePos.method_1022(targetCenter);
+   private Vec3d getPredictedPos(LivingEntity target) {
+      Vec3d pos = this.getTargetPos(target);
+      Vec3d targetCenter = pos.add(0.0, target.getHeight() / 2.0, 0.0);
+      Vec3d eyePos = mc.player.getEyePos();
+      double distance = eyePos.distanceTo(targetCenter);
       double arrowSpeed = 3.15;
       int flightTicks = this.estimateFlightTicks(distance, arrowSpeed);
-      class_243 velocity = new class_243(
-         target.method_23317() - target.field_6014, target.method_23318() - target.field_6036, target.method_23321() - target.field_5969
+      Vec3d velocity = new Vec3d(
+         target.getX() - target.prevX, target.getY() - target.prevY, target.getZ() - target.prevZ
       );
-      double predX = pos.field_1352 + velocity.field_1352 * flightTicks;
-      double predY = pos.field_1351 + velocity.field_1351 * flightTicks;
-      double predZ = pos.field_1350 + velocity.field_1350 * flightTicks;
-      return new class_243(predX, predY + target.method_17682() / 2.0, predZ);
+      double predX = pos.x + velocity.x * flightTicks;
+      double predY = pos.y + velocity.y * flightTicks;
+      double predZ = pos.z + velocity.z * flightTicks;
+      return new Vec3d(predX, predY + target.getHeight() / 2.0, predZ);
    }
 
    private int estimateFlightTicks(double distance, double initialSpeed) {

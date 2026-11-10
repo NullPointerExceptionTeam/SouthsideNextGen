@@ -8,8 +8,8 @@ import dev.southside.module.impl.render.TargetHUD;
 import dev.southside.utils.misc.BezierUtil;
 import dev.southside.utils.render.animation.TimerUtil;
 import java.awt.Color;
-import net.minecraft.class_332;
-import net.minecraft.class_742;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.network.AbstractClientPlayerEntity;
 
 public class TargetHud6 extends Hud {
    private final TargetHUD parent;
@@ -20,7 +20,7 @@ public class TargetHud6 extends Hud {
    }
 
    @Override
-   protected void draw(class_332 context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
+   protected void draw(DrawContext context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
    }
 
    @Override
@@ -39,9 +39,9 @@ public class TargetHud6 extends Hud {
       public final TimerUtil updateTimer = new TimerUtil();
       public final BezierUtil y = new BezierUtil(3.0F, 0.0F);
       private final BezierUtil health = new BezierUtil(4.0F, 1.0F);
-      public class_742 entity;
+      public AbstractClientPlayerEntity entity;
 
-      public TargetHUDComponent(class_742 entity) {
+      public TargetHUDComponent(AbstractClientPlayerEntity entity) {
          this.entity = entity;
       }
 
@@ -64,12 +64,12 @@ public class TargetHud6 extends Hud {
                new Color(8, 9, 14, (int)(baseAlpha * 0.9F)).getRGB(),
                radius - 1.0F * scale
             );
-            float maxHealth = Math.max(this.entity.method_6063(), 1.0F);
-            float rawPercent = Math.max(0.0F, Math.min(this.entity.method_6032() / maxHealth, 1.0F));
+            float maxHealth = Math.max(this.entity.getMaxHealth(), 1.0F);
+            float rawPercent = Math.max(0.0F, Math.min(this.entity.getHealth() / maxHealth, 1.0F));
             this.health.update(rawPercent);
             float easedPercent = this.health.get();
             int percentValue = Math.round(easedPercent * 100.0F);
-            String name = this.entity.method_5476().getString();
+            String name = this.entity.getDisplayName().getString();
             float nameSize = 18.0F * scale;
             float percentSize = 15.0F * scale;
             float textHeight = helper.getTextHeight(vg, nameSize, Fonts.SEMIBOLD);

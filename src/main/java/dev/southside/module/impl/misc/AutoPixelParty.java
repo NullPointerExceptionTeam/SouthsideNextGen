@@ -14,16 +14,16 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import net.minecraft.class_1747;
-import net.minecraft.class_1799;
-import net.minecraft.class_1937;
-import net.minecraft.class_2248;
-import net.minecraft.class_2338;
-import net.minecraft.class_2561;
-import net.minecraft.class_2680;
-import net.minecraft.class_2791;
-import net.minecraft.class_2806;
-import net.minecraft.class_310;
+import net.minecraft.item.BlockItem;
+import net.minecraft.item.ItemStack;
+import net.minecraft.world.World;
+import net.minecraft.block.Block;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.text.Text;
+import net.minecraft.block.BlockState;
+import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.ChunkStatus;
+import net.minecraft.client.MinecraftClient;
 
 public class AutoPixelParty extends Module {
    public Slider searchChunkRadius = new Slider("Search Chunk Radius", 6, 5, 10);
@@ -31,7 +31,7 @@ public class AutoPixelParty extends Module {
    private static final int SEARCH_Y_DOWN = 10;
    private static final long SEARCH_THREAD_SLEEP_MS = 8L;
    private static final long STOP_PATH_DELAY_MS = 3000L;
-   private final class_310 mc = class_310.method_1551();
+   private final MinecraftClient mc = MinecraftClient.getInstance();
    private final ExecutorService searchExec = Executors.newSingleThreadExecutor(r -> {
       Thread t = new Thread(r, "AutoPixelParty-Search");
       t.setDaemon(true);
@@ -39,7 +39,7 @@ public class AutoPixelParty extends Module {
    });
    private Future<?> searchFuture = null;
    private final AtomicBoolean searchCancel = new AtomicBoolean(false);
-   private class_2248 targetBlock = null;
+   private Block targetBlock = null;
    private volatile boolean walkingToTarget = false;
    private volatile long scheduledStopWalkingAt = -1L;
    private final AtomicInteger stopTaskGeneration = new AtomicInteger(0);
@@ -59,16 +59,16 @@ public class AutoPixelParty extends Module {
    public void onTick(TickEvent event) {
       if (event.getState() == Stage.PRE) {
          this.processScheduledStopWalking();
-         if (this.mc.field_1724 != null && this.mc.field_1687 != null) {
-            class_1799 stack = this.getHotbarStack(this.hotbarIndex.getValue().intValue() - 1);
-            if (stack != null && !stack.method_7960()) {
+         if (this.mc.player != null && this.mc.world != null) {
+            ItemStack stack = this.getHotbarStack(this.hotbarIndex.getValue().intValue() - 1);
+            if (stack != null && !stack.isEmpty()) {
                this.cancelScheduledStopWalking();
-               if (!(stack.method_7909() instanceof class_1747)) {
+               if (!(stack.getItem() instanceof BlockItem)) {
                   this.cancelSearch();
                   this.targetBlock = null;
                } else {
-                  class_1747 blockItem = (class_1747)stack.method_7909();
-                  class_2248 block = blockItem.method_7711();
+                  BlockItem blockItem = (BlockItem)stack.getItem();
+                  Block block = blockItem.getBlock();
                   if (!this.walkingToTarget || this.targetBlock != block) {
                      this.targetBlock = block;
                      this.startSearchForBlock(block);
@@ -83,28 +83,28 @@ public class AutoPixelParty extends Module {
       }
    }
 
-   private class_1799 getHotbarStack(int hotbarIndex) {
+   private ItemStack getHotbarStack(int hotbarIndex) {
       try {
-         return this.mc.field_1724.method_31548().method_5438(hotbarIndex);
+         return this.mc.player.getInventory().getStack(hotbarIndex);
       } catch (Exception var5) {
          try {
-            return (class_1799)this.mc.field_1724.method_31548().field_7547.get(hotbarIndex);
+            return (ItemStack)this.mc.player.getInventory().main.get(hotbarIndex);
          } catch (Exception var4) {
-            return class_1799.field_8037;
+            return ItemStack.EMPTY;
          }
       }
    }
 
-   private void startSearchForBlock(class_2248 block) {
+   private void startSearchForBlock(Block block) {
       this.cancelSearch();
       this.searchCancel.set(false);
       this.searchFuture = this.searchExec.submit(() -> {
          try {
-            class_1937 world = this.mc.field_1687;
-            class_2338 playerPos = this.mc.field_1724.method_24515();
-            int playerChunkX = playerPos.method_10263() >> 4;
-            int playerChunkZ = playerPos.method_10260() >> 4;
-            class_2338 bestPos = null;
+            World world = this.mc.world;
+            BlockPos playerPos = this.mc.player.getBlockPos();
+            int playerChunkX = playerPos.getX() >> 4;
+            int playerChunkZ = playerPos.getZ() >> 4;
+            BlockPos bestPos = null;
             double bestDistSqr = Double.MAX_VALUE;
 
             for (int r = 0; r <= this.searchChunkRadius.getValue().intValue() && !this.searchCancel.get(); r++) {
@@ -112,27 +112,27 @@ public class AutoPixelParty extends Module {
 
                while (cx <= playerChunkX + r && !this.searchCancel.get()) {
                   for (int cz = playerChunkZ - r; cz <= playerChunkZ + r && !this.searchCancel.get(); cz++) {
-                     class_2791 chunk = world.method_8402(cx, cz, class_2806.field_12803, false);
+                     Chunk chunk = world.getChunk(cx, cz, ChunkStatus.FULL, false);
                      if (chunk != null) {
                         int baseX = cx << 4;
                         int baseZ = cz << 4;
-                        int py = playerPos.method_10264();
-                        int minY = Math.max(world.method_31607(), py - 10);
-                        int maxY = Math.min(world.method_31607() + world.method_31605() - 1, py);
+                        int py = playerPos.getY();
+                        int minY = Math.max(world.getBottomY(), py - 10);
+                        int maxY = Math.min(world.getBottomY() + world.getHeight() - 1, py);
 
                         for (int lx = 0; lx < 16 && !this.searchCancel.get(); lx++) {
                            for (int lz = 0; lz < 16 && !this.searchCancel.get(); lz++) {
                               int gx = baseX + lx;
                               int gz = baseZ + lz;
-                              double dx = gx + 0.5 - this.mc.field_1724.method_23317();
-                              double dz = gz + 0.5 - this.mc.field_1724.method_23321();
+                              double dx = gx + 0.5 - this.mc.player.getX();
+                              double dz = gz + 0.5 - this.mc.player.getZ();
                               double horizSqr = dx * dx + dz * dz;
                               if (bestPos == null || !(horizSqr > bestDistSqr)) {
                                  for (int gy = minY; gy <= maxY && !this.searchCancel.get(); gy++) {
-                                    class_2338 check = new class_2338(gx, gy, gz);
-                                    class_2680 st = world.method_8320(check);
-                                    if (st.method_26204() == block) {
-                                       double distSqr = this.mc.field_1724.method_19538().method_1025(check.method_46558());
+                                    BlockPos check = new BlockPos(gx, gy, gz);
+                                    BlockState st = world.getBlockState(check);
+                                    if (st.getBlock() == block) {
+                                       double distSqr = this.mc.player.getPos().squaredDistanceTo(check.toCenterPos());
                                        if (bestPos == null || distSqr < bestDistSqr) {
                                           bestPos = check;
                                           bestDistSqr = distSqr;
@@ -161,10 +161,10 @@ public class AutoPixelParty extends Module {
             }
 
             if (bestPos != null) {
-               class_2338 finalBestPos = bestPos;
+               BlockPos finalBestPos = bestPos;
                this.mc.execute(() -> {
-                  if (this.mc.field_1724 != null) {
-                     this.mc.field_1724.method_7353(class_2561.method_43470("[AutoPixelParty] 找到方块, 前往: " + finalBestPos.method_23854()), false);
+                  if (this.mc.player != null) {
+                     this.mc.player.sendMessage(Text.literal("[AutoPixelParty] 找到方块, 前往: " + finalBestPos.toShortString()), false);
                   }
 
                   AIWalkController.walkTo(finalBestPos);
@@ -172,8 +172,8 @@ public class AutoPixelParty extends Module {
                });
             } else {
                this.mc.execute(() -> {
-                  if (this.mc.field_1724 != null) {
-                     this.mc.field_1724.method_7353(class_2561.method_43470("[AutoPixelParty] 未在附近找到该方块"), false);
+                  if (this.mc.player != null) {
+                     this.mc.player.sendMessage(Text.literal("[AutoPixelParty] 未在附近找到该方块"), false);
                   }
 
                   this.walkingToTarget = false;
@@ -182,8 +182,8 @@ public class AutoPixelParty extends Module {
          } catch (Throwable var34) {
             var34.printStackTrace();
             this.mc.execute(() -> {
-               if (this.mc.field_1724 != null) {
-                  this.mc.field_1724.method_7353(class_2561.method_43470("[AutoPixelParty] 搜索时发生错误: " + var34.getMessage()), false);
+               if (this.mc.player != null) {
+                  this.mc.player.sendMessage(Text.literal("[AutoPixelParty] 搜索时发生错误: " + var34.getMessage()), false);
                }
             });
          }

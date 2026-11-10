@@ -30,8 +30,8 @@ import java.awt.Color;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.UUID;
-import net.minecraft.class_332;
-import net.minecraft.class_742;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.network.AbstractClientPlayerEntity;
 
 public class TargetHUD extends Module {
    public final Dropdown mode = new Dropdown("Mode", "Vanilla", "Vanilla", "Retro", "ModernVanilla", "Old", "Plus", "Myau", "New", "Southside", "Simple");
@@ -40,7 +40,7 @@ public class TargetHUD extends Module {
    public final cc.polyfrost.oneconfig.config.options.impl.HUD hud = new cc.polyfrost.oneconfig.config.options.impl.HUD(
       "Target HUD", new Hud(100.0F, 0.0F, Position.AnchorPosition.MIDDLE_CENTER.ordinal(), 1.0F) {
          @Override
-         protected void draw(class_332 context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
+         protected void draw(DrawContext context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
             String var7 = TargetHUD.this.mode.getMode();
             switch (var7) {
                case "Vanilla":
@@ -72,7 +72,7 @@ public class TargetHUD extends Module {
             }
          }
 
-         private void drawRetro(class_332 context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
+         private void drawRetro(DrawContext context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
             NanoVGHelper nanoVGHelper = NanoVGHelper.INSTANCE;
             ScissorHelper scissorHelper = ScissorHelper.INSTANCE;
             nanoVGHelper.setupAndDraw(true, vg -> {
@@ -99,8 +99,8 @@ public class TargetHUD extends Module {
 
                scissorHelper.resetScissor(vg, scissor);
             });
-            context.method_51448().method_22903();
-            context.method_44379((int)(x * scale), (int)y, UResolution.getScaledWidth(), UResolution.getScaledHeight());
+            context.getMatrices().push();
+            context.enableScissor((int)(x * scale), (int)y, UResolution.getScaledWidth(), UResolution.getScaledHeight());
 
             for (TargetHud8.TargetHUDComponent component : new ArrayList<>(TargetHUD.this.targets8.values())) {
                if (TargetHUD.this.multipleTargets.getValue() || component.entity == KillAura.target) {
@@ -108,11 +108,11 @@ public class TargetHUD extends Module {
                }
             }
 
-            context.method_44380();
-            context.method_51448().method_22909();
+            context.disableScissor();
+            context.getMatrices().pop();
          }
 
-         private void drawVanilla(class_332 context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
+         private void drawVanilla(DrawContext context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
             NanoVGHelper nanoVGHelper = NanoVGHelper.INSTANCE;
             ScissorHelper scissorHelper = ScissorHelper.INSTANCE;
             nanoVGHelper.setupAndDraw(true, vg -> {
@@ -139,8 +139,8 @@ public class TargetHUD extends Module {
 
                scissorHelper.resetScissor(vg, scissor);
             });
-            context.method_51448().method_22903();
-            context.method_44379((int)(x - 5.0F * scale), (int)y, UResolution.getScaledWidth(), UResolution.getScaledHeight());
+            context.getMatrices().push();
+            context.enableScissor((int)(x - 5.0F * scale), (int)y, UResolution.getScaledWidth(), UResolution.getScaledHeight());
 
             for (TargetHud.TargetHUDComponent component : new ArrayList<>(TargetHUD.this.targets.values())) {
                if (TargetHUD.this.multipleTargets.getValue() || component.entity == KillAura.target) {
@@ -148,11 +148,11 @@ public class TargetHUD extends Module {
                }
             }
 
-            context.method_44380();
-            context.method_51448().method_22909();
+            context.disableScissor();
+            context.getMatrices().pop();
          }
 
-         private void drawModern(class_332 context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
+         private void drawModern(DrawContext context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
             NanoVGHelper nanoVGHelper = NanoVGHelper.INSTANCE;
             nanoVGHelper.setupAndDraw(true, vg -> {
                float targetY = 0.0F;
@@ -175,8 +175,8 @@ public class TargetHUD extends Module {
                   }
                }
             });
-            context.method_51448().method_22903();
-            context.method_44379((int)x, (int)y, UResolution.getScaledWidth(), UResolution.getScaledHeight());
+            context.getMatrices().push();
+            context.enableScissor((int)x, (int)y, UResolution.getScaledWidth(), UResolution.getScaledHeight());
 
             for (TargetHud2.TargetHUDComponent component : new ArrayList<>(TargetHUD.this.targets2.values())) {
                if (TargetHUD.this.multipleTargets.getValue() || component.entity == KillAura.target) {
@@ -184,11 +184,11 @@ public class TargetHUD extends Module {
                }
             }
 
-            context.method_44380();
-            context.method_51448().method_22909();
+            context.disableScissor();
+            context.getMatrices().pop();
          }
 
-         private void drawOld(class_332 context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
+         private void drawOld(DrawContext context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
             NanoVGHelper nanoVGHelper = NanoVGHelper.INSTANCE;
             nanoVGHelper.setupAndDraw(true, vg -> {
                float targetY = 0.0F;
@@ -213,7 +213,7 @@ public class TargetHUD extends Module {
             });
          }
 
-         private void drawPlus(class_332 context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
+         private void drawPlus(DrawContext context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
             NanoVGHelper nanoVGHelper = NanoVGHelper.INSTANCE;
             nanoVGHelper.setupAndDraw(true, vg -> {
                float targetY = 0.0F;
@@ -236,8 +236,8 @@ public class TargetHUD extends Module {
                   }
                }
             });
-            context.method_51448().method_22903();
-            context.method_44379((int)x, (int)y, UResolution.getScaledWidth(), UResolution.getScaledHeight());
+            context.getMatrices().push();
+            context.enableScissor((int)x, (int)y, UResolution.getScaledWidth(), UResolution.getScaledHeight());
 
             for (TargetHud4.TargetHUDComponent component : new ArrayList<>(TargetHUD.this.targets4.values())) {
                if (TargetHUD.this.multipleTargets.getValue() || component.entity == KillAura.target) {
@@ -245,11 +245,11 @@ public class TargetHUD extends Module {
                }
             }
 
-            context.method_44380();
-            context.method_51448().method_22909();
+            context.disableScissor();
+            context.getMatrices().pop();
          }
 
-         private void drawMyau(class_332 context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
+         private void drawMyau(DrawContext context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
             NanoVGHelper nanoVGHelper = NanoVGHelper.INSTANCE;
             nanoVGHelper.setupAndDraw(true, vg -> {
                float targetY = 0.0F;
@@ -272,8 +272,8 @@ public class TargetHUD extends Module {
                   }
                }
             });
-            context.method_51448().method_22903();
-            context.method_44379((int)x, (int)y, UResolution.getScaledWidth(), UResolution.getScaledHeight());
+            context.getMatrices().push();
+            context.enableScissor((int)x, (int)y, UResolution.getScaledWidth(), UResolution.getScaledHeight());
 
             for (TargetHud5.TargetHUDComponent component : new ArrayList<>(TargetHUD.this.targets5.values())) {
                if (TargetHUD.this.multipleTargets.getValue() || component.entity == KillAura.target) {
@@ -281,11 +281,11 @@ public class TargetHUD extends Module {
                }
             }
 
-            context.method_44380();
-            context.method_51448().method_22909();
+            context.disableScissor();
+            context.getMatrices().pop();
          }
 
-         private void drawNew(class_332 context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
+         private void drawNew(DrawContext context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
             NanoVGHelper nanoVGHelper = NanoVGHelper.INSTANCE;
             nanoVGHelper.setupAndDraw(true, vg -> {
                float targetY = 0.0F;
@@ -310,7 +310,7 @@ public class TargetHUD extends Module {
             });
          }
 
-         private void drawSouthside(class_332 context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
+         private void drawSouthside(DrawContext context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
             NanoVGHelper nanoVGHelper = NanoVGHelper.INSTANCE;
             ScissorHelper scissorHelper = ScissorHelper.INSTANCE;
             nanoVGHelper.setupAndDraw(true, vg -> {
@@ -350,8 +350,8 @@ public class TargetHUD extends Module {
 
                scissorHelper.resetScissor(vg, scissor);
             });
-            context.method_51448().method_22903();
-            context.method_44379((int)(x - 5.0F * scale), (int)y, UResolution.getScaledWidth(), UResolution.getScaledHeight());
+            context.getMatrices().push();
+            context.enableScissor((int)(x - 5.0F * scale), (int)y, UResolution.getScaledWidth(), UResolution.getScaledHeight());
 
             for (TargetHud7.TargetHUDComponent component : new ArrayList<>(TargetHUD.this.targets7.values())) {
                if (TargetHUD.this.multipleTargets.getValue() || component.entity == KillAura.target) {
@@ -359,11 +359,11 @@ public class TargetHUD extends Module {
                }
             }
 
-            context.method_44380();
-            context.method_51448().method_22909();
+            context.disableScissor();
+            context.getMatrices().pop();
          }
 
-         private void drawSimple(class_332 context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
+         private void drawSimple(DrawContext context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
             NanoVGHelper nanoVGHelper = NanoVGHelper.INSTANCE;
             nanoVGHelper.setupAndDraw(true, vg -> {
                float targetY = 0.0F;
@@ -386,8 +386,8 @@ public class TargetHUD extends Module {
                   }
                }
             });
-            context.method_51448().method_22903();
-            context.method_44379((int)x, (int)y, (int)(x + 170.0F * scale), (int)(y + 999.0F));
+            context.getMatrices().push();
+            context.enableScissor((int)x, (int)y, (int)(x + 170.0F * scale), (int)(y + 999.0F));
 
             for (TargetHudSimple.TargetHUDComponent component : new ArrayList<>(TargetHUD.this.targetsSimple.values())) {
                if (TargetHUD.this.multipleTargets.getValue() || component.entity == KillAura.target) {
@@ -395,8 +395,8 @@ public class TargetHUD extends Module {
                }
             }
 
-            context.method_44380();
-            context.method_51448().method_22909();
+            context.disableScissor();
+            context.getMatrices().pop();
          }
 
          @Override
@@ -444,75 +444,75 @@ public class TargetHUD extends Module {
       super(Category.Render, "TargetHUD", "目标显示");
    }
 
-   private void updateTarget(class_742 player) {
-      if (!this.targets.containsKey(player.method_5667())) {
-         this.targets.put(player.method_5667(), new TargetHud.TargetHUDComponent(player));
+   private void updateTarget(AbstractClientPlayerEntity player) {
+      if (!this.targets.containsKey(player.getUuid())) {
+         this.targets.put(player.getUuid(), new TargetHud.TargetHUDComponent(player));
       } else {
-         this.targets.get(player.method_5667()).entity = player;
+         this.targets.get(player.getUuid()).entity = player;
       }
 
-      this.targets.get(player.method_5667()).updateTimer.reset();
-      if (!this.targets2.containsKey(player.method_5667())) {
-         this.targets2.put(player.method_5667(), new TargetHud2.TargetHUDComponent(player));
+      this.targets.get(player.getUuid()).updateTimer.reset();
+      if (!this.targets2.containsKey(player.getUuid())) {
+         this.targets2.put(player.getUuid(), new TargetHud2.TargetHUDComponent(player));
       } else {
-         this.targets2.get(player.method_5667()).entity = player;
+         this.targets2.get(player.getUuid()).entity = player;
       }
 
-      this.targets2.get(player.method_5667()).updateTimer.reset();
-      if (!this.targets3.containsKey(player.method_5667())) {
-         this.targets3.put(player.method_5667(), new TargetHud3.TargetHUDComponent(player));
+      this.targets2.get(player.getUuid()).updateTimer.reset();
+      if (!this.targets3.containsKey(player.getUuid())) {
+         this.targets3.put(player.getUuid(), new TargetHud3.TargetHUDComponent(player));
       } else {
-         this.targets3.get(player.method_5667()).entity = player;
+         this.targets3.get(player.getUuid()).entity = player;
       }
 
-      this.targets3.get(player.method_5667()).updateTimer.reset();
-      if (!this.targets4.containsKey(player.method_5667())) {
-         this.targets4.put(player.method_5667(), new TargetHud4.TargetHUDComponent(player));
+      this.targets3.get(player.getUuid()).updateTimer.reset();
+      if (!this.targets4.containsKey(player.getUuid())) {
+         this.targets4.put(player.getUuid(), new TargetHud4.TargetHUDComponent(player));
       } else {
-         this.targets4.get(player.method_5667()).entity = player;
+         this.targets4.get(player.getUuid()).entity = player;
       }
 
-      this.targets4.get(player.method_5667()).updateTimer.reset();
-      if (!this.targets5.containsKey(player.method_5667())) {
-         this.targets5.put(player.method_5667(), new TargetHud5.TargetHUDComponent(player));
+      this.targets4.get(player.getUuid()).updateTimer.reset();
+      if (!this.targets5.containsKey(player.getUuid())) {
+         this.targets5.put(player.getUuid(), new TargetHud5.TargetHUDComponent(player));
       } else {
-         this.targets5.get(player.method_5667()).entity = player;
+         this.targets5.get(player.getUuid()).entity = player;
       }
 
-      this.targets5.get(player.method_5667()).updateTimer.reset();
-      if (!this.targets6.containsKey(player.method_5667())) {
-         this.targets6.put(player.method_5667(), new TargetHud6.TargetHUDComponent(player));
+      this.targets5.get(player.getUuid()).updateTimer.reset();
+      if (!this.targets6.containsKey(player.getUuid())) {
+         this.targets6.put(player.getUuid(), new TargetHud6.TargetHUDComponent(player));
       } else {
-         this.targets6.get(player.method_5667()).entity = player;
+         this.targets6.get(player.getUuid()).entity = player;
       }
 
-      this.targets6.get(player.method_5667()).updateTimer.reset();
-      if (!this.targets7.containsKey(player.method_5667())) {
-         this.targets7.put(player.method_5667(), new TargetHud7.TargetHUDComponent(player));
+      this.targets6.get(player.getUuid()).updateTimer.reset();
+      if (!this.targets7.containsKey(player.getUuid())) {
+         this.targets7.put(player.getUuid(), new TargetHud7.TargetHUDComponent(player));
       } else {
-         this.targets7.get(player.method_5667()).entity = player;
+         this.targets7.get(player.getUuid()).entity = player;
       }
 
-      this.targets7.get(player.method_5667()).updateTimer.reset();
-      if (!this.targets8.containsKey(player.method_5667())) {
-         this.targets8.put(player.method_5667(), new TargetHud8.TargetHUDComponent(player));
+      this.targets7.get(player.getUuid()).updateTimer.reset();
+      if (!this.targets8.containsKey(player.getUuid())) {
+         this.targets8.put(player.getUuid(), new TargetHud8.TargetHUDComponent(player));
       } else {
-         this.targets8.get(player.method_5667()).entity = player;
+         this.targets8.get(player.getUuid()).entity = player;
       }
 
-      this.targets8.get(player.method_5667()).updateTimer.reset();
-      if (!this.targetsSimple.containsKey(player.method_5667())) {
-         this.targetsSimple.put(player.method_5667(), new TargetHudSimple.TargetHUDComponent(player));
+      this.targets8.get(player.getUuid()).updateTimer.reset();
+      if (!this.targetsSimple.containsKey(player.getUuid())) {
+         this.targetsSimple.put(player.getUuid(), new TargetHudSimple.TargetHUDComponent(player));
       } else {
-         this.targetsSimple.get(player.method_5667()).entity = player;
+         this.targetsSimple.get(player.getUuid()).entity = player;
       }
 
-      this.targetsSimple.get(player.method_5667()).updateTimer.reset();
+      this.targetsSimple.get(player.getUuid()).updateTimer.reset();
    }
 
    @EventHandler
    public void onAttack(AttackEvent event) {
-      if (event.target instanceof class_742 player) {
+      if (event.target instanceof AbstractClientPlayerEntity player) {
          this.updateTarget(player);
       }
    }
@@ -531,11 +531,11 @@ public class TargetHUD extends Module {
          }
 
          KillAura.targets.forEach(entityLivingBase -> {
-            if (entityLivingBase instanceof class_742 playerx) {
+            if (entityLivingBase instanceof AbstractClientPlayerEntity playerx) {
                this.updateTarget(playerx);
             }
          });
-      } else if (KillAura.target instanceof class_742 player) {
+      } else if (KillAura.target instanceof AbstractClientPlayerEntity player) {
          this.updateTarget(player);
       }
    }

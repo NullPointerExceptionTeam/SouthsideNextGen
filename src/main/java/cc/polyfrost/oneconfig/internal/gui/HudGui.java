@@ -25,8 +25,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
-import net.minecraft.class_332;
-import net.minecraft.class_437;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.Screen;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -47,7 +47,7 @@ public class HudGui extends UScreen implements GuiPause {
    }
 
    @Override
-   public void onDrawScreen(@NotNull UMatrixStack matrixStack, class_332 context, int mouseX, int mouseY, float partialTicks) {
+   public void onDrawScreen(@NotNull UMatrixStack matrixStack, DrawContext context, int mouseX, int mouseY, float partialTicks) {
       NanoVGHelper nanoVGHelper = NanoVGHelper.INSTANCE;
       int lineWidth = Math.max(1, Math.round(Math.min(UResolution.getWindowWidth() / 1920.0F, UResolution.getWindowHeight() / 1080.0F)));
       if (this.isDragging) {
@@ -251,7 +251,7 @@ public class HudGui extends UScreen implements GuiPause {
       super.onScreenClose();
       HudCore.editing = false;
       ConfigCore.saveAll();
-      GuiUtils.displayScreen((class_437)OneConfigGui.create());
+      GuiUtils.displayScreen((Screen)OneConfigGui.create());
    }
 
    @Override
@@ -442,7 +442,7 @@ public class HudGui extends UScreen implements GuiPause {
             final float height = h * s;
             HudCore.huds.put(new HUD("bigrat", null), new Hud() {
                @Override
-               protected void draw(class_332 context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
+               protected void draw(DrawContext context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
                   NanoVGHelper.INSTANCE.setupAndDraw(true, vg -> NanoVGHelper.INSTANCE.drawImage(vg, url, x, y, width * scale, height * scale));
                }
 

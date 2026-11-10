@@ -15,17 +15,17 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import net.minecraft.class_1297;
-import net.minecraft.class_1542;
-import net.minecraft.class_1799;
-import net.minecraft.class_1802;
-import net.minecraft.class_241;
-import net.minecraft.class_243;
-import net.minecraft.class_2561;
-import net.minecraft.class_327;
-import net.minecraft.class_332;
-import net.minecraft.class_3532;
-import net.minecraft.class_4587;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.ItemEntity;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.util.math.Vec2f;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.text.Text;
+import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.client.util.math.MatrixStack;
 
 public class ItemTag extends Module {
    private final Slider scale = new Slider("Scale", 0.8F, 0.2F, 3.0F, 0.1F);
@@ -39,12 +39,12 @@ public class ItemTag extends Module {
 
    @EventHandler
    public void onRender2D(Render2DEvent event) {
-      if (mc.field_1687 != null && mc.field_1724 != null) {
+      if (mc.world != null && mc.player != null) {
          List<ItemTag.ItemCluster> clusters = this.collectClusters(event.getRenderTick());
          if (!clusters.isEmpty()) {
             for (ItemTag.ItemCluster cluster : clusters) {
-               class_243 anchor = cluster.getCenter().method_1031(0.0, 0.5, 0.0);
-               class_241 screenPos = ProjectionUtil.worldScreenPos(anchor);
+               Vec3d anchor = cluster.getCenter().add(0.0, 0.5, 0.0);
+               Vec2f screenPos = ProjectionUtil.worldScreenPos(anchor);
                if (screenPos != null) {
                   this.renderTag(event.getDrawContext(), screenPos, cluster);
                }
@@ -58,30 +58,30 @@ public class ItemTag extends Module {
       double radius = this.mergeRadius.getValue().doubleValue();
       double mergeDistanceSq = radius * radius;
       boolean allowMerge = radius > 0.0;
-      Iterator var8 = mc.field_1687.method_18112().iterator();
+      Iterator var8 = mc.world.getEntities().iterator();
 
       while (true) {
-         class_1542 itemEntity;
+         ItemEntity itemEntity;
          while (true) {
             if (!var8.hasNext()) {
                return clusters;
             }
 
-            class_1297 entity = (class_1297)var8.next();
-            if (entity instanceof class_1542 candidate && !candidate.method_31481() && !candidate.method_6983().method_7960()) {
+            Entity entity = (Entity)var8.next();
+            if (entity instanceof ItemEntity candidate && !candidate.isRemoved() && !candidate.getStack().isEmpty()) {
                itemEntity = candidate;
                if (!this.excludeJunk.getValue()) {
                   break;
                }
 
                InvManagerN invManager = Southside.INSTANCE.getModuleManager().get(InvManagerN.class);
-               if (invManager == null || InvManagerN.isItemUseful(itemEntity.method_6983())) {
+               if (invManager == null || InvManagerN.isItemUseful(itemEntity.getStack())) {
                   break;
                }
             }
          }
 
-         class_243 pos = itemEntity.method_30950(partialTicks);
+         Vec3d pos = itemEntity.getLerpedPos(partialTicks);
          ItemTag.ItemCluster target = null;
          if (allowMerge) {
             for (ItemTag.ItemCluster cluster : clusters) {
@@ -101,14 +101,14 @@ public class ItemTag extends Module {
       }
    }
 
-   private void renderTag(class_332 context, class_241 screenPos, ItemTag.ItemCluster cluster) {
+   private void renderTag(DrawContext context, Vec2f screenPos, ItemTag.ItemCluster cluster) {
       List<ItemTag.TagLine> lines = cluster.getLines();
       if (!lines.isEmpty()) {
-         class_327 textRenderer = mc.field_1772;
+         TextRenderer textRenderer = mc.textRenderer;
          int maxWidth = 0;
 
          for (ItemTag.TagLine line : lines) {
-            maxWidth = Math.max(maxWidth, textRenderer.method_1727(line.text()));
+            maxWidth = Math.max(maxWidth, textRenderer.getWidth(line.text()));
          }
 
          if (maxWidth > 0) {
@@ -123,24 +123,24 @@ public class ItemTag extends Module {
             int top = -(totalHeight + 2);
             int right = left + totalWidth;
             int bottom = top + totalHeight;
-            class_4587 matrices = context.method_51448();
-            matrices.method_22903();
-            matrices.method_46416(screenPos.field_1343, screenPos.field_1342, 0.0F);
+            MatrixStack matrices = context.getMatrices();
+            matrices.push();
+            matrices.translate(screenPos.x, screenPos.y, 0.0F);
             float scaleValue = this.scale.getValue().floatValue();
-            matrices.method_22905(scaleValue, scaleValue, 1.0F);
-            float alpha = class_3532.method_15363(this.backgroundAlpha.getValue().floatValue(), 0.0F, 1.0F);
+            matrices.scale(scaleValue, scaleValue, 1.0F);
+            float alpha = MathHelper.clamp(this.backgroundAlpha.getValue().floatValue(), 0.0F, 1.0F);
             int background = ((int)(alpha * 255.0F) & 0xFF) << 24;
-            context.method_25294(left, top, right, bottom, background);
+            context.fill(left, top, right, bottom, background);
             int textY = top + paddingY;
 
             for (ItemTag.TagLine line : lines) {
-               int lineWidth = textRenderer.method_1727(line.text());
+               int lineWidth = textRenderer.getWidth(line.text());
                int textX = left + (totalWidth - lineWidth) / 2;
-               context.method_51439(textRenderer, class_2561.method_43470(line.text()), textX, textY, line.color(), true);
+               context.drawText(textRenderer, Text.literal(line.text()), textX, textY, line.color(), true);
                textY += lineHeight;
             }
 
-            matrices.method_22909();
+            matrices.pop();
          }
       }
    }
@@ -157,14 +157,14 @@ public class ItemTag extends Module {
       private int samples;
       private final Map<String, ItemTag.ItemCluster.ItemEntry> items = new LinkedHashMap<>();
 
-      void add(class_1542 entity, class_243 pos) {
-         this.sumX = this.sumX + pos.field_1352;
-         this.sumY = this.sumY + pos.field_1351;
-         this.sumZ = this.sumZ + pos.field_1350;
+      void add(ItemEntity entity, Vec3d pos) {
+         this.sumX = this.sumX + pos.x;
+         this.sumY = this.sumY + pos.y;
+         this.sumZ = this.sumZ + pos.z;
          this.samples++;
-         class_1799 stack = entity.method_6983();
-         String display = stack.method_7964().getString();
-         int count = stack.method_7947();
+         ItemStack stack = entity.getStack();
+         String display = stack.getName().getString();
+         int count = stack.getCount();
          int color = getHighlightColor(stack);
          String key = display + "\u0000" + (color != -1 ? 1 : 0);
          ItemTag.ItemCluster.ItemEntry entry = this.items.get(key);
@@ -176,22 +176,22 @@ public class ItemTag extends Module {
          entry.increment(count);
       }
 
-      double squaredDistanceTo(class_243 pos) {
+      double squaredDistanceTo(Vec3d pos) {
          if (this.samples == 0) {
             return Double.MAX_VALUE;
          } else {
             double cx = this.sumX / this.samples;
             double cy = this.sumY / this.samples;
             double cz = this.sumZ / this.samples;
-            double dx = cx - pos.field_1352;
-            double dy = cy - pos.field_1351;
-            double dz = cz - pos.field_1350;
+            double dx = cx - pos.x;
+            double dy = cy - pos.y;
+            double dz = cz - pos.z;
             return dx * dx + dy * dy + dz * dz;
          }
       }
 
-      class_243 getCenter() {
-         return this.samples == 0 ? class_243.field_1353 : new class_243(this.sumX / this.samples, this.sumY / this.samples, this.sumZ / this.samples);
+      Vec3d getCenter() {
+         return this.samples == 0 ? Vec3d.ZERO : new Vec3d(this.sumX / this.samples, this.sumY / this.samples, this.sumZ / this.samples);
       }
 
       List<ItemTag.TagLine> getLines() {
@@ -204,16 +204,16 @@ public class ItemTag extends Module {
          return lines;
       }
 
-      private static int getHighlightColor(class_1799 stack) {
-         if (stack != null && !stack.method_7960()) {
-            if (stack.method_7909() == class_1802.field_8477) {
+      private static int getHighlightColor(ItemStack stack) {
+         if (stack != null && !stack.isEmpty()) {
+            if (stack.getItem() == Items.DIAMOND) {
                return -10308865;
-            } else if (stack.method_7909() == class_1802.field_8687 || stack.method_7909() == class_1802.field_8777) {
+            } else if (stack.getItem() == Items.EMERALD || stack.getItem() == Items.SLIME_BALL) {
                return -10099826;
-            } else if (InventoryUtils.isGodAxe(stack) || stack.method_7909() == class_1802.field_8367) {
+            } else if (InventoryUtils.isGodAxe(stack) || stack.getItem() == Items.ENCHANTED_GOLDEN_APPLE) {
                return -9101;
             } else {
-               return stack.method_7909() == class_1802.field_8301 ? -4027393 : -1;
+               return stack.getItem() == Items.END_CRYSTAL ? -4027393 : -1;
             }
          } else {
             return -1;

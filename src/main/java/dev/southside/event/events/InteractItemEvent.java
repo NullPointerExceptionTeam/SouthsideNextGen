@@ -2,26 +2,26 @@ package dev.southside.event.events;
 
 import dev.southside.event.CancellableEvent;
 import lombok.Generated;
-import net.minecraft.class_1268;
-import net.minecraft.class_1799;
+import net.minecraft.util.Hand;
+import net.minecraft.item.ItemStack;
 
 public class InteractItemEvent extends CancellableEvent {
-   private class_1268 interactHand;
-   private class_1799 item;
+   private Hand interactHand;
+   private ItemStack item;
 
    @Generated
-   public InteractItemEvent(class_1268 interactHand, class_1799 item) {
+   public InteractItemEvent(Hand interactHand, ItemStack item) {
       this.interactHand = interactHand;
       this.item = item;
    }
 
    @Generated
-   public class_1268 getInteractHand() {
+   public Hand getInteractHand() {
       return this.interactHand;
    }
 
    @Generated
-   public class_1799 getItem() {
+   public ItemStack getItem() {
       return this.item;
    }
 }

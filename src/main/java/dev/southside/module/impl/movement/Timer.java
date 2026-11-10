@@ -46,12 +46,12 @@ public class Timer extends Module {
          MinecraftTickTimerUtils.setMultiplier(1.0F);
       } else {
          if (event.getState() == Stage.PRE) {
-            boolean isMoving = mc.field_1690.field_1894.method_1434()
-               || mc.field_1690.field_1881.method_1434()
-               || mc.field_1690.field_1913.method_1434()
-               || mc.field_1690.field_1849.method_1434();
-            boolean onGround = mc.field_1724.method_24828();
-            if (GLFW.glfwGetMouseButton(mc.method_22683().method_4490(), 3) == 1 && this.balance > 0.1F) {
+            boolean isMoving = mc.options.forwardKey.isPressed()
+               || mc.options.backKey.isPressed()
+               || mc.options.leftKey.isPressed()
+               || mc.options.rightKey.isPressed();
+            boolean onGround = mc.player.isOnGround();
+            if (GLFW.glfwGetMouseButton(mc.getWindow().getHandle(), 3) == 1 && this.balance > 0.1F) {
                float timer = this.timerSpeed.getValue().floatValue();
                if (this.balance >= timer - 1.0F) {
                   MinecraftTickTimerUtils.setMultiplier(timer);

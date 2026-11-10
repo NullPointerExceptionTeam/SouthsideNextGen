@@ -40,8 +40,8 @@ public class HUD extends Module {
             vg -> instance.drawTextWithFormatting(
                vg,
                user,
-               mc.method_22683().method_4486() - instance.getTextWidth(vg, user, 10.0F, Fonts.WQY),
-               mc.method_22683().method_4502() - instance.getTextHeight(vg, 10.0F, Fonts.WQY) / 2.0F,
+               mc.getWindow().getScaledWidth() - instance.getTextWidth(vg, user, 10.0F, Fonts.WQY),
+               mc.getWindow().getScaledHeight() - instance.getTextHeight(vg, 10.0F, Fonts.WQY) / 2.0F,
                -1,
                10.0F,
                Fonts.WQY

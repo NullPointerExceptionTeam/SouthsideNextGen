@@ -10,10 +10,10 @@ import dev.southside.module.Module;
 import dev.southside.orbit.EventHandler;
 import dev.southside.utils.player.EnchantmentUtils;
 import dev.southside.utils.player.MovementUtils;
-import net.minecraft.class_1703;
-import net.minecraft.class_1799;
-import net.minecraft.class_1893;
-import net.minecraft.class_2868;
+import net.minecraft.screen.ScreenHandler;
+import net.minecraft.item.ItemStack;
+import net.minecraft.enchantment.Enchantments;
+import net.minecraft.network.packet.c2s.play.UpdateSelectedSlotC2SPacket;
 
 public class Criticals extends Module {
    public static final Dropdown mode = new Dropdown("Mode", "Switch", "Switch", "Stuck", "Packet");
@@ -38,21 +38,21 @@ public class Criticals extends Module {
       if (mode.isMode("Switch")) {
          if (event.stage == Stage.PRE) {
             this.lastSlot = -1;
-            int bestSword = this.getBestSword(mc.field_1724.field_7498);
+            int bestSword = this.getBestSword(mc.player.playerScreenHandler);
             if (bestSword == -1) {
                return;
             }
 
-            if (mc.field_1724.method_31548().field_7545 != bestSword) {
-               this.lastSlot = mc.field_1724.method_31548().field_7545;
-               mc.field_1724.method_31548().field_7545 = bestSword;
+            if (mc.player.getInventory().selectedSlot != bestSword) {
+               this.lastSlot = mc.player.getInventory().selectedSlot;
+               mc.player.getInventory().selectedSlot = bestSword;
             }
          } else if (this.lastSlot != -1) {
-            mc.field_1724.method_31548().field_7545 = this.lastSlot;
-            int i = mc.field_1724.method_31548().field_7545;
-            if (i != mc.field_1761.field_3721) {
-               mc.field_1761.field_3721 = i;
-               mc.field_1761.field_3720.method_52787(new class_2868(mc.field_1761.field_3721));
+            mc.player.getInventory().selectedSlot = this.lastSlot;
+            int i = mc.player.getInventory().selectedSlot;
+            if (i != mc.interactionManager.lastSelectedSlot) {
+               mc.interactionManager.lastSelectedSlot = i;
+               mc.interactionManager.networkHandler.sendPacket(new UpdateSelectedSlotC2SPacket(mc.interactionManager.lastSelectedSlot));
             }
          }
       }
@@ -63,7 +63,7 @@ public class Criticals extends Module {
       if (mode.isMode("Stuck")) {
          if (KillAura.target == null || !Southside.INSTANCE.getModuleManager().get(KillAura.class).inRaycast(KillAura.target)) {
             this.attacks = 0;
-         } else if (mc.field_1724.field_6017 > 0.0F && !this.release && mc.field_1724.method_18798().field_1351 < 0.05) {
+         } else if (mc.player.fallDistance > 0.0F && !this.release && mc.player.getVelocity().y < 0.05) {
             MovementUtils.cancelMove();
          } else if (this.release) {
             this.release = false;
@@ -71,13 +71,13 @@ public class Criticals extends Module {
       }
    }
 
-   private int getBestSword(class_1703 c) {
+   private int getBestSword(ScreenHandler c) {
       double damage = 0.0;
       int slot = -1;
 
       for (int i = 36; i < 45; i++) {
-         class_1799 stack = c.method_7611(i).method_7677();
-         if (!stack.method_7960() && mc.field_1724.method_31548().field_7545 != i - 36) {
+         ItemStack stack = c.getSlot(i).getStack();
+         if (!stack.isEmpty() && mc.player.getInventory().selectedSlot != i - 36) {
             double newDamage = this.getItemDamage(stack);
             if (newDamage > damage) {
                damage = newDamage;
@@ -89,10 +89,10 @@ public class Criticals extends Module {
       return slot;
    }
 
-   private double getItemDamage(class_1799 stack) {
+   private double getItemDamage(ItemStack stack) {
       double damage = 0.0;
-      if (stack.method_7942()) {
-         damage += EnchantmentUtils.getLevel(class_1893.field_9118, stack) * 0.5;
+      if (stack.hasEnchantments()) {
+         damage += EnchantmentUtils.getLevel(Enchantments.SHARPNESS, stack) * 0.5;
       }
 
       return damage;

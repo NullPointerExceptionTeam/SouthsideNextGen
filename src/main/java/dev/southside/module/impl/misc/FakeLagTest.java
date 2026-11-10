@@ -20,19 +20,19 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
-import net.minecraft.class_1297;
-import net.minecraft.class_1657;
-import net.minecraft.class_1667;
-import net.minecraft.class_1676;
-import net.minecraft.class_1799;
-import net.minecraft.class_1802;
-import net.minecraft.class_1812;
-import net.minecraft.class_1934;
-import net.minecraft.class_238;
-import net.minecraft.class_243;
-import net.minecraft.class_2596;
-import net.minecraft.class_2824;
-import net.minecraft.class_2827;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.projectile.ArrowEntity;
+import net.minecraft.entity.projectile.ProjectileEntity;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.item.PotionItem;
+import net.minecraft.world.GameMode;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
+import net.minecraft.network.packet.c2s.common.KeepAliveC2SPacket;
 
 public class FakeLagTest extends Module {
    private final Slider maxPacketsValue = new Slider("Max Packets", 50, 1, 200, 1);
@@ -44,10 +44,10 @@ public class FakeLagTest extends Module {
    private final Slider dangerRangeValue = new Slider("Danger Range", 4.0, 1.0, 8.0, 0.1);
    private final Slider attackSyncDistanceValue = new Slider("Attack Sync Distance", 3.0, 1.0, 6.0, 0.1);
    private final Color boxColor = new Color("Box Color", new OneColor(64, 176, 255, 80));
-   private final LinkedList<List<class_2596<?>>> packets = new LinkedList<>();
+   private final LinkedList<List<Packet<?>>> packets = new LinkedList<>();
    private int ticks;
-   private final List<class_243> realPos = new ArrayList<>();
-   private class_243 renderPos;
+   private final List<Vec3d> realPos = new ArrayList<>();
+   private Vec3d renderPos;
 
    public FakeLagTest() {
       super(Category.Misc, "FakeLagTest", "Blink-style fake lag");
@@ -55,17 +55,17 @@ public class FakeLagTest extends Module {
 
    @Override
    public void onEnable() {
-      if (mc.field_1724 != null && mc.field_1687 != null) {
+      if (mc.player != null && mc.world != null) {
          this.packets.clear();
          this.packets.add(new ArrayList<>());
          this.ticks = 0;
          this.realPos.clear();
          this.renderPos = null;
-         class_243 startPos = new class_243(mc.field_1724.method_23317(), mc.field_1724.method_23318(), mc.field_1724.method_23321());
+         Vec3d startPos = new Vec3d(mc.player.getX(), mc.player.getY(), mc.player.getZ());
          this.realPos.add(startPos);
          this.renderPos = startPos;
-         mc.field_1724.method_31549().field_7476 = true;
-         mc.field_1724.method_51889(class_1934.field_9215);
+         mc.player.getAbilities().allowModifyWorld = true;
+         mc.player.onGameModeChanged(GameMode.SURVIVAL);
          super.onEnable();
       } else {
          this.setEnable(false);
@@ -88,31 +88,31 @@ public class FakeLagTest extends Module {
 
    @EventHandler
    public void onRender(Render3DEvent event) {
-      if (this.isEnabled() && mc.field_1724 != null) {
-         class_243 serverPos = this.getServerPosition();
+      if (this.isEnabled() && mc.player != null) {
+         Vec3d serverPos = this.getServerPosition();
          if (serverPos != null) {
             if (this.renderPos == null) {
                this.renderPos = serverPos;
             } else {
-               class_243 diff = serverPos.method_1020(this.renderPos);
+               Vec3d diff = serverPos.subtract(this.renderPos);
                double maxStep = 0.35;
-               double distance = diff.method_1033();
+               double distance = diff.length();
                if (distance > maxStep) {
-                  class_243 step = diff.method_1029().method_1021(maxStep);
-                  this.renderPos = this.renderPos.method_1019(step);
+                  Vec3d step = diff.normalize().multiply(maxStep);
+                  this.renderPos = this.renderPos.add(step);
                } else {
                   this.renderPos = serverPos;
                }
             }
 
-            double halfWidth = mc.field_1724.method_17681() / 2.0;
-            class_238 box = new class_238(
-               this.renderPos.field_1352 - halfWidth,
-               this.renderPos.field_1351,
-               this.renderPos.field_1350 - halfWidth,
-               this.renderPos.field_1352 + halfWidth,
-               this.renderPos.field_1351 + mc.field_1724.method_17682(),
-               this.renderPos.field_1350 + halfWidth
+            double halfWidth = mc.player.getWidth() / 2.0;
+            Box box = new Box(
+               this.renderPos.x - halfWidth,
+               this.renderPos.y,
+               this.renderPos.z - halfWidth,
+               this.renderPos.x + halfWidth,
+               this.renderPos.y + mc.player.getHeight(),
+               this.renderPos.z + halfWidth
             );
             Render3D.boxSides(box, this.boxColor.getValue().toJavaColor());
          }
@@ -121,8 +121,8 @@ public class FakeLagTest extends Module {
 
    @EventHandler
    public void onPacket(PacketEvent event) {
-      class_2596<?> packet = event.getPacket();
-      if (!this.ignoreKeepAlive.getValue() || !(packet instanceof class_2827)) {
+      Packet<?> packet = event.getPacket();
+      if (!this.ignoreKeepAlive.getValue() || !(packet instanceof KeepAliveC2SPacket)) {
          if (event.getOrigin() == TransferOrigin.SEND) {
             if (this.shouldSkipForConsumable()) {
                return;
@@ -134,7 +134,7 @@ public class FakeLagTest extends Module {
 
             this.packets.getLast().add(packet);
             event.setCancelled(true);
-            if (packet instanceof class_2824 interact && interact.field_12871 == class_2824.field_29170) {
+            if (packet instanceof PlayerInteractEntityC2SPacket interact && interact.type == PlayerInteractEntityC2SPacket.ATTACK) {
                this.handleAttackRelease(interact);
             }
          }
@@ -145,8 +145,8 @@ public class FakeLagTest extends Module {
    public void onTick(TickEvent event) {
       this.ticks++;
       this.packets.add(new ArrayList<>());
-      if (mc.field_1724 != null) {
-         class_243 pos = new class_243(mc.field_1724.method_23317(), mc.field_1724.method_23318(), mc.field_1724.method_23321());
+      if (mc.player != null) {
+         Vec3d pos = new Vec3d(mc.player.getX(), mc.player.getY(), mc.player.getZ());
          this.realPos.add(pos);
          if (this.renderPos == null) {
             this.renderPos = pos;
@@ -162,9 +162,9 @@ public class FakeLagTest extends Module {
       if (this.antiAimValue.getValue()) {
          while (true) {
             boolean dangerous = false;
-            if (mc.field_1687 != null) {
-               for (class_1297 entity : mc.field_1687.method_18112()) {
-                  if (entity instanceof class_1667 arrow && !arrow.method_65059() && this.isDangerous(arrow)) {
+            if (mc.world != null) {
+               for (Entity entity : mc.world.getEntities()) {
+                  if (entity instanceof ArrowEntity arrow && !arrow.isInGround() && this.isDangerous(arrow)) {
                      dangerous = true;
                      break;
                   }
@@ -182,20 +182,20 @@ public class FakeLagTest extends Module {
       this.flushUntilSafe();
    }
 
-   private boolean isDangerous(class_1297 entity) {
+   private boolean isDangerous(Entity entity) {
       float width = 1.2F;
       float height = 2.2F;
-      if (entity instanceof class_1676 projectile) {
+      if (entity instanceof ProjectileEntity projectile) {
          float motionSlowdown = 0.99F;
          float size = 1.2F;
          float gravity = 0.05F;
          return ProjectionUtil.predictBox(
-            entity.method_23317(),
-            entity.method_23318(),
-            entity.method_23321(),
-            entity.method_18798().field_1352,
-            entity.method_18798().field_1351,
-            entity.method_18798().field_1350,
+            entity.getX(),
+            entity.getY(),
+            entity.getZ(),
+            entity.getVelocity().x,
+            entity.getVelocity().y,
+            entity.getVelocity().z,
             motionSlowdown,
             size,
             gravity,
@@ -215,8 +215,8 @@ public class FakeLagTest extends Module {
       }
    }
 
-   private void sendTick(List<class_2596<?>> tick) {
-      if (Objects.requireNonNull(mc.method_1562()).method_48296() != null) {
+   private void sendTick(List<Packet<?>> tick) {
+      if (Objects.requireNonNull(mc.getNetworkHandler()).getConnection() != null) {
          tick.forEach(PacketUtils::sendPacketNoEvent);
       }
 
@@ -225,14 +225,14 @@ public class FakeLagTest extends Module {
       }
    }
 
-   private void handleAttackRelease(class_2824 interactPacket) {
-      if (mc.field_1687 != null && !this.realPos.isEmpty()) {
-         if (mc.field_1687.method_8469(interactPacket.field_12870) instanceof class_1657 target) {
-            class_243 targetPos = target.method_19538();
-            class_243 serverPos = this.getServerPosition();
+   private void handleAttackRelease(PlayerInteractEntityC2SPacket interactPacket) {
+      if (mc.world != null && !this.realPos.isEmpty()) {
+         if (mc.world.getEntityById(interactPacket.entityId) instanceof PlayerEntity target) {
+            Vec3d targetPos = target.getPos();
+            Vec3d serverPos = this.getServerPosition();
             if (serverPos != null) {
                double desiredDistance = this.attackSyncDistanceValue.getValue().doubleValue();
-               double currentDistance = serverPos.method_1022(targetPos);
+               double currentDistance = serverPos.distanceTo(targetPos);
 
                while (currentDistance > desiredDistance && !this.packets.isEmpty()) {
                   this.poll();
@@ -241,36 +241,36 @@ public class FakeLagTest extends Module {
                      break;
                   }
 
-                  currentDistance = serverPos.method_1022(targetPos);
+                  currentDistance = serverPos.distanceTo(targetPos);
                }
             }
          }
       }
    }
 
-   private class_243 getServerPosition() {
+   private Vec3d getServerPosition() {
       return this.realPos.isEmpty() ? null : this.realPos.get(0);
    }
 
    private boolean shouldReleaseForSafety() {
-      if (mc.field_1724 != null && mc.field_1687 != null) {
-         class_243 serverPos = this.getServerPosition();
+      if (mc.player != null && mc.world != null) {
+         Vec3d serverPos = this.getServerPosition();
          if (serverPos == null) {
             return false;
          } else {
             double range = this.dangerRangeValue.getValue().doubleValue();
-            class_243 delta = serverPos.method_1020(mc.field_1724.method_19538());
-            class_238 serverBox = mc.field_1724.method_5829().method_997(delta);
+            Vec3d delta = serverPos.subtract(mc.player.getPos());
+            Box serverBox = mc.player.getBoundingBox().offset(delta);
 
-            for (class_1657 entity : mc.field_1687.method_18456()) {
-               if (entity != mc.field_1724
-                  && entity.method_5805()
-                  && !entity.method_7325()
+            for (PlayerEntity entity : mc.world.getPlayers()) {
+               if (entity != mc.player
+                  && entity.isAlive()
+                  && !entity.isSpectator()
                   && (this.includeTeamsValue.getValue() || !Teams.isTeam(entity))
-                  && !(entity.method_5858(mc.field_1724) > range * range)) {
-                  boolean intersects = serverBox.method_994(entity.method_5829());
-                  double serverDistance = entity.method_5649(serverPos.field_1352, serverPos.field_1351, serverPos.field_1350);
-                  double clientDistance = entity.method_5858(mc.field_1724);
+                  && !(entity.squaredDistanceTo(mc.player) > range * range)) {
+                  boolean intersects = serverBox.intersects(entity.getBoundingBox());
+                  double serverDistance = entity.squaredDistanceTo(serverPos.x, serverPos.y, serverPos.z);
+                  double clientDistance = entity.squaredDistanceTo(mc.player);
                   if (intersects || serverDistance < clientDistance) {
                      return true;
                   }
@@ -293,15 +293,15 @@ public class FakeLagTest extends Module {
    }
 
    private boolean shouldSkipForConsumable() {
-      if (!this.skipConsumablesValue.getValue() || mc.field_1724 == null) {
+      if (!this.skipConsumablesValue.getValue() || mc.player == null) {
          return false;
-      } else if (!mc.field_1724.method_6115()) {
+      } else if (!mc.player.isUsingItem()) {
          return false;
       } else {
-         class_1799 stack = mc.field_1724.method_6030();
-         return stack.method_7960()
+         ItemStack stack = mc.player.getActiveItem();
+         return stack.isEmpty()
             ? false
-            : ItemUtils.isConsumable(stack) || stack.method_7909() == class_1802.field_8103 || stack.method_7909() instanceof class_1812;
+            : ItemUtils.isConsumable(stack) || stack.getItem() == Items.MILK_BUCKET || stack.getItem() instanceof PotionItem;
       }
    }
 }

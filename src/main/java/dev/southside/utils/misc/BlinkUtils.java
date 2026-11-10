@@ -17,20 +17,20 @@ import java.util.Map.Entry;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import net.minecraft.class_2596;
-import net.minecraft.class_2827;
+import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.c2s.common.KeepAliveC2SPacket;
 
 public class BlinkUtils {
    public static final BlinkUtils INSTANCE = new BlinkUtils();
    public static boolean blinking = false;
    private static final List<Class<?>> blackList = new ArrayList<>();
-   private static final Map<Class<?>, Predicate<class_2596<?>>> addReturnPredicateMap = new HashMap<>();
-   private static final Map<Class<?>, Predicate<class_2596<?>>> cancelReturnPredicateMap = new HashMap<>();
-   private static final Map<Class<?>, Predicate<class_2596<?>>> releaseReturnPredicateMap = new HashMap<>();
-   private static final Map<Class<?>, Consumer<class_2596<?>>> cancelActionMap = new HashMap<>();
-   private static final Map<Class<?>, Consumer<class_2596<?>>> releaseActionMap = new HashMap<>();
+   private static final Map<Class<?>, Predicate<Packet<?>>> addReturnPredicateMap = new HashMap<>();
+   private static final Map<Class<?>, Predicate<Packet<?>>> cancelReturnPredicateMap = new HashMap<>();
+   private static final Map<Class<?>, Predicate<Packet<?>>> releaseReturnPredicateMap = new HashMap<>();
+   private static final Map<Class<?>, Consumer<Packet<?>>> cancelActionMap = new HashMap<>();
+   private static final Map<Class<?>, Consumer<Packet<?>>> releaseActionMap = new HashMap<>();
    private static final List<Class<?>> whitList = new ArrayList<>();
-   public static LinkedBlockingQueue<class_2596<?>> packets = new LinkedBlockingQueue<>();
+   public static LinkedBlockingQueue<Packet<?>> packets = new LinkedBlockingQueue<>();
    public static boolean passEvent = false;
 
    public static boolean blink(Class<?>... fliterPackets) {
@@ -50,9 +50,9 @@ public class BlinkUtils {
       whitList.addAll(Arrays.asList(classes));
    }
 
-   public static void sendPacket(class_2596<?> packet, boolean event) {
+   public static void sendPacket(Packet<?> packet, boolean event) {
       if (event) {
-         PacketEvent event1 = new PacketEvent(TransferOrigin.SEND, packet, MinecraftAccessor.mc.method_1562().method_48296());
+         PacketEvent event1 = new PacketEvent(TransferOrigin.SEND, packet, MinecraftAccessor.mc.getNetworkHandler().getConnection());
          Southside.INSTANCE.getEventBus().call(event1);
          if (event1.isCancelled()) {
             return;
@@ -72,7 +72,7 @@ public class BlinkUtils {
       blackList.clear();
    }
 
-   public static void setCancelReturnPredicate(Class<?> clazz, Predicate<class_2596<?>> predicate) {
+   public static void setCancelReturnPredicate(Class<?> clazz, Predicate<Packet<?>> predicate) {
       boolean isIN = false;
 
       for (Class<?> classes : cancelReturnPredicateMap.keySet()) {
@@ -89,7 +89,7 @@ public class BlinkUtils {
       }
    }
 
-   public static void setAddReturnPredicate(Class<?> clazz, Predicate<class_2596<?>> predicate) {
+   public static void setAddReturnPredicate(Class<?> clazz, Predicate<Packet<?>> predicate) {
       boolean isIN = false;
 
       for (Class<?> classes : addReturnPredicateMap.keySet()) {
@@ -106,7 +106,7 @@ public class BlinkUtils {
       }
    }
 
-   public static void setReleaseReturnPredicate(Class<?> clazz, Predicate<class_2596<?>> predicate) {
+   public static void setReleaseReturnPredicate(Class<?> clazz, Predicate<Packet<?>> predicate) {
       boolean isIN = false;
 
       for (Class<?> classes : releaseReturnPredicateMap.keySet()) {
@@ -123,7 +123,7 @@ public class BlinkUtils {
       }
    }
 
-   public static void setCancelAction(Class<?> clazz, Consumer<class_2596<?>> packetConsumer) {
+   public static void setCancelAction(Class<?> clazz, Consumer<Packet<?>> packetConsumer) {
       boolean isIN = false;
 
       for (Class<?> classes : cancelActionMap.keySet()) {
@@ -140,7 +140,7 @@ public class BlinkUtils {
       }
    }
 
-   public static void setReleaseAction(Class<?> clazz, Consumer<class_2596<?>> packetConsumer) {
+   public static void setReleaseAction(Class<?> clazz, Consumer<Packet<?>> packetConsumer) {
       boolean isIN = false;
 
       for (Class<?> classes : releaseActionMap.keySet()) {
@@ -175,13 +175,13 @@ public class BlinkUtils {
       try {
          label41:
          while (!packets.isEmpty()) {
-            class_2596<?> packet = packets.take();
-            if (packet instanceof class_2827) {
+            Packet<?> packet = packets.take();
+            if (packet instanceof KeepAliveC2SPacket) {
                if (sendOneTick) {
                   break;
                }
             } else {
-               for (Entry<Class<?>, Predicate<class_2596<?>>> entries : releaseReturnPredicateMap.entrySet()) {
+               for (Entry<Class<?>, Predicate<Packet<?>>> entries : releaseReturnPredicateMap.entrySet()) {
                   if (entries.getKey().isAssignableFrom(packet.getClass()) && entries.getValue().test(packet)) {
                      continue label41;
                   }
@@ -199,7 +199,7 @@ public class BlinkUtils {
                   passEvent = false;
                } else {
                   passEvent = true;
-                  MinecraftAccessor.mc.method_1562().method_52787(packet);
+                  MinecraftAccessor.mc.getNetworkHandler().sendPacket(packet);
                   passEvent = false;
                }
 
@@ -226,7 +226,7 @@ public class BlinkUtils {
       packets.clear();
    }
 
-   public static boolean onPacket(class_2596<?> packet) {
+   public static boolean onPacket(Packet<?> packet) {
       if (blinking && !passEvent) {
          cancelActionMap.forEach((aClass, packetConsumer) -> {
             if (aClass.isAssignableFrom(packet.getClass())) {
@@ -240,7 +240,7 @@ public class BlinkUtils {
             }
          }
 
-         for (Entry<Class<?>, Predicate<class_2596<?>>> entries : cancelReturnPredicateMap.entrySet()) {
+         for (Entry<Class<?>, Predicate<Packet<?>>> entries : cancelReturnPredicateMap.entrySet()) {
             if (entries.getKey().isAssignableFrom(packet.getClass()) && entries.getValue().test(packet)) {
                return true;
             }
@@ -251,7 +251,7 @@ public class BlinkUtils {
          } else {
             boolean needAdd = true;
 
-            for (Entry<Class<?>, Predicate<class_2596<?>>> entriesx : addReturnPredicateMap.entrySet()) {
+            for (Entry<Class<?>, Predicate<Packet<?>>> entriesx : addReturnPredicateMap.entrySet()) {
                if (entriesx.getKey().isAssignableFrom(packet.getClass()) && entriesx.getValue().test(packet)) {
                   needAdd = false;
                }
@@ -270,12 +270,12 @@ public class BlinkUtils {
 
    @EventHandler
    public void onTick(TickEvent event) {
-      if (MinecraftAccessor.mc.method_1562() == null) {
+      if (MinecraftAccessor.mc.getNetworkHandler() == null) {
          stopBlink();
       }
 
       if (blinking) {
-         packets.add(new class_2827(MathUtils.random.nextLong()));
+         packets.add(new KeepAliveC2SPacket(MathUtils.random.nextLong()));
       }
    }
 }

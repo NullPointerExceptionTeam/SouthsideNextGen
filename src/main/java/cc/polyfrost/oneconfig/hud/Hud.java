@@ -9,7 +9,7 @@ import cc.polyfrost.oneconfig.gui.OneConfigGui;
 import cc.polyfrost.oneconfig.libs.universal.UMatrixStack;
 import cc.polyfrost.oneconfig.platform.Platform;
 import dev.southside.MinecraftAccessor;
-import net.minecraft.class_332;
+import net.minecraft.client.gui.DrawContext;
 
 public abstract class Hud implements MinecraftAccessor {
    public Button resetPosition = new Button("Reset Position", "Reset", "Reset HUD to default position", 1, this::resetPosition);
@@ -53,7 +53,7 @@ public abstract class Hud implements MinecraftAccessor {
       this(0.0F, 0.0F, 1.0F);
    }
 
-   protected abstract void draw(class_332 var1, UMatrixStack var2, float var3, float var4, float var5, boolean var6);
+   protected abstract void draw(DrawContext var1, UMatrixStack var2, float var3, float var4, float var5, boolean var6);
 
    protected abstract float getWidth(float var1, boolean var2);
 
@@ -87,7 +87,7 @@ public abstract class Hud implements MinecraftAccessor {
       }
    }
 
-   public void drawAll(class_332 context, UMatrixStack matrices, boolean example) {
+   public void drawAll(DrawContext context, UMatrixStack matrices, boolean example) {
       if (example || this.shouldShow()) {
          this.preRender(example);
          this.position

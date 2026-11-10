@@ -6,7 +6,7 @@ import cc.polyfrost.oneconfig.config.options.impl.Slider;
 import cc.polyfrost.oneconfig.config.options.impl.Switch;
 import cc.polyfrost.oneconfig.libs.universal.UMatrixStack;
 import cc.polyfrost.oneconfig.renderer.NanoVGHelper;
-import net.minecraft.class_332;
+import net.minecraft.client.gui.DrawContext;
 
 public abstract class BasicHud extends Hud {
    public Switch background = new Switch("Background", "If the background of the HUD is enabled.", false);
@@ -67,7 +67,7 @@ public abstract class BasicHud extends Hud {
    }
 
    @Override
-   public void drawAll(class_332 context, UMatrixStack matrices, boolean example) {
+   public void drawAll(DrawContext context, UMatrixStack matrices, boolean example) {
       if (example || this.shouldShow()) {
          this.preRender(example);
          this.position

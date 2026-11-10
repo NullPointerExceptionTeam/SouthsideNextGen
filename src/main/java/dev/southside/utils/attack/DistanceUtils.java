@@ -1,30 +1,30 @@
 package dev.southside.utils.attack;
 
-import net.minecraft.class_1297;
-import net.minecraft.class_1657;
-import net.minecraft.class_238;
-import net.minecraft.class_243;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
 
 public class DistanceUtils {
-   public static double getAttackDistance(class_1657 attacker, class_1297 target) {
-      class_243 attackerPos = attacker.method_33571();
-      class_243 targetPos = getNearestPointBB(attackerPos, target.method_5829());
-      return attackerPos.method_1022(targetPos);
+   public static double getAttackDistance(PlayerEntity attacker, Entity target) {
+      Vec3d attackerPos = attacker.getEyePos();
+      Vec3d targetPos = getNearestPointBB(attackerPos, target.getBoundingBox());
+      return attackerPos.distanceTo(targetPos);
    }
 
-   public static class_243 getNearestPointBB(class_243 eye, class_238 box) {
-      double originX = eye.field_1352;
-      double originY = eye.field_1351;
-      double originZ = eye.field_1350;
-      double destMinX = box.field_1323;
-      double destMinY = box.field_1322;
-      double destMinZ = box.field_1321;
-      double destMaxX = box.field_1320;
-      double destMaxY = box.field_1325;
-      double destMaxZ = box.field_1324;
+   public static Vec3d getNearestPointBB(Vec3d eye, Box box) {
+      double originX = eye.x;
+      double originY = eye.y;
+      double originZ = eye.z;
+      double destMinX = box.minX;
+      double destMinY = box.minY;
+      double destMinZ = box.minZ;
+      double destMaxX = box.maxX;
+      double destMaxY = box.maxY;
+      double destMaxZ = box.maxZ;
       double nearestX = Math.max(destMinX, Math.min(originX, destMaxX));
       double nearestY = Math.max(destMinY, Math.min(originY, destMaxY));
       double nearestZ = Math.max(destMinZ, Math.min(originZ, destMaxZ));
-      return new class_243(nearestX, nearestY, nearestZ);
+      return new Vec3d(nearestX, nearestY, nearestZ);
    }
 }

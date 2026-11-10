@@ -143,7 +143,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.Generated;
-import net.minecraft.class_124;
+import net.minecraft.util.Formatting;
 
 public class ModuleManager {
    public final List<Module> modules = new ArrayList<>();
@@ -372,7 +372,7 @@ public class ModuleManager {
       if (ArrayListHud.showSuffix.getValue()) {
          return module.getSuffix().isEmpty()
             ? module.getDisplayName()
-            : String.format("%s %s%s", module.getDisplayName(), class_124.field_1080, module.getSuffix());
+            : String.format("%s %s%s", module.getDisplayName(), Formatting.GRAY, module.getSuffix());
       } else {
          return module.getDisplayName();
       }

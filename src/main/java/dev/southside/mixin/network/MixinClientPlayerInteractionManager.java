@@ -6,14 +6,14 @@ import dev.southside.event.events.AttackEvent;
 import dev.southside.manager.PacketOrderManager;
 import dev.southside.module.impl.misc.Disabler;
 import dev.southside.utils.rotation.RotationUtils;
-import net.minecraft.class_1268;
-import net.minecraft.class_1269;
-import net.minecraft.class_1297;
-import net.minecraft.class_1657;
-import net.minecraft.class_310;
-import net.minecraft.class_3965;
-import net.minecraft.class_636;
-import net.minecraft.class_746;
+import net.minecraft.util.Hand;
+import net.minecraft.util.ActionResult;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.client.network.ClientPlayerInteractionManager;
+import net.minecraft.client.network.ClientPlayerEntity;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -23,7 +23,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin({class_636.class})
+@Mixin({ClientPlayerInteractionManager.class})
 public abstract class MixinClientPlayerInteractionManager {
    @Unique
    private float originalYaw;
@@ -31,14 +31,14 @@ public abstract class MixinClientPlayerInteractionManager {
    private float originalPitch;
    @Shadow
    @Final
-   public class_310 field_3712;
+   public MinecraftClient client;
 
    @Inject(
-      method = {"method_2918(Lnet/minecraft/class_1657;Lnet/minecraft/class_1297;)V"},
+      method = {"attackEntity(Lnet/minecraft/entity/player/PlayerEntity;Lnet/minecraft/entity/Entity;)V"},
       at = {@At("HEAD")},
       cancellable = true
    )
-   private void hookAttack(class_1657 player, class_1297 target, CallbackInfo ci) {
+   private void hookAttack(PlayerEntity player, Entity target, CallbackInfo ci) {
       AttackEvent event = new AttackEvent(target, Stage.PRE);
       Southside.INSTANCE.getEventBus().call(event);
       if (event.isCancelled()) {
@@ -47,46 +47,46 @@ public abstract class MixinClientPlayerInteractionManager {
    }
 
    @Inject(
-      method = {"method_2918(Lnet/minecraft/class_1657;Lnet/minecraft/class_1297;)V"},
+      method = {"attackEntity(Lnet/minecraft/entity/player/PlayerEntity;Lnet/minecraft/entity/Entity;)V"},
       at = {@At("TAIL")}
    )
-   private void hookAttackPost(class_1657 player, class_1297 target, CallbackInfo ci) {
+   private void hookAttackPost(PlayerEntity player, Entity target, CallbackInfo ci) {
       AttackEvent event = new AttackEvent(target, Stage.POST);
       Southside.INSTANCE.getEventBus().call(event);
    }
 
    @Inject(
-      method = {"method_2919(Lnet/minecraft/class_1657;Lnet/minecraft/class_1268;)Lnet/minecraft/class_1269;"},
+      method = {"interactItem(Lnet/minecraft/entity/player/PlayerEntity;Lnet/minecraft/util/Hand;)Lnet/minecraft/util/ActionResult;"},
       at = {@At("HEAD")}
    )
-   private void hookItemRotSet(class_1657 player, class_1268 hand, CallbackInfoReturnable<class_1269> cir) {
-      if (class_310.method_1551().field_1724 == player) {
+   private void hookItemRotSet(PlayerEntity player, Hand hand, CallbackInfoReturnable<ActionResult> cir) {
+      if (MinecraftClient.getInstance().player == player) {
          this.setRot(player);
       }
    }
 
    @Inject(
-      method = {"method_2919(Lnet/minecraft/class_1657;Lnet/minecraft/class_1268;)Lnet/minecraft/class_1269;"},
+      method = {"interactItem(Lnet/minecraft/entity/player/PlayerEntity;Lnet/minecraft/util/Hand;)Lnet/minecraft/util/ActionResult;"},
       at = {@At("RETURN")}
    )
-   private void hookItemRotRestore(class_1657 player, class_1268 hand, CallbackInfoReturnable<class_1269> cir) {
-      if (class_310.method_1551().field_1724 == player) {
+   private void hookItemRotRestore(PlayerEntity player, Hand hand, CallbackInfoReturnable<ActionResult> cir) {
+      if (MinecraftClient.getInstance().player == player) {
          this.restore(player);
       }
    }
 
    @Inject(
-      method = {"method_2896(Lnet/minecraft/class_746;Lnet/minecraft/class_1268;Lnet/minecraft/class_3965;)Lnet/minecraft/class_1269;"},
+      method = {"interactBlock(Lnet/minecraft/client/network/ClientPlayerEntity;Lnet/minecraft/util/Hand;Lnet/minecraft/util/hit/BlockHitResult;)Lnet/minecraft/util/ActionResult;"},
       at = {@At("HEAD")}
    )
-   private void hookBlockRotSet(class_746 player, class_1268 hand, class_3965 hitResult, CallbackInfoReturnable<class_1269> cir) {
-      if (class_310.method_1551().field_1724 == player) {
+   private void hookBlockRotSet(ClientPlayerEntity player, Hand hand, BlockHitResult hitResult, CallbackInfoReturnable<ActionResult> cir) {
+      if (MinecraftClient.getInstance().player == player) {
          this.setRot(player);
       }
    }
 
    @Inject(
-      method = {"method_2911()V"},
+      method = {"syncSelectedSlot()V"},
       at = {@At("HEAD")},
       cancellable = true
    )
@@ -97,31 +97,31 @@ public abstract class MixinClientPlayerInteractionManager {
    }
 
    @Inject(
-      method = {"method_2896(Lnet/minecraft/class_746;Lnet/minecraft/class_1268;Lnet/minecraft/class_3965;)Lnet/minecraft/class_1269;"},
+      method = {"interactBlock(Lnet/minecraft/client/network/ClientPlayerEntity;Lnet/minecraft/util/Hand;Lnet/minecraft/util/hit/BlockHitResult;)Lnet/minecraft/util/ActionResult;"},
       at = {@At("RETURN")}
    )
-   private void hookBlockRotRestore(class_746 player, class_1268 hand, class_3965 hitResult, CallbackInfoReturnable<class_1269> cir) {
-      if (class_310.method_1551().field_1724 == player) {
+   private void hookBlockRotRestore(ClientPlayerEntity player, Hand hand, BlockHitResult hitResult, CallbackInfoReturnable<ActionResult> cir) {
+      if (MinecraftClient.getInstance().player == player) {
          this.restore(player);
       }
    }
 
    @Unique
-   private void setRot(class_1657 player) {
-      if (this.field_3712.field_1724 != null) {
-         this.originalYaw = player.method_36454();
-         this.originalPitch = player.method_36455();
-         player.method_36456(Disabler.normalizeYawDiff(RotationUtils.getRotationSafely().yaw, RotationUtils.getServerRotation().yaw));
-         player.method_36457(RotationUtils.getRotationSafely().pitch);
+   private void setRot(PlayerEntity player) {
+      if (this.client.player != null) {
+         this.originalYaw = player.getYaw();
+         this.originalPitch = player.getPitch();
+         player.setYaw(Disabler.normalizeYawDiff(RotationUtils.getRotationSafely().yaw, RotationUtils.getServerRotation().yaw));
+         player.setPitch(RotationUtils.getRotationSafely().pitch);
          Disabler.interacting = true;
       }
    }
 
    @Unique
-   private void restore(class_1657 player) {
-      if (this.field_3712.field_1724 != null) {
-         player.method_36456(this.originalYaw);
-         player.method_36457(this.originalPitch);
+   private void restore(PlayerEntity player) {
+      if (this.client.player != null) {
+         player.setYaw(this.originalYaw);
+         player.setPitch(this.originalPitch);
          Disabler.interacting = false;
       }
    }

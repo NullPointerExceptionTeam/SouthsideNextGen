@@ -21,14 +21,14 @@ import dev.southside.utils.types.FindItemResult;
 import dev.southside.utils.types.Rotation;
 import java.util.Comparator;
 import java.util.stream.StreamSupport;
-import net.minecraft.class_1268;
-import net.minecraft.class_1297;
-import net.minecraft.class_1309;
-import net.minecraft.class_1753;
-import net.minecraft.class_1764;
-import net.minecraft.class_1799;
-import net.minecraft.class_1802;
-import net.minecraft.class_243;
+import net.minecraft.util.Hand;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.item.BowItem;
+import net.minecraft.item.CrossbowItem;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.util.math.Vec3d;
 
 public class BowSpammer extends Module {
    private final Slider minRange = new Slider("Min Range", 10, 1, 100, 0.1F);
@@ -38,7 +38,7 @@ public class BowSpammer extends Module {
    private final Dropdown priorityMode = new Dropdown("Priority", "Distance", "Distance", "Health");
    private BowSpammer.SpamState state = BowSpammer.SpamState.IDLE;
    private BowSpammer.WeaponType currentWeapon = BowSpammer.WeaponType.NONE;
-   private class_1309 target = null;
+   private LivingEntity target = null;
    private int drawTicks = 0;
    private int previousSlot = -1;
    public static boolean isWorking = false;
@@ -66,13 +66,13 @@ public class BowSpammer extends Module {
 
    @Override
    public void onDisable() {
-      if (mc.field_1724 != null) {
+      if (mc.player != null) {
          if (this.state == BowSpammer.SpamState.DRAWING) {
-            mc.field_1690.field_1904.method_23481(false);
+            mc.options.useKey.setPressed(false);
          }
 
          if (this.previousSlot != -1) {
-            mc.field_1724.method_31548().field_7545 = this.previousSlot;
+            mc.player.getInventory().selectedSlot = this.previousSlot;
             this.previousSlot = -1;
          }
       }
@@ -133,20 +133,20 @@ public class BowSpammer extends Module {
          if (weaponSlot == -1) {
             this.setSuffix("No Weapon");
          } else {
-            class_1799 weaponStack = mc.field_1724.method_31548().method_5438(weaponSlot);
-            if (weaponStack.method_7909() instanceof class_1753) {
+            ItemStack weaponStack = mc.player.getInventory().getStack(weaponSlot);
+            if (weaponStack.getItem() instanceof BowItem) {
                this.currentWeapon = BowSpammer.WeaponType.BOW;
             } else {
-               if (!(weaponStack.method_7909() instanceof class_1764)) {
+               if (!(weaponStack.getItem() instanceof CrossbowItem)) {
                   this.setSuffix("No Weapon");
                   return;
                }
 
                this.currentWeapon = BowSpammer.WeaponType.CROSSBOW;
-               if (class_1764.method_7781(weaponStack)) {
-                  if (mc.field_1724.method_31548().field_7545 != weaponSlot) {
-                     this.previousSlot = mc.field_1724.method_31548().field_7545;
-                     mc.field_1724.method_31548().field_7545 = weaponSlot;
+               if (CrossbowItem.isCharged(weaponStack)) {
+                  if (mc.player.getInventory().selectedSlot != weaponSlot) {
+                     this.previousSlot = mc.player.getInventory().selectedSlot;
+                     mc.player.getInventory().selectedSlot = weaponSlot;
                   }
 
                   this.state = BowSpammer.SpamState.AIMING;
@@ -156,14 +156,14 @@ public class BowSpammer extends Module {
                }
             }
 
-            if (mc.field_1724.method_31548().field_7545 == weaponSlot) {
+            if (mc.player.getInventory().selectedSlot == weaponSlot) {
                this.state = BowSpammer.SpamState.DRAWING;
                this.drawTicks = 0;
-               mc.field_1690.field_1904.method_23481(true);
+               mc.options.useKey.setPressed(true);
                this.setSuffix("Drawing");
             } else {
-               this.previousSlot = mc.field_1724.method_31548().field_7545;
-               mc.field_1724.method_31548().field_7545 = weaponSlot;
+               this.previousSlot = mc.player.getInventory().selectedSlot;
+               mc.player.getInventory().selectedSlot = weaponSlot;
                this.state = BowSpammer.SpamState.SWAPPING;
                this.setSuffix("Swapping");
             }
@@ -172,7 +172,7 @@ public class BowSpammer extends Module {
    }
 
    private void handleSwapping() {
-      class_1799 heldItem = mc.field_1724.method_6047();
+      ItemStack heldItem = mc.player.getMainHandStack();
       if (!this.isWeapon(heldItem)) {
          this.resetState();
       } else {
@@ -182,20 +182,20 @@ public class BowSpammer extends Module {
          } else {
             this.state = BowSpammer.SpamState.DRAWING;
             this.drawTicks = 0;
-            mc.field_1690.field_1904.method_23481(true);
+            mc.options.useKey.setPressed(true);
             this.setSuffix("Drawing");
          }
       }
    }
 
    private void handleDrawing() {
-      class_1799 heldItem = mc.field_1724.method_6047();
+      ItemStack heldItem = mc.player.getMainHandStack();
       if (!this.isWeapon(heldItem)) {
          this.resetState();
-      } else if (mc.field_1724.method_6115() || this.drawTicks <= 1) {
+      } else if (mc.player.isUsingItem() || this.drawTicks <= 1) {
          this.target = this.findTarget();
          if (this.target == null) {
-            mc.field_1690.field_1904.method_23481(false);
+            mc.options.useKey.setPressed(false);
             this.resetState();
          } else {
             this.drawTicks++;
@@ -205,20 +205,20 @@ public class BowSpammer extends Module {
                   this.drawTicks = 0;
                   this.setSuffix("Aiming");
                } else {
-                  mc.field_1690.field_1904.method_23481(false);
+                  mc.options.useKey.setPressed(false);
                   this.resetState();
                }
             } else {
                if (this.currentWeapon == BowSpammer.WeaponType.BOW) {
-                  if (mc.field_1724.method_6048() >= 20) {
+                  if (mc.player.getItemUseTime() >= 20) {
                      this.state = BowSpammer.SpamState.AIMING;
                      this.drawTicks = 0;
                      this.setSuffix("Aiming");
                   } else {
-                     this.setSuffix("Bow " + mc.field_1724.method_6048() + "/20");
+                     this.setSuffix("Bow " + mc.player.getItemUseTime() + "/20");
                   }
-               } else if (class_1764.method_7781(heldItem)) {
-                  mc.field_1690.field_1904.method_23481(false);
+               } else if (CrossbowItem.isCharged(heldItem)) {
+                  mc.options.useKey.setPressed(false);
                   this.state = BowSpammer.SpamState.AIMING;
                   this.drawTicks = 0;
                   this.setSuffix("Aiming");
@@ -227,8 +227,8 @@ public class BowSpammer extends Module {
                }
             }
          }
-      } else if (this.currentWeapon == BowSpammer.WeaponType.CROSSBOW && class_1764.method_7781(heldItem)) {
-         mc.field_1690.field_1904.method_23481(false);
+      } else if (this.currentWeapon == BowSpammer.WeaponType.CROSSBOW && CrossbowItem.isCharged(heldItem)) {
+         mc.options.useKey.setPressed(false);
          this.state = BowSpammer.SpamState.AIMING;
          this.drawTicks = 0;
          this.setSuffix("Aiming");
@@ -238,13 +238,13 @@ public class BowSpammer extends Module {
    }
 
    private void handleAiming() {
-      class_1799 heldItem = mc.field_1724.method_6047();
+      ItemStack heldItem = mc.player.getMainHandStack();
       if (this.currentWeapon == BowSpammer.WeaponType.BOW) {
-         if (!(heldItem.method_7909() instanceof class_1753) || !mc.field_1724.method_6115()) {
+         if (!(heldItem.getItem() instanceof BowItem) || !mc.player.isUsingItem()) {
             this.resetState();
             return;
          }
-      } else if (!(heldItem.method_7909() instanceof class_1764) || !class_1764.method_7781(heldItem)) {
+      } else if (!(heldItem.getItem() instanceof CrossbowItem) || !CrossbowItem.isCharged(heldItem)) {
          this.resetState();
          return;
       }
@@ -252,7 +252,7 @@ public class BowSpammer extends Module {
       this.target = this.findTarget();
       if (this.target == null) {
          if (this.currentWeapon == BowSpammer.WeaponType.BOW) {
-            mc.field_1690.field_1904.method_23481(false);
+            mc.options.useKey.setPressed(false);
          }
 
          this.resetState();
@@ -269,10 +269,10 @@ public class BowSpammer extends Module {
 
    private void handleFiring() {
       if (this.currentWeapon == BowSpammer.WeaponType.BOW) {
-         mc.field_1761.method_2897(mc.field_1724);
-         mc.field_1690.field_1904.method_23481(false);
+         mc.interactionManager.stopUsingItem(mc.player);
+         mc.options.useKey.setPressed(false);
          if (this.previousSlot != -1) {
-            mc.field_1724.method_31548().field_7545 = this.previousSlot;
+            mc.player.getInventory().selectedSlot = this.previousSlot;
             this.previousSlot = -1;
          }
 
@@ -283,9 +283,9 @@ public class BowSpammer extends Module {
    }
 
    private void resetState() {
-      mc.field_1690.field_1904.method_23481(false);
-      if (this.previousSlot != -1 && mc.field_1724 != null) {
-         mc.field_1724.method_31548().field_7545 = this.previousSlot;
+      mc.options.useKey.setPressed(false);
+      if (this.previousSlot != -1 && mc.player != null) {
+         mc.player.getInventory().selectedSlot = this.previousSlot;
          this.previousSlot = -1;
       }
 
@@ -302,7 +302,7 @@ public class BowSpammer extends Module {
    public void onRotation(RotationEvent event) {
       if (!ClientUtils.nullCheck()) {
          if (this.state == BowSpammer.SpamState.AIMING || this.state == BowSpammer.SpamState.FIRING) {
-            if (this.target != null && this.target.method_5805()) {
+            if (this.target != null && this.target.isAlive()) {
                Rotation aimRotation = this.getTrajectoryRotation(this.target);
                if (aimRotation != null) {
                   RotationUtils.setRotation(aimRotation, 2);
@@ -316,13 +316,13 @@ public class BowSpammer extends Module {
       priority = -200
    )
    public void onRotationApplied(RotationAppliedEvent event) {
-      if (mc.field_1724 != null) {
+      if (mc.player != null) {
          if (this.state == BowSpammer.SpamState.FIRING && this.currentWeapon == BowSpammer.WeaponType.CROSSBOW) {
-            class_1799 heldItem = mc.field_1724.method_6047();
-            if (heldItem.method_7909() instanceof class_1764 && class_1764.method_7781(heldItem)) {
-               mc.field_1761.method_2919(mc.field_1724, class_1268.field_5808);
+            ItemStack heldItem = mc.player.getMainHandStack();
+            if (heldItem.getItem() instanceof CrossbowItem && CrossbowItem.isCharged(heldItem)) {
+               mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
                if (this.previousSlot != -1) {
-                  mc.field_1724.method_31548().field_7545 = this.previousSlot;
+                  mc.player.getInventory().selectedSlot = this.previousSlot;
                   this.previousSlot = -1;
                }
 
@@ -335,22 +335,22 @@ public class BowSpammer extends Module {
       }
    }
 
-   private Rotation getTrajectoryRotation(class_1309 target) {
-      class_243 pos = new class_243(target.method_53830(), target.method_53827(), target.method_53828());
-      double distanceToEnt = mc.field_1724.method_5739(target);
-      double predictX = pos.field_1352;
-      double predictZ = pos.field_1350;
+   private Rotation getTrajectoryRotation(LivingEntity target) {
+      Vec3d pos = new Vec3d(target.getLerpTargetX(), target.getLerpTargetY(), target.getLerpTargetZ());
+      double distanceToEnt = mc.player.distanceTo(target);
+      double predictX = pos.x;
+      double predictZ = pos.z;
       if (this.predictMovement.getValue()) {
-         class_243 velocity = new class_243(
-            target.method_23317() - target.field_6038, target.method_23318() - target.field_5971, target.method_23321() - target.field_5989
+         Vec3d velocity = new Vec3d(
+            target.getX() - target.lastRenderX, target.getY() - target.lastRenderY, target.getZ() - target.lastRenderZ
          );
-         predictX += velocity.field_1352 * (distanceToEnt * 0.8);
-         predictZ += velocity.field_1350 * (distanceToEnt * 0.8);
+         predictX += velocity.x * (distanceToEnt * 0.8);
+         predictZ += velocity.z * (distanceToEnt * 0.8);
       }
 
-      double x = predictX - mc.field_1724.method_23317();
-      double z = predictZ - mc.field_1724.method_23321();
-      double h = pos.field_1351 + 1.0 - (mc.field_1724.method_23318() + mc.field_1724.method_18381(mc.field_1724.method_18376()));
+      double x = predictX - mc.player.getX();
+      double z = predictZ - mc.player.getZ();
+      double h = pos.y + 1.0 - (mc.player.getY() + mc.player.getEyeHeight(mc.player.getPose()));
       double h1 = Math.sqrt(x * x + z * z);
       float yaw = (float)(Math.atan2(z, x) * 180.0 / Math.PI) - 90.0F;
       float pitch = -RotationUtils.getTrajAngleSolutionLow((float)h1, (float)h, 1.0F);
@@ -361,19 +361,19 @@ public class BowSpammer extends Module {
       return new Rotation(yaw, pitch);
    }
 
-   private class_1309 findTarget() {
-      if (mc.field_1687 != null && mc.field_1724 != null) {
+   private LivingEntity findTarget() {
+      if (mc.world != null && mc.player != null) {
          double min = this.minRange.getValue().doubleValue();
          double max = this.maxRange.getValue().doubleValue();
-         return StreamSupport.<class_1297>stream(mc.field_1687.method_18112().spliterator(), false)
-            .filter(e -> e instanceof class_1309)
-            .map(e -> (class_1309)e)
+         return StreamSupport.<Entity>stream(mc.world.getEntities().spliterator(), false)
+            .filter(e -> e instanceof LivingEntity)
+            .map(e -> (LivingEntity)e)
             .filter(e -> TargetUtils.isTarget(e, true, true))
             .filter(e -> {
-               double dist = mc.field_1724.method_5739(e);
+               double dist = mc.player.distanceTo(e);
                return dist >= min && dist <= max;
             })
-            .filter(mc.field_1724::method_6057)
+            .filter(mc.player::canSee)
             .filter(e -> RotationUtils.inFoV(e, this.fov.getValue().floatValue()))
             .sorted(this.getTargetComparator())
             .findFirst()
@@ -383,14 +383,14 @@ public class BowSpammer extends Module {
       }
    }
 
-   private Comparator<class_1309> getTargetComparator() {
+   private Comparator<LivingEntity> getTargetComparator() {
       return this.priorityMode.isMode("Health")
-         ? Comparator.comparingDouble(class_1309::method_6032)
-         : Comparator.comparingDouble(e -> e.method_5739(mc.field_1724));
+         ? Comparator.comparingDouble(LivingEntity::getHealth)
+         : Comparator.comparingDouble(e -> e.distanceTo(mc.player));
    }
 
    private int findBestWeaponSlot() {
-      if (mc.field_1724 == null) {
+      if (mc.player == null) {
          return -1;
       } else {
          int bestBowSlot = -1;
@@ -401,17 +401,17 @@ public class BowSpammer extends Module {
          double chargedCrossbowDamage = -1.0;
 
          for (int i = 0; i <= 8; i++) {
-            class_1799 stack = mc.field_1724.method_31548().method_5438(i);
-            if (!stack.method_7960()) {
-               if (stack.method_7909() instanceof class_1753) {
+            ItemStack stack = mc.player.getInventory().getStack(i);
+            if (!stack.isEmpty()) {
+               if (stack.getItem() instanceof BowItem) {
                   double damage = InvUtils.getBowDamage(stack);
                   if (damage > bestBowDamage || bestBowSlot == -1) {
                      bestBowDamage = damage;
                      bestBowSlot = i;
                   }
-               } else if (stack.method_7909() instanceof class_1764) {
+               } else if (stack.getItem() instanceof CrossbowItem) {
                   double damage = InvUtils.getCrossbowDamage(stack);
-                  if (class_1764.method_7781(stack)) {
+                  if (CrossbowItem.isCharged(stack)) {
                      if (damage > chargedCrossbowDamage || chargedCrossbowSlot == -1) {
                         chargedCrossbowDamage = damage;
                         chargedCrossbowSlot = i;
@@ -432,15 +432,15 @@ public class BowSpammer extends Module {
       }
    }
 
-   private boolean isWeapon(class_1799 stack) {
-      return stack != null && !stack.method_7960() ? stack.method_7909() instanceof class_1753 || stack.method_7909() instanceof class_1764 : false;
+   private boolean isWeapon(ItemStack stack) {
+      return stack != null && !stack.isEmpty() ? stack.getItem() instanceof BowItem || stack.getItem() instanceof CrossbowItem : false;
    }
 
    private boolean hasArrows() {
-      if (mc.field_1724 == null) {
+      if (mc.player == null) {
          return false;
       } else {
-         FindItemResult result = InvUtils.find(class_1802.field_8107, class_1802.field_8087, class_1802.field_8236);
+         FindItemResult result = InvUtils.find(Items.ARROW, Items.TIPPED_ARROW, Items.SPECTRAL_ARROW);
          return result.found();
       }
    }

@@ -4,16 +4,16 @@ import dev.southside.MinecraftAccessor;
 import dev.southside.Southside;
 import dev.southside.event.events.InteractItemEvent;
 import dev.southside.event.events.ItemUseEvent;
-import net.minecraft.class_1268;
-import net.minecraft.class_1269;
-import net.minecraft.class_1297;
-import net.minecraft.class_1799;
-import net.minecraft.class_3965;
-import net.minecraft.class_3966;
-import net.minecraft.class_1269.class_9857;
-import net.minecraft.class_1269.class_9860;
-import net.minecraft.class_1269.class_9861;
-import net.minecraft.class_239.class_240;
+import net.minecraft.util.Hand;
+import net.minecraft.util.ActionResult;
+import net.minecraft.entity.Entity;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.EntityHitResult;
+import net.minecraft.util.ActionResult.Fail;
+import net.minecraft.util.ActionResult.Success;
+import net.minecraft.util.ActionResult.SwingSource;
+import net.minecraft.util.hit.HitResult.Type;
 
 public class FuckMixin implements MinecraftAccessor {
    private static boolean callItemUse() {
@@ -22,7 +22,7 @@ public class FuckMixin implements MinecraftAccessor {
       return event.isCancelled();
    }
 
-   private static boolean callInteractItem(class_1268 hand, class_1799 itemStack) {
+   private static boolean callInteractItem(Hand hand, ItemStack itemStack) {
       InteractItemEvent interactItemEvent = new InteractItemEvent(hand, itemStack);
       Southside.INSTANCE.getEventBus().call(interactItemEvent);
       return interactItemEvent.isCancelled();
@@ -30,66 +30,66 @@ public class FuckMixin implements MinecraftAccessor {
 
    public static void doItemUse() {
       if (!callItemUse()) {
-         if (!mc.field_1761.method_2923()) {
-            mc.field_1752 = 4;
-            if (!mc.field_1724.method_3144()) {
-               for (class_1268 hand : class_1268.values()) {
-                  class_1799 itemStack = mc.field_1724.method_5998(hand);
-                  if (!itemStack.method_45435(mc.field_1687.method_45162())) {
+         if (!mc.interactionManager.isBreakingBlock()) {
+            mc.itemUseCooldown = 4;
+            if (!mc.player.isRiding()) {
+               for (Hand hand : Hand.values()) {
+                  ItemStack itemStack = mc.player.getStackInHand(hand);
+                  if (!itemStack.isItemEnabled(mc.world.getEnabledFeatures())) {
                      return;
                   }
 
-                  if (mc.field_1765 != null) {
-                     if (mc.field_1765.method_17783().equals(class_240.field_1331)) {
-                        class_3966 entityHitResult = (class_3966)mc.field_1765;
-                        class_1297 entity = entityHitResult.method_17782();
-                        if (!mc.field_1687.method_8621().method_11952(entity.method_24515())) {
+                  if (mc.crosshairTarget != null) {
+                     if (mc.crosshairTarget.getType().equals(Type.ENTITY)) {
+                        EntityHitResult entityHitResult = (EntityHitResult)mc.crosshairTarget;
+                        Entity entity = entityHitResult.getEntity();
+                        if (!mc.world.getWorldBorder().contains(entity.getBlockPos())) {
                            return;
                         }
 
-                        class_1269 actionResult = mc.field_1761.method_2917(mc.field_1724, entity, entityHitResult, hand);
-                        if (!actionResult.method_23665()) {
-                           actionResult = mc.field_1761.method_2905(mc.field_1724, entity, hand);
+                        ActionResult actionResult = mc.interactionManager.interactEntityAtLocation(mc.player, entity, entityHitResult, hand);
+                        if (!actionResult.isAccepted()) {
+                           actionResult = mc.interactionManager.interactEntity(mc.player, entity, hand);
                         }
 
-                        if (actionResult instanceof class_9860 success) {
-                           if (success.comp_2909() == class_9861.field_52427) {
-                              mc.field_1724.method_6104(hand);
+                        if (actionResult instanceof Success success) {
+                           if (success.swingSource() == SwingSource.CLIENT) {
+                              mc.player.swingHand(hand);
                            }
 
                            return;
                         }
                      }
 
-                     if (mc.field_1765.method_17783().equals(class_240.field_1332)) {
-                        class_3965 blockHitResult = (class_3965)mc.field_1765;
-                        int i = itemStack.method_7947();
-                        class_1269 actionResult2 = mc.field_1761.method_2896(mc.field_1724, hand, blockHitResult);
-                        if (actionResult2 instanceof class_9860 success2) {
-                           if (success2.comp_2909() == class_9861.field_52427) {
-                              mc.field_1724.method_6104(hand);
-                              if (!itemStack.method_7960() && (itemStack.method_7947() != i || mc.field_1761.method_2914())) {
-                                 mc.field_1773.field_4012.method_3215(hand);
+                     if (mc.crosshairTarget.getType().equals(Type.BLOCK)) {
+                        BlockHitResult blockHitResult = (BlockHitResult)mc.crosshairTarget;
+                        int i = itemStack.getCount();
+                        ActionResult actionResult2 = mc.interactionManager.interactBlock(mc.player, hand, blockHitResult);
+                        if (actionResult2 instanceof Success success2) {
+                           if (success2.swingSource() == SwingSource.CLIENT) {
+                              mc.player.swingHand(hand);
+                              if (!itemStack.isEmpty() && (itemStack.getCount() != i || mc.interactionManager.hasCreativeInventory())) {
+                                 mc.gameRenderer.firstPersonRenderer.resetEquipProgress(hand);
                               }
                            }
 
                            return;
                         }
 
-                        if (actionResult2 instanceof class_9857) {
+                        if (actionResult2 instanceof Fail) {
                            return;
                         }
                      }
                   }
 
-                  if (!itemStack.method_7960()
+                  if (!itemStack.isEmpty()
                      && !callInteractItem(hand, itemStack)
-                     && mc.field_1761.method_2919(mc.field_1724, hand) instanceof class_9860 success3) {
-                     if (success3.comp_2909() == class_9861.field_52427) {
-                        mc.field_1724.method_6104(hand);
+                     && mc.interactionManager.interactItem(mc.player, hand) instanceof Success success3) {
+                     if (success3.swingSource() == SwingSource.CLIENT) {
+                        mc.player.swingHand(hand);
                      }
 
-                     mc.field_1773.field_4012.method_3215(hand);
+                     mc.gameRenderer.firstPersonRenderer.resetEquipProgress(hand);
                      return;
                   }
                }

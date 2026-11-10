@@ -3,7 +3,7 @@ package cc.polyfrost.oneconfig.utils.color;
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.class_3532;
+import net.minecraft.util.math.MathHelper;
 
 public class ChromaJS {
    public static class Scale {
@@ -150,7 +150,7 @@ public class ChromaJS {
          int[] rgb = this.lch2rgb(hcl[2], hcl[1], hcl[0]);
 
          for (int i = 0; i < 3; i++) {
-            rgb[i] = class_3532.method_15340(rgb[i], 0, 255);
+            rgb[i] = MathHelper.clamp(rgb[i], 0, 255);
          }
 
          return new Color(rgb[0], rgb[1], rgb[2]);
@@ -201,7 +201,7 @@ public class ChromaJS {
       }
 
       public int getColorRGB(double rate) {
-         rate = class_3532.method_15350(rate, 0.0, 1.0);
+         rate = MathHelper.clamp(rate, 0.0, 1.0);
          int count = (int)Math.floor(Math.max(0.0, rate * (this.numColors - 1) - 0.001));
          return ColorUtil.interpolateColor(
             this.colors.get(count), this.colors.get(count + 1), (float)((rate - (double)count / (this.numColors - 1)) * (this.numColors - 1))

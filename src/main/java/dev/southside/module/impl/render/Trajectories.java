@@ -19,41 +19,41 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import net.minecraft.class_1297;
-import net.minecraft.class_1657;
-import net.minecraft.class_1676;
-import net.minecraft.class_1684;
-import net.minecraft.class_1753;
-import net.minecraft.class_1764;
-import net.minecraft.class_1771;
-import net.minecraft.class_1776;
-import net.minecraft.class_1779;
-import net.minecraft.class_1787;
-import net.minecraft.class_1792;
-import net.minecraft.class_1799;
-import net.minecraft.class_1802;
-import net.minecraft.class_1823;
-import net.minecraft.class_1835;
-import net.minecraft.class_1893;
-import net.minecraft.class_2350;
-import net.minecraft.class_238;
-import net.minecraft.class_239;
-import net.minecraft.class_241;
-import net.minecraft.class_243;
-import net.minecraft.class_2561;
-import net.minecraft.class_332;
-import net.minecraft.class_3532;
-import net.minecraft.class_3965;
-import net.minecraft.class_3966;
-import net.minecraft.class_4537;
-import net.minecraft.class_4587;
-import net.minecraft.class_7923;
-import net.minecraft.class_239.class_240;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.projectile.ProjectileEntity;
+import net.minecraft.entity.projectile.thrown.EnderPearlEntity;
+import net.minecraft.item.BowItem;
+import net.minecraft.item.CrossbowItem;
+import net.minecraft.item.EggItem;
+import net.minecraft.item.EnderPearlItem;
+import net.minecraft.item.ExperienceBottleItem;
+import net.minecraft.item.FishingRodItem;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.item.SnowballItem;
+import net.minecraft.item.TridentItem;
+import net.minecraft.enchantment.Enchantments;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.math.Vec2f;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.text.Text;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.EntityHitResult;
+import net.minecraft.item.ThrowablePotionItem;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.registry.Registries;
+import net.minecraft.util.hit.HitResult.Type;
 import org.joml.Vector3d;
 
 public class Trajectories extends Module {
    private static final double MULTISHOT_OFFSET = Math.toRadians(10.0);
-   private final List<class_1792> items = new ArrayList<>();
+   private final List<Item> items = new ArrayList<>();
    private final Switch otherPlayers = new Switch("Other Players", true);
    private final Switch firedProjectiles = new Switch("Fired Projectiles", false);
    private final Switch firedProjectilesOnlyPearl = new Switch("Fired Projectiles Only Pearl", false);
@@ -78,17 +78,17 @@ public class Trajectories extends Module {
       this.hideIf(this.pearlTagBgAlpha.getLabel(), () -> !this.pearlLandingTag.getValue());
    }
 
-   private boolean itemFilter(class_1792 item) {
-      return item instanceof class_1753
-         || item instanceof class_1764
-         || item instanceof class_1787
-         || item instanceof class_1835
-         || item instanceof class_1823
-         || item instanceof class_1771
-         || item instanceof class_1776
-         || item instanceof class_1779
-         || item instanceof class_4537
-         || class_1802.field_8626.equals(item);
+   private boolean itemFilter(Item item) {
+      return item instanceof BowItem
+         || item instanceof CrossbowItem
+         || item instanceof FishingRodItem
+         || item instanceof TridentItem
+         || item instanceof SnowballItem
+         || item instanceof EggItem
+         || item instanceof EnderPearlItem
+         || item instanceof ExperienceBottleItem
+         || item instanceof ThrowablePotionItem
+         || Items.TNT.equals(item);
    }
 
    @Override
@@ -98,10 +98,10 @@ public class Trajectories extends Module {
       this.items.addAll(this.getDefaultItems());
    }
 
-   private List<class_1792> getDefaultItems() {
-      List<class_1792> defaults = new ArrayList<>();
+   private List<Item> getDefaultItems() {
+      List<Item> defaults = new ArrayList<>();
 
-      for (class_1792 item : class_7923.field_41178) {
+      for (Item item : Registries.ITEM) {
          if (this.itemFilter(item)) {
             defaults.add(item);
          }
@@ -128,18 +128,18 @@ public class Trajectories extends Module {
       }
    }
 
-   private void calculatePath(class_1657 player, float tickDelta) {
+   private void calculatePath(PlayerEntity player, float tickDelta) {
       this.clearPaths();
-      class_1799 itemStack = player.method_6047();
-      if (itemStack == null || itemStack.method_7960() || !this.items.contains(itemStack.method_7909())) {
-         itemStack = player.method_6079();
+      ItemStack itemStack = player.getMainHandStack();
+      if (itemStack == null || itemStack.isEmpty() || !this.items.contains(itemStack.getItem())) {
+         itemStack = player.getOffHandStack();
       }
 
-      if (itemStack != null && !itemStack.method_7960()) {
-         if (this.items.contains(itemStack.method_7909())) {
+      if (itemStack != null && !itemStack.isEmpty()) {
+         if (this.items.contains(itemStack.getItem())) {
             if (this.simulator.set(player, itemStack, 0.0, this.accurate.getValue(), this.tnt.getValue(), false, tickDelta)) {
                this.getEmptyPath().calculate();
-               if (itemStack.method_7909() instanceof class_1764 && EnchantmentUtils.getLevel(class_1893.field_9108, itemStack) > 0) {
+               if (itemStack.getItem() instanceof CrossbowItem && EnchantmentUtils.getLevel(Enchantments.MULTISHOT, itemStack) > 0) {
                   if (!this.simulator.set(player, itemStack, MULTISHOT_OFFSET, this.accurate.getValue(), this.tnt.getValue(), false, tickDelta)) {
                      return;
                   }
@@ -156,7 +156,7 @@ public class Trajectories extends Module {
       }
    }
 
-   private void calculateFiredPath(class_1297 entity, float tickDelta) {
+   private void calculateFiredPath(Entity entity, float tickDelta) {
       this.clearPaths();
       if (this.simulator.set(entity, this.accurate.getValue(), this.tnt.getValue(), tickDelta)) {
          this.getEmptyPath().setStart(entity, tickDelta).calculate();
@@ -165,11 +165,11 @@ public class Trajectories extends Module {
 
    @EventHandler
    private void onRender3D(Render3DEvent event) {
-      if (mc.field_1687 != null && mc.field_1724 != null) {
+      if (mc.world != null && mc.player != null) {
          this.pearlLandingInfos.clear();
 
-         for (class_1657 player : mc.field_1687.method_18456()) {
-            if (this.otherPlayers.getValue() || player == mc.field_1724) {
+         for (PlayerEntity player : mc.world.getPlayers()) {
+            if (this.otherPlayers.getValue() || player == mc.player) {
                this.calculatePath(player, event.getTickCounter());
 
                for (Trajectories.Path path : this.paths) {
@@ -180,33 +180,33 @@ public class Trajectories extends Module {
 
          if (this.firedProjectiles.getValue() || this.pearlLandingTag.getValue()) {
             List<Integer> alivePearlIds = new ArrayList<>();
-            Iterator var11 = mc.field_1687.method_18112().iterator();
+            Iterator var11 = mc.world.getEntities().iterator();
 
             while (true) {
                boolean shouldRenderPath;
                boolean shouldCollectTag;
-               class_1297 entity;
+               Entity entity;
                while (true) {
                   if (!var11.hasNext()) {
                      this.cachedPearlLandings.keySet().removeIf(id -> !alivePearlIds.contains(id));
                      return;
                   }
 
-                  entity = (class_1297)var11.next();
-                  if (entity instanceof class_1676) {
-                     boolean isPearl = entity instanceof class_1684;
+                  entity = (Entity)var11.next();
+                  if (entity instanceof ProjectileEntity) {
+                     boolean isPearl = entity instanceof EnderPearlEntity;
                      shouldRenderPath = this.firedProjectiles.getValue() && (!this.firedProjectilesOnlyPearl.getValue() || isPearl);
                      shouldCollectTag = this.pearlLandingTag.getValue() && isPearl;
                      if (shouldRenderPath || shouldCollectTag) {
                         if (isPearl) {
-                           alivePearlIds.add(entity.method_5628());
+                           alivePearlIds.add(entity.getId());
                         }
 
-                        if (!shouldCollectTag || !this.cachedPearlLandings.containsKey(entity.method_5628())) {
+                        if (!shouldCollectTag || !this.cachedPearlLandings.containsKey(entity.getId())) {
                            break;
                         }
 
-                        this.pearlLandingInfos.add(this.cachedPearlLandings.get(entity.method_5628()));
+                        this.pearlLandingInfos.add(this.cachedPearlLandings.get(entity.getId()));
                         if (shouldRenderPath) {
                            break;
                         }
@@ -221,8 +221,8 @@ public class Trajectories extends Module {
                   }
                }
 
-               if (shouldCollectTag && !this.cachedPearlLandings.containsKey(entity.method_5628())) {
-                  this.collectPearlLandingInfo((class_1684)entity);
+               if (shouldCollectTag && !this.cachedPearlLandings.containsKey(entity.getId())) {
+                  this.collectPearlLandingInfo((EnderPearlEntity)entity);
                }
             }
          }
@@ -232,9 +232,9 @@ public class Trajectories extends Module {
    @EventHandler
    private void onRender2D(Render2DEvent event) {
       if (this.pearlLandingTag.getValue() && !this.pearlLandingInfos.isEmpty()) {
-         if (mc.field_1687 != null && mc.field_1724 != null) {
+         if (mc.world != null && mc.player != null) {
             for (Trajectories.PearlLandingInfo info : this.pearlLandingInfos) {
-               class_241 screenPos = ProjectionUtil.worldScreenPos(new class_243(info.x, info.y + 0.25, info.z));
+               Vec2f screenPos = ProjectionUtil.worldScreenPos(new Vec3d(info.x, info.y + 0.25, info.z));
                if (screenPos != null) {
                   this.renderPearlLandingTag(event.getDrawContext(), screenPos, info);
                }
@@ -243,33 +243,33 @@ public class Trajectories extends Module {
       }
    }
 
-   private void collectPearlLandingInfo(class_1684 pearl) {
+   private void collectPearlLandingInfo(EnderPearlEntity pearl) {
       if (!this.paths.isEmpty()) {
          Trajectories.Path path = this.paths.get(0);
          if (path.hasImpactPoint()) {
             Vector3d impact = path.getImpactPoint();
-            int blockX = class_3532.method_15357(impact.x);
-            int blockY = class_3532.method_15357(impact.y);
-            int blockZ = class_3532.method_15357(impact.z);
+            int blockX = MathHelper.floor(impact.x);
+            int blockY = MathHelper.floor(impact.y);
+            int blockZ = MathHelper.floor(impact.z);
             String ownerName = "Unknown";
-            class_1297 owner = pearl.method_24921();
+            Entity owner = pearl.getOwner();
             if (owner != null) {
-               ownerName = owner.method_5477().getString();
+               ownerName = owner.getName().getString();
             }
 
             Trajectories.PearlLandingInfo info = new Trajectories.PearlLandingInfo(ownerName, impact.x, impact.y, impact.z, blockX, blockY, blockZ);
-            this.cachedPearlLandings.put(pearl.method_5628(), info);
+            this.cachedPearlLandings.put(pearl.getId(), info);
             this.pearlLandingInfos.add(info);
          }
       }
    }
 
-   private void renderPearlLandingTag(class_332 context, class_241 screenPos, Trajectories.PearlLandingInfo info) {
+   private void renderPearlLandingTag(DrawContext context, Vec2f screenPos, Trajectories.PearlLandingInfo info) {
       String line1 = info.ownerName + " Pearl";
       String line2 = "XYZ: " + info.blockX + ", " + info.blockY + ", " + info.blockZ;
       int fontHeight = 9;
       int lineHeight = fontHeight + 2;
-      int textWidth = Math.max(mc.field_1772.method_1727(line1), mc.field_1772.method_1727(line2));
+      int textWidth = Math.max(mc.textRenderer.getWidth(line1), mc.textRenderer.getWidth(line2));
       int paddingX = 4;
       int paddingY = 2;
       int boxWidth = textWidth + paddingX * 2;
@@ -278,20 +278,20 @@ public class Trajectories extends Module {
       int top = -(boxHeight + 2);
       int right = left + boxWidth;
       int bottom = top + boxHeight;
-      float alpha = class_3532.method_15363(this.pearlTagBgAlpha.getValue().floatValue(), 0.0F, 1.0F);
+      float alpha = MathHelper.clamp(this.pearlTagBgAlpha.getValue().floatValue(), 0.0F, 1.0F);
       int bg = ((int)(alpha * 255.0F) & 0xFF) << 24;
       int textColor = -1;
       float scale = this.pearlTagScale.getValue().floatValue();
-      class_4587 matrices = context.method_51448();
-      matrices.method_22903();
-      matrices.method_46416(screenPos.field_1343, screenPos.field_1342, 0.0F);
-      matrices.method_22905(scale, scale, 1.0F);
-      context.method_25294(left, top, right, bottom, bg);
+      MatrixStack matrices = context.getMatrices();
+      matrices.push();
+      matrices.translate(screenPos.x, screenPos.y, 0.0F);
+      matrices.scale(scale, scale, 1.0F);
+      context.fill(left, top, right, bottom, bg);
       int y = top + paddingY;
-      context.method_51439(mc.field_1772, class_2561.method_43470(line1), left + (boxWidth - mc.field_1772.method_1727(line1)) / 2, y, textColor, true);
+      context.drawText(mc.textRenderer, Text.literal(line1), left + (boxWidth - mc.textRenderer.getWidth(line1)) / 2, y, textColor, true);
       y += lineHeight;
-      context.method_51439(mc.field_1772, class_2561.method_43470(line2), left + (boxWidth - mc.field_1772.method_1727(line2)) / 2, y, textColor, true);
-      matrices.method_22909();
+      context.drawText(mc.textRenderer, Text.literal(line2), left + (boxWidth - mc.textRenderer.getWidth(line2)) / 2, y, textColor, true);
+      matrices.pop();
    }
 
    private class Path {
@@ -304,7 +304,7 @@ public class Trajectories extends Module {
       private double hitQuadX2;
       private double hitQuadY2;
       private double hitQuadZ2;
-      private class_1297 collidingEntity;
+      private Entity collidingEntity;
       private Vector3d impactPoint;
 
       public void clear() {
@@ -319,7 +319,7 @@ public class Trajectories extends Module {
          this.addPoint();
 
          for (int i = 0; i < (Trajectories.this.simulationSteps.getDouble() > 0.0 ? Trajectories.this.simulationSteps.getDouble() : 2.147483647E9); i++) {
-            class_239 result = Trajectories.this.simulator.tick();
+            HitResult result = Trajectories.this.simulator.tick();
             if (result != null) {
                this.processHitResult(result);
                break;
@@ -329,7 +329,7 @@ public class Trajectories extends Module {
          }
       }
 
-      public Trajectories.Path setStart(class_1297 entity, double tickDelta) {
+      public Trajectories.Path setStart(Entity entity, double tickDelta) {
          return this;
       }
 
@@ -337,24 +337,24 @@ public class Trajectories extends Module {
          this.points.add(Trajectories.this.vec3s.get().set(Trajectories.this.simulator.pos));
       }
 
-      private void processHitResult(class_239 result) {
-         this.impactPoint = new Vector3d(result.method_17784().field_1352, result.method_17784().field_1351, result.method_17784().field_1350);
-         if (result.method_17783() == class_240.field_1332) {
-            class_3965 r = (class_3965)result;
+      private void processHitResult(HitResult result) {
+         this.impactPoint = new Vector3d(result.getPos().x, result.getPos().y, result.getPos().z);
+         if (result.getType() == Type.BLOCK) {
+            BlockHitResult r = (BlockHitResult)result;
             this.hitQuad = true;
-            this.hitQuadX1 = r.method_17784().field_1352;
-            this.hitQuadY1 = r.method_17784().field_1351;
-            this.hitQuadZ1 = r.method_17784().field_1350;
-            this.hitQuadX2 = r.method_17784().field_1352;
-            this.hitQuadY2 = r.method_17784().field_1351;
-            this.hitQuadZ2 = r.method_17784().field_1350;
-            if (r.method_17780() == class_2350.field_11036 || r.method_17780() == class_2350.field_11033) {
+            this.hitQuadX1 = r.getPos().x;
+            this.hitQuadY1 = r.getPos().y;
+            this.hitQuadZ1 = r.getPos().z;
+            this.hitQuadX2 = r.getPos().x;
+            this.hitQuadY2 = r.getPos().y;
+            this.hitQuadZ2 = r.getPos().z;
+            if (r.getSide() == Direction.UP || r.getSide() == Direction.DOWN) {
                this.hitQuadHorizontal = true;
                this.hitQuadX1 -= 0.25;
                this.hitQuadZ1 -= 0.25;
                this.hitQuadX2 += 0.25;
                this.hitQuadZ2 += 0.25;
-            } else if (r.method_17780() != class_2350.field_11043 && r.method_17780() != class_2350.field_11035) {
+            } else if (r.getSide() != Direction.NORTH && r.getSide() != Direction.SOUTH) {
                this.hitQuadHorizontal = false;
                this.hitQuadZ1 -= 0.25;
                this.hitQuadY1 -= 0.25;
@@ -368,15 +368,15 @@ public class Trajectories extends Module {
                this.hitQuadY2 += 0.25;
             }
 
-            this.points.add(Trajectories.this.vec3s.get().set(Trajectories.this.simulator.with(result.method_17784())));
-         } else if (result.method_17783() == class_240.field_1331) {
-            this.collidingEntity = ((class_3966)result).method_17782();
+            this.points.add(Trajectories.this.vec3s.get().set(Trajectories.this.simulator.with(result.getPos())));
+         } else if (result.getType() == Type.ENTITY) {
+            this.collidingEntity = ((EntityHitResult)result).getEntity();
             this.points
                .add(
                   Trajectories.this.vec3s
                      .get()
-                     .set(Trajectories.this.simulator.with(result.method_17784()))
-                     .add(0.0, this.collidingEntity.method_17682() / 2.0, 0.0)
+                     .set(Trajectories.this.simulator.with(result.getPos()))
+                     .add(0.0, this.collidingEntity.getHeight() / 2.0, 0.0)
                );
          }
       }
@@ -440,27 +440,27 @@ public class Trajectories extends Module {
             }
          }
 
-         if (this.collidingEntity != null && this.collidingEntity != Trajectories.mc.field_1724) {
-            double x = (this.collidingEntity.method_23317() - this.collidingEntity.field_6014) * event.getTickCounter();
-            double y = (this.collidingEntity.method_23318() - this.collidingEntity.field_6036) * event.getTickCounter();
-            double z = (this.collidingEntity.method_23321() - this.collidingEntity.field_5969) * event.getTickCounter();
-            class_238 box = this.collidingEntity.method_5829();
+         if (this.collidingEntity != null && this.collidingEntity != Trajectories.mc.player) {
+            double x = (this.collidingEntity.getX() - this.collidingEntity.prevX) * event.getTickCounter();
+            double y = (this.collidingEntity.getY() - this.collidingEntity.prevY) * event.getTickCounter();
+            double z = (this.collidingEntity.getZ() - this.collidingEntity.prevZ) * event.getTickCounter();
+            Box box = this.collidingEntity.getBoundingBox();
             Render3D.boxLines(
-               x + box.field_1323,
-               y + box.field_1322,
-               z + box.field_1321,
-               x + box.field_1320,
-               y + box.field_1325,
-               z + box.field_1324,
+               x + box.minX,
+               y + box.minY,
+               z + box.minZ,
+               x + box.maxX,
+               y + box.maxY,
+               z + box.maxZ,
                Trajectories.this.lineColor.getValue().toJavaColor()
             );
             Render3D.boxSides(
-               x + box.field_1323,
-               y + box.field_1322,
-               z + box.field_1321,
-               x + box.field_1320,
-               y + box.field_1325,
-               z + box.field_1324,
+               x + box.minX,
+               y + box.minY,
+               z + box.minZ,
+               x + box.maxX,
+               y + box.maxY,
+               z + box.maxZ,
                Trajectories.this.sideColor.getValue().toJavaColor()
             );
          }

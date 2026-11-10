@@ -2,12 +2,12 @@ package cc.polyfrost.oneconfig.platform.impl;
 
 import cc.polyfrost.oneconfig.libs.universal.UKeyboard;
 import cc.polyfrost.oneconfig.platform.I18nPlatform;
-import net.minecraft.class_1074;
+import net.minecraft.client.resource.language.I18n;
 
 public class I18nPlatformImpl implements I18nPlatform {
    @Override
    public String format(String key, Object... args) {
-      return class_1074.method_4662(key, args);
+      return I18n.translate(key, args);
    }
 
    @Override

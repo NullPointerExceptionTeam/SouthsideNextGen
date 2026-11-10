@@ -75,12 +75,12 @@ public final class Notification {
             ScissorHelper scissorHelper = ScissorHelper.INSTANCE;
             float progress = MathUtils.clamp(this.progressBar.call());
             Scissor scissor1 = scissorHelper.scissor(vg, x + 314.0F * progress, y + height - 5.0F, 314.0F * (1.0F - progress), 5.0F);
-            renderer.drawRoundedRect(vg, x, y, 314.0F, height, MinecraftAccessor.mc.field_1687 == null ? Colors.PRIMARY_800 : Colors.GRAY_400, 8.0F);
+            renderer.drawRoundedRect(vg, x, y, 314.0F, height, MinecraftAccessor.mc.world == null ? Colors.PRIMARY_800 : Colors.GRAY_400, 8.0F);
             scissorHelper.resetScissor(vg, scissor1);
             Scissor scissor2 = scissorHelper.scissor(
                vg, x, y + height - 5.0F, 314.0F * progress - (!(314.0F * progress < 2.5F) && !(311.5F * progress > 2.5F) ? 2.5F : 0.0F), 5.0F
             );
-            renderer.drawRoundedRect(vg, x, y, 314.0F, height, MinecraftAccessor.mc.field_1687 == null ? Colors.PRIMARY_500 : Colors.WHITE, 8.0F);
+            renderer.drawRoundedRect(vg, x, y, 314.0F, height, MinecraftAccessor.mc.world == null ? Colors.PRIMARY_500 : Colors.WHITE, 8.0F);
             scissorHelper.resetScissor(vg, scissor2);
             if (314.0F * progress >= 2.5F && 311.5F * progress <= 2.5F) {
                renderer.drawRoundedRect(vg, x + 2.5F, y + height - 5.0F, Math.max(0.0F, 314.0F * progress - 5.0F), 5.0F, Colors.PRIMARY_500, 2.5F);

@@ -26,30 +26,28 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.StreamSupport;
-import net.minecraft.class_1268;
-import net.minecraft.class_1269;
-import net.minecraft.class_1297;
-import net.minecraft.class_1657;
-import net.minecraft.class_1747;
-import net.minecraft.class_1799;
-import net.minecraft.class_1802;
-import net.minecraft.class_2246;
-import net.minecraft.class_2338;
-import net.minecraft.class_2350;
-import net.minecraft.class_238;
-import net.minecraft.class_243;
-import net.minecraft.class_265;
-import net.minecraft.class_2680;
-import net.minecraft.class_3610;
-import net.minecraft.class_3611;
-import net.minecraft.class_3612;
-import net.minecraft.class_3959;
-import net.minecraft.class_3965;
-import net.minecraft.class_2350.class_2352;
-import net.minecraft.class_2350.class_2353;
-import net.minecraft.class_239.class_240;
-import net.minecraft.class_3959.class_242;
-import net.minecraft.class_3959.class_3960;
+import net.minecraft.util.Hand;
+import net.minecraft.util.ActionResult;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.BlockItem;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.block.Blocks;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.shape.VoxelShape;
+import net.minecraft.block.BlockState;
+import net.minecraft.fluid.FluidState;
+import net.minecraft.fluid.Fluid;
+import net.minecraft.fluid.Fluids;
+import net.minecraft.world.RaycastContext;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.math.Direction.AxisDirection;
+import net.minecraft.world.RaycastContext.FluidHandling;
+import net.minecraft.world.RaycastContext.ShapeType;
 
 public class AutoWeb extends Module {
    public final Slider rangeSetting = new Slider("Range", 4.0, 3.0, 5.0, 0.1);
@@ -65,8 +63,8 @@ public class AutoWeb extends Module {
    private AutoWeb.Phase placementPhase = AutoWeb.Phase.IDLE;
    private AutoWeb.PlacementInfo currentPlacement;
    private AutoWeb.PlacementType activePlacementType;
-   private class_1297 target;
-   private class_2338 targetBlockPos;
+   private Entity target;
+   private BlockPos targetBlockPos;
    private int waitTicks;
    private int retrieveTicks;
    private int retrieveAttempts;
@@ -76,7 +74,7 @@ public class AutoWeb extends Module {
    private boolean lavaPlaced;
    private boolean retriedLavaPlace;
    private int previousSlot = -1;
-   private class_2338 retrieveSourcePos;
+   private BlockPos retrieveSourcePos;
 
    public AutoWeb() {
       super(Category.Player, "AutoWeb");
@@ -114,7 +112,7 @@ public class AutoWeb extends Module {
    @EventHandler
    public void onTick(TickEvent event) {
       if (event.getState() == Stage.PRE) {
-         if (mc.field_1687 != null && mc.field_1724 != null && mc.field_1761 != null) {
+         if (mc.world != null && mc.player != null && mc.interactionManager != null) {
             switch (this.placementPhase) {
                case IDLE:
                   this.tickSearch();
@@ -141,14 +139,14 @@ public class AutoWeb extends Module {
                return;
             }
 
-            class_243 aimPoint = this.retrieveSourcePos != null ? this.retrieveSourcePos.method_46558() : this.currentPlacement.aim;
-            rot = RotationUtils.calculate(mc.field_1724.method_33571(), aimPoint);
+            Vec3d aimPoint = this.retrieveSourcePos != null ? this.retrieveSourcePos.toCenterPos() : this.currentPlacement.aim;
+            rot = RotationUtils.calculate(mc.player.getEyePos(), aimPoint);
          } else {
             if (this.currentPlacement == null) {
                return;
             }
 
-            rot = RotationUtils.calculate(mc.field_1724.method_33571(), this.currentPlacement.aim);
+            rot = RotationUtils.calculate(mc.player.getEyePos(), this.currentPlacement.aim);
          }
 
          rot.pitch = rot.pitch - RandomUtils.generateRandomFloat(0.001F, 0.003F);
@@ -186,7 +184,7 @@ public class AutoWeb extends Module {
          if (this.targetBlockPos != null || this.currentPlacement != null) {
             Color tint = this.activePlacementType == AutoWeb.PlacementType.LAVA ? new Color(255, 100, 0) : new Color(255, 255, 255);
             if (this.targetBlockPos != null) {
-               class_238 box = new class_238(this.targetBlockPos);
+               Box box = new Box(this.targetBlockPos);
                Render3D.boxSides(box, new Color(tint.getRed(), tint.getGreen(), tint.getBlue(), 64));
                Render3D.boxLines(box, new Color(tint.getRed(), tint.getGreen(), tint.getBlue(), 190));
             }
@@ -198,25 +196,25 @@ public class AutoWeb extends Module {
       }
    }
 
-   private void renderFaceHighlight(class_2338 pos, class_2350 face, Color color) {
-      class_238 faceBox = this.getFaceAabb(pos, face);
+   private void renderFaceHighlight(BlockPos pos, Direction face, Color color) {
+      Box faceBox = this.getFaceAabb(pos, face);
       Render3D.boxSides(faceBox, new Color(color.getRed(), color.getGreen(), color.getBlue(), 115));
       Render3D.boxLines(faceBox, new Color(color.getRed(), color.getGreen(), color.getBlue(), 242));
    }
 
-   private class_238 getFaceAabb(class_2338 pos, class_2350 face) {
-      double minX = pos.method_10263();
-      double minY = pos.method_10264();
-      double minZ = pos.method_10260();
+   private Box getFaceAabb(BlockPos pos, Direction face) {
+      double minX = pos.getX();
+      double minY = pos.getY();
+      double minZ = pos.getZ();
       double t = 0.002;
 
       return switch (face) {
-         case field_11036 -> new class_238(minX, minY + 1.0 - t, minZ, minX + 1.0, minY + 1.0 + t, minZ + 1.0);
-         case field_11033 -> new class_238(minX, minY - t, minZ, minX + 1.0, minY + t, minZ + 1.0);
-         case field_11034 -> new class_238(minX + 1.0 - t, minY, minZ, minX + 1.0 + t, minY + 1.0, minZ + 1.0);
-         case field_11039 -> new class_238(minX - t, minY, minZ, minX + t, minY + 1.0, minZ + 1.0);
-         case field_11035 -> new class_238(minX, minY, minZ + 1.0 - t, minX + 1.0, minY + 1.0, minZ + 1.0 + t);
-         case field_11043 -> new class_238(minX, minY, minZ - t, minX + 1.0, minY + 1.0, minZ + t);
+         case UP -> new Box(minX, minY + 1.0 - t, minZ, minX + 1.0, minY + 1.0 + t, minZ + 1.0);
+         case DOWN -> new Box(minX, minY - t, minZ, minX + 1.0, minY + t, minZ + 1.0);
+         case EAST -> new Box(minX + 1.0 - t, minY, minZ, minX + 1.0 + t, minY + 1.0, minZ + 1.0);
+         case WEST -> new Box(minX - t, minY, minZ, minX + t, minY + 1.0, minZ + 1.0);
+         case SOUTH -> new Box(minX, minY, minZ + 1.0 - t, minX + 1.0, minY + 1.0, minZ + 1.0 + t);
+         case NORTH -> new Box(minX, minY, minZ - t, minX + 1.0, minY + 1.0, minZ + t);
          default -> throw new MatchException(null, null);
       };
    }
@@ -283,45 +281,45 @@ public class AutoWeb extends Module {
       if (slot == -1) {
          return false;
       } else {
-         this.previousSlot = mc.field_1724.method_31548().field_7545;
-         mc.field_1724.method_31548().field_7545 = slot;
+         this.previousSlot = mc.player.getInventory().selectedSlot;
+         mc.player.getInventory().selectedSlot = slot;
          boolean success;
          if (this.activePlacementType == AutoWeb.PlacementType.LAVA) {
-            class_1269 result = mc.field_1761.method_2919(mc.field_1724, class_1268.field_5808);
-            success = result.method_23665();
+            ActionResult result = mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
+            success = result.isAccepted();
             if (success) {
-               mc.field_1724.method_6104(class_1268.field_5808);
+               mc.player.swingHand(Hand.MAIN_HAND);
             }
          } else {
-            class_3965 hit = new class_3965(this.currentPlacement.aim, this.currentPlacement.face, this.currentPlacement.support, false);
-            success = mc.field_1761.method_2896(mc.field_1724, class_1268.field_5808, hit).method_23665();
+            BlockHitResult hit = new BlockHitResult(this.currentPlacement.aim, this.currentPlacement.face, this.currentPlacement.support, false);
+            success = mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, hit).isAccepted();
             if (success) {
-               mc.field_1724.method_6104(class_1268.field_5808);
+               mc.player.swingHand(Hand.MAIN_HAND);
             }
          }
 
-         mc.field_1724.method_31548().field_7545 = this.previousSlot;
+         mc.player.getInventory().selectedSlot = this.previousSlot;
          return success;
       }
    }
 
    private Optional<AutoWeb.PlacementTarget> findPlacementTarget() {
-      if (mc.field_1687 != null && mc.field_1724 != null) {
+      if (mc.world != null && mc.player != null) {
          float range = this.rangeSetting.getValue().floatValue();
-         List<class_1297> candidates = StreamSupport.<class_1297>stream(mc.field_1687.method_18112().spliterator(), false)
-            .filter(e -> e instanceof class_1657 && e != mc.field_1724)
-            .filter(e -> e.method_5739(mc.field_1724) <= range)
+         List<Entity> candidates = StreamSupport.<Entity>stream(mc.world.getEntities().spliterator(), false)
+            .filter(e -> e instanceof PlayerEntity && e != mc.player)
+            .filter(e -> e.distanceTo(mc.player) <= range)
             .filter(e -> TargetUtils.isTarget(e, true, true))
-            .sorted(Comparator.comparingDouble(e -> e.method_5739(mc.field_1724)))
+            .sorted(Comparator.comparingDouble(e -> e.distanceTo(mc.player)))
             .toList();
          if (this.killAuraSyncSetting.getValue()) {
             KillAura killAura = Southside.INSTANCE.getModuleManager().get(KillAura.class);
-            class_1297 kaTarget = killAura.isEnabled() ? KillAura.target : null;
+            Entity kaTarget = killAura.isEnabled() ? KillAura.target : null;
             if (kaTarget != null
-               && kaTarget.method_5805()
-               && !kaTarget.method_31481()
+               && kaTarget.isAlive()
+               && !kaTarget.isRemoved()
                && TargetUtils.isTarget(kaTarget, true, true)
-               && kaTarget.method_5739(mc.field_1724) <= range) {
+               && kaTarget.distanceTo(mc.player) <= range) {
                candidates = List.of(kaTarget);
             }
          }
@@ -330,7 +328,7 @@ public class AutoWeb extends Module {
          int blockSlot = this.blockPlaceSetting.getValue() ? this.findBlockSlot() : -1;
          int lavaSlot = this.lavaSetting.getValue() ? this.findLavaBucketSlot() : -1;
 
-         for (class_1297 entity : candidates) {
+         for (Entity entity : candidates) {
             boolean inCobweb = this.isEntityInCobweb(entity);
             if (inCobweb) {
                Optional<AutoWeb.PlacementTarget> webExit = this.findWebExitPlacement(entity, cobwebSlot);
@@ -342,7 +340,7 @@ public class AutoWeb extends Module {
             if (!inCobweb && this.groundWebSetting.getValue() && cobwebSlot != -1) {
                Optional<AutoWeb.PlacementInfo> groundWeb = this.findGroundWebPlacement(entity);
                if (groundWeb.isPresent()) {
-                  this.debugLog("Ground web " + entity.method_5477().getString());
+                  this.debugLog("Ground web " + entity.getName().getString());
                   return Optional.of(new AutoWeb.PlacementTarget(entity, groundWeb.get(), AutoWeb.PlacementType.GROUND_WEB));
                }
             }
@@ -357,7 +355,7 @@ public class AutoWeb extends Module {
             if (lavaSlot != -1 && this.shouldPlaceLava(entity)) {
                Optional<AutoWeb.PlacementInfo> lavaPlace = this.findLavaSourcePlacement(entity);
                if (lavaPlace.isPresent()) {
-                  this.debugLog("Lava " + entity.method_5477().getString());
+                  this.debugLog("Lava " + entity.getName().getString());
                   return Optional.of(new AutoWeb.PlacementTarget(entity, lavaPlace.get(), AutoWeb.PlacementType.LAVA));
                }
             }
@@ -369,19 +367,19 @@ public class AutoWeb extends Module {
       }
    }
 
-   private Optional<AutoWeb.PlacementTarget> findCobwebPlacement(class_1297 entity, int cobwebSlot, int blockSlot) {
+   private Optional<AutoWeb.PlacementTarget> findCobwebPlacement(Entity entity, int cobwebSlot, int blockSlot) {
       boolean canPlaceWeb = cobwebSlot != -1;
       boolean canPlaceBlock = blockSlot != -1;
       if (!canPlaceWeb && !canPlaceBlock) {
          return Optional.empty();
       } else {
-         for (class_2338 placePos : this.getCobwebPositions(entity)) {
-            if (mc.field_1687.method_8320(placePos).method_45474() && !this.intersectsSelf(placePos)) {
+         for (BlockPos placePos : this.getCobwebPositions(entity)) {
+            if (mc.world.getBlockState(placePos).isReplaceable() && !this.intersectsSelf(placePos)) {
                boolean overlapsTarget = this.overlapsEntity(placePos, entity);
                if (!overlapsTarget && canPlaceBlock) {
                   Optional<AutoWeb.PlacementInfo> blockPlace = this.findPlacementAtAnyFace(entity, placePos);
                   if (blockPlace.isPresent()) {
-                     this.debugLog("Block " + entity.method_5477().getString());
+                     this.debugLog("Block " + entity.getName().getString());
                      return Optional.of(new AutoWeb.PlacementTarget(entity, blockPlace.get(), AutoWeb.PlacementType.BLOCK));
                   }
                }
@@ -389,7 +387,7 @@ public class AutoWeb extends Module {
                if (overlapsTarget && canPlaceWeb) {
                   Optional<AutoWeb.PlacementInfo> webPlace = this.findPlacementAtAnyFace(entity, placePos);
                   if (webPlace.isPresent()) {
-                     this.debugLog("Cobweb " + entity.method_5477().getString());
+                     this.debugLog("Cobweb " + entity.getName().getString());
                      return Optional.of(new AutoWeb.PlacementTarget(entity, webPlace.get(), AutoWeb.PlacementType.COBWEB));
                   }
                }
@@ -400,26 +398,26 @@ public class AutoWeb extends Module {
       }
    }
 
-   private Optional<AutoWeb.PlacementInfo> findPlacementAtAnyFace(class_1297 entity, class_2338 placePos) {
-      class_2350 nearest = entity != null
-         ? class_2350.method_10142(entity.method_23317() - mc.field_1724.method_23317(), 0.0, entity.method_23321() - mc.field_1724.method_23321())
-         : class_2350.field_11043;
-      List<class_2350> directions = new ArrayList<>();
+   private Optional<AutoWeb.PlacementInfo> findPlacementAtAnyFace(Entity entity, BlockPos placePos) {
+      Direction nearest = entity != null
+         ? Direction.getFacing(entity.getX() - mc.player.getX(), 0.0, entity.getZ() - mc.player.getZ())
+         : Direction.NORTH;
+      List<Direction> directions = new ArrayList<>();
       directions.add(nearest);
 
-      for (class_2350 d : class_2353.field_11062) {
+      for (Direction d : net.minecraft.util.math.Direction.Type.HORIZONTAL) {
          if (d != nearest) {
             directions.add(d);
          }
       }
 
-      directions.add(class_2350.field_11033);
-      directions.add(class_2350.field_11036);
+      directions.add(Direction.DOWN);
+      directions.add(Direction.UP);
 
-      for (class_2350 dir : directions) {
-         class_2338 support = placePos.method_10093(dir);
-         class_2350 face = dir.method_10153();
-         Optional<class_243> hit = this.findFaceHitPoint(support, face);
+      for (Direction dir : directions) {
+         BlockPos support = placePos.offset(dir);
+         Direction face = dir.getOpposite();
+         Optional<Vec3d> hit = this.findFaceHitPoint(support, face);
          if (hit.isPresent()) {
             return Optional.of(new AutoWeb.PlacementInfo(support, face, hit.get(), placePos));
          }
@@ -428,16 +426,16 @@ public class AutoWeb extends Module {
       return Optional.empty();
    }
 
-   private boolean overlapsEntity(class_2338 pos, class_1297 entity) {
-      class_238 posBox = new class_238(pos);
-      if (entity.method_5829().method_994(posBox)) {
+   private boolean overlapsEntity(BlockPos pos, Entity entity) {
+      Box posBox = new Box(pos);
+      if (entity.getBoundingBox().intersects(posBox)) {
          return true;
       } else {
-         class_243 movement = this.getEntityMovement(entity);
+         Vec3d movement = this.getEntityMovement(entity);
 
          for (int t = 1; t <= 3; t++) {
-            class_238 predicted = entity.method_5829().method_989(movement.field_1352 * t, 0.0, movement.field_1350 * t);
-            if (predicted.method_994(posBox)) {
+            Box predicted = entity.getBoundingBox().offset(movement.x * t, 0.0, movement.z * t);
+            if (predicted.intersects(posBox)) {
                return true;
             }
          }
@@ -446,21 +444,21 @@ public class AutoWeb extends Module {
       }
    }
 
-   private List<class_2338> getCobwebPositions(class_1297 entity) {
-      List<class_2338> list = new ArrayList<>();
-      list.add(class_2338.method_49637(entity.method_23317(), entity.method_23318() + 1.0, entity.method_23321()));
-      class_238 box = entity.method_5829();
-      int minX = (int)Math.floor(box.field_1323 - 0.45);
-      int maxX = (int)Math.floor(box.field_1320 + 0.45);
-      int minZ = (int)Math.floor(box.field_1321 - 0.45);
-      int maxZ = (int)Math.floor(box.field_1324 + 0.45);
-      int headY = (int)Math.floor(entity.method_23318() + 1.0);
-      int topY = (int)Math.floor(box.field_1325 - 0.05);
+   private List<BlockPos> getCobwebPositions(Entity entity) {
+      List<BlockPos> list = new ArrayList<>();
+      list.add(BlockPos.ofFloored(entity.getX(), entity.getY() + 1.0, entity.getZ()));
+      Box box = entity.getBoundingBox();
+      int minX = (int)Math.floor(box.minX - 0.45);
+      int maxX = (int)Math.floor(box.maxX + 0.45);
+      int minZ = (int)Math.floor(box.minZ - 0.45);
+      int maxZ = (int)Math.floor(box.maxZ + 0.45);
+      int headY = (int)Math.floor(entity.getY() + 1.0);
+      int topY = (int)Math.floor(box.maxY - 0.05);
 
       for (int y = Math.min(headY, topY); y <= Math.max(headY, topY); y++) {
          for (int x = minX; x <= maxX; x++) {
             for (int z = minZ; z <= maxZ; z++) {
-               class_2338 pos = new class_2338(x, y, z);
+               BlockPos pos = new BlockPos(x, y, z);
                if (!list.contains(pos)) {
                   list.add(pos);
                }
@@ -471,16 +469,16 @@ public class AutoWeb extends Module {
       return list;
    }
 
-   private Optional<AutoWeb.PlacementTarget> findWebExitPlacement(class_1297 entity, int cobwebSlot) {
+   private Optional<AutoWeb.PlacementTarget> findWebExitPlacement(Entity entity, int cobwebSlot) {
       if (cobwebSlot == -1) {
          return Optional.empty();
       } else {
-         class_243 movement = this.getEntityMovement(entity);
-         if (movement.field_1352 * movement.field_1352 + movement.field_1350 * movement.field_1350 < 4.0E-4) {
+         Vec3d movement = this.getEntityMovement(entity);
+         if (movement.x * movement.x + movement.z * movement.z < 4.0E-4) {
             return Optional.empty();
          } else {
             for (int tickAhead = 2; tickAhead <= 3; tickAhead++) {
-               class_238 predicted = entity.method_5829().method_989(movement.field_1352 * tickAhead, 0.0, movement.field_1350 * tickAhead);
+               Box predicted = entity.getBoundingBox().offset(movement.x * tickAhead, 0.0, movement.z * tickAhead);
                if (!this.isAllCobweb(predicted)) {
                   for (AutoWeb.PredictionTick tick : this.getPositionsForAabb(predicted, tickAhead)) {
                      Optional<AutoWeb.PlacementInfo> place = this.findWebExitPlacementForTick(entity, tick);
@@ -497,33 +495,33 @@ public class AutoWeb extends Module {
       }
    }
 
-   private Optional<AutoWeb.PlacementInfo> findWebExitPlacementForTick(class_1297 entity, AutoWeb.PredictionTick tick) {
-      if (mc.field_1687.method_8320(tick.headPos).method_27852(class_2246.field_10343)) {
+   private Optional<AutoWeb.PlacementInfo> findWebExitPlacementForTick(Entity entity, AutoWeb.PredictionTick tick) {
+      if (mc.world.getBlockState(tick.headPos).isOf(Blocks.COBWEB)) {
          return Optional.empty();
-      } else if (!mc.field_1687.method_8320(tick.headPos).method_45474()) {
+      } else if (!mc.world.getBlockState(tick.headPos).isReplaceable()) {
          return Optional.empty();
       } else if (this.intersectsSelf(tick.headPos)) {
          return Optional.empty();
       } else {
-         class_2350 nearest = class_2350.method_10142(
-            entity.method_23317() - mc.field_1724.method_23317(), 0.0, entity.method_23321() - mc.field_1724.method_23321()
+         Direction nearest = Direction.getFacing(
+            entity.getX() - mc.player.getX(), 0.0, entity.getZ() - mc.player.getZ()
          );
-         List<class_2350> directions = new ArrayList<>();
+         List<Direction> directions = new ArrayList<>();
          directions.add(nearest);
 
-         for (class_2350 dir : class_2353.field_11062) {
+         for (Direction dir : net.minecraft.util.math.Direction.Type.HORIZONTAL) {
             if (dir != nearest) {
                directions.add(dir);
             }
          }
 
-         directions.add(class_2350.field_11033);
-         directions.add(class_2350.field_11036);
+         directions.add(Direction.DOWN);
+         directions.add(Direction.UP);
 
-         for (class_2350 dirx : directions) {
-            class_2338 support = tick.headPos.method_10093(dirx);
-            class_2350 face = dirx.method_10153();
-            Optional<class_243> hit = this.findFaceHitPoint(support, face);
+         for (Direction dirx : directions) {
+            BlockPos support = tick.headPos.offset(dirx);
+            Direction face = dirx.getOpposite();
+            Optional<Vec3d> hit = this.findFaceHitPoint(support, face);
             if (hit.isPresent()) {
                return Optional.of(new AutoWeb.PlacementInfo(support, face, hit.get(), tick.headPos));
             }
@@ -533,23 +531,23 @@ public class AutoWeb extends Module {
       }
    }
 
-   private List<AutoWeb.PredictionTick> getPositionsForAabb(class_238 aabb, int tickAhead) {
+   private List<AutoWeb.PredictionTick> getPositionsForAabb(Box aabb, int tickAhead) {
       List<AutoWeb.PredictionTick> list = new ArrayList<>();
-      int minX = (int)Math.floor(aabb.field_1323);
-      int maxX = (int)Math.floor(aabb.field_1320);
-      int minY = (int)Math.floor(aabb.field_1322);
-      int maxY = (int)Math.floor(aabb.field_1325);
-      int minZ = (int)Math.floor(aabb.field_1321);
-      int maxZ = (int)Math.floor(aabb.field_1324);
-      int footY = (int)Math.floor(aabb.field_1322 + 0.001);
+      int minX = (int)Math.floor(aabb.minX);
+      int maxX = (int)Math.floor(aabb.maxX);
+      int minY = (int)Math.floor(aabb.minY);
+      int maxY = (int)Math.floor(aabb.maxY);
+      int minZ = (int)Math.floor(aabb.minZ);
+      int maxZ = (int)Math.floor(aabb.maxZ);
+      int footY = (int)Math.floor(aabb.minY + 0.001);
 
       for (int x = minX; x <= maxX; x++) {
          for (int y = minY; y <= maxY; y++) {
             for (int z = minZ; z <= maxZ; z++) {
-               class_2338 pos = new class_2338(x, y, z);
-               if (aabb.method_994(new class_238(pos)) && !mc.field_1687.method_8320(pos).method_27852(class_2246.field_10343)) {
+               BlockPos pos = new BlockPos(x, y, z);
+               if (aabb.intersects(new Box(pos)) && !mc.world.getBlockState(pos).isOf(Blocks.COBWEB)) {
                   int chosenY = y <= footY ? footY : y - 1;
-                  AutoWeb.PredictionTick tick = new AutoWeb.PredictionTick(tickAhead, new class_2338(x, chosenY, z), new class_2338(x, chosenY + 1, z));
+                  AutoWeb.PredictionTick tick = new AutoWeb.PredictionTick(tickAhead, new BlockPos(x, chosenY, z), new BlockPos(x, chosenY + 1, z));
                   if (list.stream().noneMatch(t -> t.footPos.equals(tick.footPos))) {
                      list.add(tick);
                   }
@@ -560,7 +558,7 @@ public class AutoWeb extends Module {
 
       list.sort(
          Comparator.comparingDouble(
-            t -> t.footPos.method_46558().method_1028((aabb.field_1323 + aabb.field_1320) * 0.5, footY + 0.5, (aabb.field_1321 + aabb.field_1324) * 0.5)
+            t -> t.footPos.toCenterPos().squaredDistanceTo((aabb.minX + aabb.maxX) * 0.5, footY + 0.5, (aabb.minZ + aabb.maxZ) * 0.5)
          )
       );
       return list;
@@ -590,61 +588,61 @@ public class AutoWeb extends Module {
       return this.activePlacementType == AutoWeb.PlacementType.GROUND_WEB;
    }
 
-   private boolean shouldPlaceLava(class_1297 entity) {
+   private boolean shouldPlaceLava(Entity entity) {
       if (!this.lavaSetting.getValue()) {
          return false;
-      } else if (entity.method_5809()) {
+      } else if (entity.isOnFire()) {
          return false;
       } else {
          return !this.isEntityInCobweb(entity) && !this.isEntityGrounded(entity) ? false : this.isEntityInCobweb(entity) || !this.isEntityMoving(entity);
       }
    }
 
-   private boolean isEntityMoving(class_1297 entity) {
-      class_243 movement = this.getEntityMovement(entity);
-      return movement.field_1352 * movement.field_1352 + movement.field_1350 * movement.field_1350 >= 0.01;
+   private boolean isEntityMoving(Entity entity) {
+      Vec3d movement = this.getEntityMovement(entity);
+      return movement.x * movement.x + movement.z * movement.z >= 0.01;
    }
 
-   private class_243 getEntityMovement(class_1297 entity) {
-      return new class_243(entity.method_23317() - entity.field_6014, 0.0, entity.method_23321() - entity.field_5969);
+   private Vec3d getEntityMovement(Entity entity) {
+      return new Vec3d(entity.getX() - entity.prevX, 0.0, entity.getZ() - entity.prevZ);
    }
 
-   private boolean isEntityGrounded(class_1297 entity) {
-      double yFrac = entity.method_23318() - Math.floor(entity.method_23318());
+   private boolean isEntityGrounded(Entity entity) {
+      double yFrac = entity.getY() - Math.floor(entity.getY());
       double yDist = Math.min(yFrac, 1.0 - yFrac);
-      return entity.method_24828() || yDist < 0.08 && Math.abs(entity.method_18798().field_1351) < 0.12;
+      return entity.isOnGround() || yDist < 0.08 && Math.abs(entity.getVelocity().y) < 0.12;
    }
 
-   private Optional<AutoWeb.PlacementInfo> findLavaSourcePlacement(class_1297 entity) {
-      return this.findLavaGroundPlacement(entity.method_23317(), entity.method_23318(), entity.method_23321());
+   private Optional<AutoWeb.PlacementInfo> findLavaSourcePlacement(Entity entity) {
+      return this.findLavaGroundPlacement(entity.getX(), entity.getY(), entity.getZ());
    }
 
    private Optional<AutoWeb.PlacementInfo> findLavaGroundPlacement(double x, double y, double z) {
-      class_243 start = new class_243(x, y + 0.2, z);
-      class_243 end = new class_243(x, y - 2.2, z);
-      class_3965 hit = mc.field_1687.method_17742(new class_3959(start, end, class_3960.field_17559, class_242.field_1348, mc.field_1724));
-      if (hit.method_17783() != class_240.field_1332) {
+      Vec3d start = new Vec3d(x, y + 0.2, z);
+      Vec3d end = new Vec3d(x, y - 2.2, z);
+      BlockHitResult hit = mc.world.raycast(new RaycastContext(start, end, ShapeType.OUTLINE, FluidHandling.NONE, mc.player));
+      if (hit.getType() != net.minecraft.util.hit.HitResult.Type.BLOCK) {
          return Optional.empty();
-      } else if (hit.method_17780() != class_2350.field_11036) {
+      } else if (hit.getSide() != Direction.UP) {
          return Optional.empty();
       } else {
-         class_2338 supportPos = hit.method_17777();
+         BlockPos supportPos = hit.getBlockPos();
 
-         for (class_243 candidate : this.getAimCandidates(supportPos, x, z)) {
-            if (!(mc.field_1724.method_33571().method_1025(candidate) > 25.0)) {
-               class_243 offset = this.offsetTowardsFace(candidate, class_2350.field_11036);
-               class_3965 verify = mc.field_1687
-                  .method_17742(new class_3959(mc.field_1724.method_33571(), offset, class_3960.field_17559, class_242.field_1348, mc.field_1724));
-               if (verify.method_17783() == class_240.field_1332 && verify.method_17780() == class_2350.field_11036 && verify.method_17777().equals(supportPos)
+         for (Vec3d candidate : this.getAimCandidates(supportPos, x, z)) {
+            if (!(mc.player.getEyePos().squaredDistanceTo(candidate) > 25.0)) {
+               Vec3d offset = this.offsetTowardsFace(candidate, Direction.UP);
+               BlockHitResult verify = mc.world
+                  .raycast(new RaycastContext(mc.player.getEyePos(), offset, ShapeType.OUTLINE, FluidHandling.NONE, mc.player));
+               if (verify.getType() == net.minecraft.util.hit.HitResult.Type.BLOCK && verify.getSide() == Direction.UP && verify.getBlockPos().equals(supportPos)
                   )
                 {
-                  class_2338 placePos = supportPos.method_10093(class_2350.field_11036);
+                  BlockPos placePos = supportPos.offset(Direction.UP);
                   if (!this.isWater(placePos)
-                     && mc.field_1687.method_8320(placePos).method_45474()
+                     && mc.world.getBlockState(placePos).isReplaceable()
                      && !this.intersectsSelf(placePos)
-                     && mc.field_1687.method_8316(placePos).method_15769()
+                     && mc.world.getFluidState(placePos).isEmpty()
                      && this.isValidSupport(supportPos)) {
-                     return Optional.of(new AutoWeb.PlacementInfo(supportPos, class_2350.field_11036, verify.method_17784(), placePos));
+                     return Optional.of(new AutoWeb.PlacementInfo(supportPos, Direction.UP, verify.getPos(), placePos));
                   }
                }
             }
@@ -654,21 +652,21 @@ public class AutoWeb extends Module {
       }
    }
 
-   private List<class_243> getAimCandidates(class_2338 pos, double targetX, double targetZ) {
-      double y = pos.method_10264() + 1.0;
-      List<class_243> list = new ArrayList<>();
-      list.add(new class_243(pos.method_10263() + 0.5, y, pos.method_10260() + 0.5));
+   private List<Vec3d> getAimCandidates(BlockPos pos, double targetX, double targetZ) {
+      double y = pos.getY() + 1.0;
+      List<Vec3d> list = new ArrayList<>();
+      list.add(new Vec3d(pos.getX() + 0.5, y, pos.getZ() + 0.5));
       list.add(
-         new class_243(
-            clampValue(targetX, pos.method_10263() + 0.25, pos.method_10263() + 0.75),
+         new Vec3d(
+            clampValue(targetX, pos.getX() + 0.25, pos.getX() + 0.75),
             y,
-            clampValue(targetZ, pos.method_10260() + 0.25, pos.method_10260() + 0.75)
+            clampValue(targetZ, pos.getZ() + 0.25, pos.getZ() + 0.75)
          )
       );
-      list.add(new class_243(pos.method_10263() + 0.35, y, pos.method_10260() + 0.35));
-      list.add(new class_243(pos.method_10263() + 0.65, y, pos.method_10260() + 0.35));
-      list.add(new class_243(pos.method_10263() + 0.35, y, pos.method_10260() + 0.65));
-      list.add(new class_243(pos.method_10263() + 0.65, y, pos.method_10260() + 0.65));
+      list.add(new Vec3d(pos.getX() + 0.35, y, pos.getZ() + 0.35));
+      list.add(new Vec3d(pos.getX() + 0.65, y, pos.getZ() + 0.35));
+      list.add(new Vec3d(pos.getX() + 0.35, y, pos.getZ() + 0.65));
+      list.add(new Vec3d(pos.getX() + 0.65, y, pos.getZ() + 0.65));
       return list;
    }
 
@@ -676,30 +674,30 @@ public class AutoWeb extends Module {
       return Math.max(min, Math.min(max, value));
    }
 
-   private Optional<AutoWeb.PlacementInfo> findGroundWebPlacement(class_1297 entity) {
+   private Optional<AutoWeb.PlacementInfo> findGroundWebPlacement(Entity entity) {
       if (!this.canPlaceGroundWeb(entity)) {
          return Optional.empty();
       } else {
-         class_2338 foot = class_2338.method_49637(entity.method_23317(), entity.method_23318(), entity.method_23321());
-         return !this.isBlockReplaceable(foot) ? Optional.empty() : this.findPlacementForPos(foot.method_10074(), foot);
+         BlockPos foot = BlockPos.ofFloored(entity.getX(), entity.getY(), entity.getZ());
+         return !this.isBlockReplaceable(foot) ? Optional.empty() : this.findPlacementForPos(foot.down(), foot);
       }
    }
 
-   private boolean canPlaceGroundWeb(class_1297 entity) {
+   private boolean canPlaceGroundWeb(Entity entity) {
       return !this.isEntityGrounded(entity) ? false : !this.isEntityMoving(entity);
    }
 
-   private Optional<AutoWeb.PlacementInfo> findPlacementForPos(class_2338 supportPos, class_2338 placePos) {
+   private Optional<AutoWeb.PlacementInfo> findPlacementForPos(BlockPos supportPos, BlockPos placePos) {
       if (!this.isValidSupport(supportPos)) {
          return Optional.empty();
       } else {
-         for (class_243 candidate : this.getAimCandidates(supportPos, placePos.method_10263() + 0.5, placePos.method_10260() + 0.5)) {
-            if (!(mc.field_1724.method_33571().method_1025(candidate) > 25.0)) {
-               class_243 offset = this.offsetTowardsFace(candidate, class_2350.field_11036);
-               class_3965 hit = mc.field_1687
-                  .method_17742(new class_3959(mc.field_1724.method_33571(), offset, class_3960.field_17559, class_242.field_1348, mc.field_1724));
-               if (hit.method_17783() == class_240.field_1332 && hit.method_17777().equals(supportPos) && hit.method_17780() == class_2350.field_11036) {
-                  return Optional.of(new AutoWeb.PlacementInfo(supportPos, class_2350.field_11036, hit.method_17784(), placePos));
+         for (Vec3d candidate : this.getAimCandidates(supportPos, placePos.getX() + 0.5, placePos.getZ() + 0.5)) {
+            if (!(mc.player.getEyePos().squaredDistanceTo(candidate) > 25.0)) {
+               Vec3d offset = this.offsetTowardsFace(candidate, Direction.UP);
+               BlockHitResult hit = mc.world
+                  .raycast(new RaycastContext(mc.player.getEyePos(), offset, ShapeType.OUTLINE, FluidHandling.NONE, mc.player));
+               if (hit.getType() == net.minecraft.util.hit.HitResult.Type.BLOCK && hit.getBlockPos().equals(supportPos) && hit.getSide() == Direction.UP) {
+                  return Optional.of(new AutoWeb.PlacementInfo(supportPos, Direction.UP, hit.getPos(), placePos));
                }
             }
          }
@@ -708,19 +706,19 @@ public class AutoWeb extends Module {
       }
    }
 
-   private boolean isBlockReplaceable(class_2338 pos) {
-      return mc.field_1687.method_8320(pos).method_45474() && mc.field_1687.method_8316(pos).method_15769() && !this.intersectsSelf(pos);
+   private boolean isBlockReplaceable(BlockPos pos) {
+      return mc.world.getBlockState(pos).isReplaceable() && mc.world.getFluidState(pos).isEmpty() && !this.intersectsSelf(pos);
    }
 
-   private Optional<class_243> findFaceHitPoint(class_2338 pos, class_2350 face) {
-      for (class_243 point : this.getFacePoints(pos, face)) {
-         if (!(mc.field_1724.method_33571().method_1025(point) > 25.0)) {
-            class_3965 hit = mc.field_1687
-               .method_17742(
-                  new class_3959(mc.field_1724.method_33571(), this.offsetTowardsFace(point, face), class_3960.field_17559, class_242.field_1348, mc.field_1724)
+   private Optional<Vec3d> findFaceHitPoint(BlockPos pos, Direction face) {
+      for (Vec3d point : this.getFacePoints(pos, face)) {
+         if (!(mc.player.getEyePos().squaredDistanceTo(point) > 25.0)) {
+            BlockHitResult hit = mc.world
+               .raycast(
+                  new RaycastContext(mc.player.getEyePos(), this.offsetTowardsFace(point, face), ShapeType.OUTLINE, FluidHandling.NONE, mc.player)
                );
-            if (hit.method_17783() == class_240.field_1332 && hit.method_17777().equals(pos) && hit.method_17780() == face) {
-               return Optional.of(hit.method_17784());
+            if (hit.getType() == net.minecraft.util.hit.HitResult.Type.BLOCK && hit.getBlockPos().equals(pos) && hit.getSide() == face) {
+               return Optional.of(hit.getPos());
             }
          }
       }
@@ -728,14 +726,14 @@ public class AutoWeb extends Module {
       return Optional.empty();
    }
 
-   private class_243 offsetTowardsFace(class_243 point, class_2350 face) {
+   private Vec3d offsetTowardsFace(Vec3d point, Direction face) {
       double step = 0.01;
-      return point.method_1031(-face.method_10148() * step, -face.method_10164() * step, -face.method_10165() * step);
+      return point.add(-face.getOffsetX() * step, -face.getOffsetY() * step, -face.getOffsetZ() * step);
    }
 
-   private List<class_243> getFacePoints(class_2338 pos, class_2350 face) {
-      List<class_243> list = new ArrayList<>();
-      class_238 faceBox = this.getFaceBoundingBox(pos, face);
+   private List<Vec3d> getFacePoints(BlockPos pos, Direction face) {
+      List<Vec3d> list = new ArrayList<>();
+      Box faceBox = this.getFaceBoundingBox(pos, face);
       if (faceBox == null) {
          return list;
       } else {
@@ -743,40 +741,40 @@ public class AutoWeb extends Module {
 
          for (double u : fractions) {
             for (double v : fractions) {
-               class_243 point = switch (face) {
-                  case field_11036 -> new class_243(
-                     pos.method_10263() + lerp(faceBox.field_1323, faceBox.field_1320, u),
-                     pos.method_10264() + faceBox.field_1325,
-                     pos.method_10260() + lerp(faceBox.field_1321, faceBox.field_1324, v)
+               Vec3d point = switch (face) {
+                  case UP -> new Vec3d(
+                     pos.getX() + lerp(faceBox.minX, faceBox.maxX, u),
+                     pos.getY() + faceBox.maxY,
+                     pos.getZ() + lerp(faceBox.minZ, faceBox.maxZ, v)
                   );
-                  case field_11033 -> new class_243(
-                     pos.method_10263() + lerp(faceBox.field_1323, faceBox.field_1320, u),
-                     pos.method_10264() + faceBox.field_1322,
-                     pos.method_10260() + lerp(faceBox.field_1321, faceBox.field_1324, v)
+                  case DOWN -> new Vec3d(
+                     pos.getX() + lerp(faceBox.minX, faceBox.maxX, u),
+                     pos.getY() + faceBox.minY,
+                     pos.getZ() + lerp(faceBox.minZ, faceBox.maxZ, v)
                   );
-                  case field_11034 -> new class_243(
-                     pos.method_10263() + faceBox.field_1320,
-                     pos.method_10264() + lerp(faceBox.field_1322, faceBox.field_1325, u),
-                     pos.method_10260() + lerp(faceBox.field_1321, faceBox.field_1324, v)
+                  case EAST -> new Vec3d(
+                     pos.getX() + faceBox.maxX,
+                     pos.getY() + lerp(faceBox.minY, faceBox.maxY, u),
+                     pos.getZ() + lerp(faceBox.minZ, faceBox.maxZ, v)
                   );
-                  case field_11039 -> new class_243(
-                     pos.method_10263() + faceBox.field_1323,
-                     pos.method_10264() + lerp(faceBox.field_1322, faceBox.field_1325, u),
-                     pos.method_10260() + lerp(faceBox.field_1321, faceBox.field_1324, v)
+                  case WEST -> new Vec3d(
+                     pos.getX() + faceBox.minX,
+                     pos.getY() + lerp(faceBox.minY, faceBox.maxY, u),
+                     pos.getZ() + lerp(faceBox.minZ, faceBox.maxZ, v)
                   );
-                  case field_11035 -> new class_243(
-                     pos.method_10263() + lerp(faceBox.field_1323, faceBox.field_1320, u),
-                     pos.method_10264() + lerp(faceBox.field_1322, faceBox.field_1325, v),
-                     pos.method_10260() + faceBox.field_1324
+                  case SOUTH -> new Vec3d(
+                     pos.getX() + lerp(faceBox.minX, faceBox.maxX, u),
+                     pos.getY() + lerp(faceBox.minY, faceBox.maxY, v),
+                     pos.getZ() + faceBox.maxZ
                   );
-                  case field_11043 -> new class_243(
-                     pos.method_10263() + lerp(faceBox.field_1323, faceBox.field_1320, u),
-                     pos.method_10264() + lerp(faceBox.field_1322, faceBox.field_1325, v),
-                     pos.method_10260() + faceBox.field_1321
+                  case NORTH -> new Vec3d(
+                     pos.getX() + lerp(faceBox.minX, faceBox.maxX, u),
+                     pos.getY() + lerp(faceBox.minY, faceBox.maxY, v),
+                     pos.getZ() + faceBox.minZ
                   );
                   default -> throw new MatchException(null, null);
                };
-               if (list.stream().noneMatch(existing -> existing.method_1025(point) < 1.0E-6)) {
+               if (list.stream().noneMatch(existing -> existing.squaredDistanceTo(point) < 1.0E-6)) {
                   list.add(point);
                }
             }
@@ -786,25 +784,25 @@ public class AutoWeb extends Module {
       }
    }
 
-   private class_238 getFaceBoundingBox(class_2338 pos, class_2350 face) {
-      class_265 shape = this.getBlockShape(pos);
-      if (shape.method_1110()) {
+   private Box getFaceBoundingBox(BlockPos pos, Direction face) {
+      VoxelShape shape = this.getBlockShape(pos);
+      if (shape.isEmpty()) {
          return null;
       } else {
-         class_238 best = null;
-         double bestValue = face.method_10171() == class_2352.field_11056 ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
+         Box best = null;
+         double bestValue = face.getDirection() == AxisDirection.POSITIVE ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
 
-         for (class_238 box : shape.method_1090()) {
+         for (Box box : shape.getBoundingBoxes()) {
             double faceCoord = switch (face) {
-               case field_11036 -> box.field_1325;
-               case field_11033 -> box.field_1322;
-               case field_11034 -> box.field_1320;
-               case field_11039 -> box.field_1323;
-               case field_11035 -> box.field_1324;
-               case field_11043 -> box.field_1321;
+               case UP -> box.maxY;
+               case DOWN -> box.minY;
+               case EAST -> box.maxX;
+               case WEST -> box.minX;
+               case SOUTH -> box.maxZ;
+               case NORTH -> box.minZ;
                default -> throw new MatchException(null, null);
             };
-            boolean better = face.method_10171() == class_2352.field_11056 ? faceCoord > bestValue : faceCoord < bestValue;
+            boolean better = face.getDirection() == AxisDirection.POSITIVE ? faceCoord > bestValue : faceCoord < bestValue;
             if (better) {
                bestValue = faceCoord;
                best = box;
@@ -819,21 +817,21 @@ public class AutoWeb extends Module {
       return a + (b - a) * t;
    }
 
-   private class_265 getBlockShape(class_2338 pos) {
-      class_2680 state = mc.field_1687.method_8320(pos);
-      class_265 shape = state.method_26218(mc.field_1687, pos);
-      return !shape.method_1110() ? shape : state.method_26220(mc.field_1687, pos);
+   private VoxelShape getBlockShape(BlockPos pos) {
+      BlockState state = mc.world.getBlockState(pos);
+      VoxelShape shape = state.getOutlineShape(mc.world, pos);
+      return !shape.isEmpty() ? shape : state.getCollisionShape(mc.world, pos);
    }
 
-   private boolean isValidSupport(class_2338 pos) {
-      class_2680 state = mc.field_1687.method_8320(pos);
-      return !state.method_45474() && !this.getBlockShape(pos).method_1110();
+   private boolean isValidSupport(BlockPos pos) {
+      BlockState state = mc.world.getBlockState(pos);
+      return !state.isReplaceable() && !this.getBlockShape(pos).isEmpty();
    }
 
    private boolean isPlacementValid() {
-      if (mc.field_1724 == null || mc.field_1687 == null || mc.field_1761 == null) {
+      if (mc.player == null || mc.world == null || mc.interactionManager == null) {
          return false;
-      } else if (this.target == null || !this.target.method_5805() || this.target.method_31481()) {
+      } else if (this.target == null || !this.target.isAlive() || this.target.isRemoved()) {
          return false;
       } else if (this.currentPlacement == null) {
          return false;
@@ -844,10 +842,10 @@ public class AutoWeb extends Module {
             return false;
          } else if (this.isWater(this.currentPlacement.place)) {
             return false;
-         } else if (!mc.field_1687.method_8320(this.currentPlacement.place).method_45474()) {
+         } else if (!mc.world.getBlockState(this.currentPlacement.place).isReplaceable()) {
             return false;
          } else {
-            return !mc.field_1687.method_8316(this.currentPlacement.place).method_15769() ? false : this.isValidSupport(this.currentPlacement.support);
+            return !mc.world.getFluidState(this.currentPlacement.place).isEmpty() ? false : this.isValidSupport(this.currentPlacement.support);
          }
       } else if (this.activePlacementType != AutoWeb.PlacementType.GROUND_WEB
          && this.activePlacementType != AutoWeb.PlacementType.WEB_EXIT_PREDICT
@@ -856,17 +854,17 @@ public class AutoWeb extends Module {
          return false;
       } else if (this.intersectsSelf(this.currentPlacement.place)) {
          return false;
-      } else if (!mc.field_1687.method_8320(this.currentPlacement.place).method_45474()) {
+      } else if (!mc.world.getBlockState(this.currentPlacement.place).isReplaceable()) {
          return false;
       } else {
-         return !mc.field_1687.method_8316(this.currentPlacement.place).method_15769() ? false : this.isValidSupport(this.currentPlacement.support);
+         return !mc.world.getFluidState(this.currentPlacement.place).isEmpty() ? false : this.isValidSupport(this.currentPlacement.support);
       }
    }
 
-   private boolean isRotationOnTarget(class_243 aimPoint) {
-      if (RotationUtils.getRotation() != null && mc.field_1724 != null) {
+   private boolean isRotationOnTarget(Vec3d aimPoint) {
+      if (RotationUtils.getRotation() != null && mc.player != null) {
          Rotation current = RotationUtils.getRotationSafely();
-         Rotation wanted = RotationUtils.calculate(mc.field_1724.method_33571(), aimPoint);
+         Rotation wanted = RotationUtils.calculate(mc.player.getEyePos(), aimPoint);
          return Math.abs(RotationUtils.getAngleDifference(current.yaw, wanted.yaw)) < 12.0F
             && Math.abs(RotationUtils.getAngleDifference(current.pitch, wanted.pitch)) < 12.0F;
       } else {
@@ -875,14 +873,14 @@ public class AutoWeb extends Module {
    }
 
    private void doLavaRetrieve() {
-      if (mc.field_1724 != null && mc.field_1687 != null && mc.field_1761 != null && this.currentPlacement != null) {
+      if (mc.player != null && mc.world != null && mc.interactionManager != null && this.currentPlacement != null) {
          this.retrieveTicks++;
          if (this.waitTicks > 0) {
             this.waitTicks--;
          } else {
-            class_2338 expectedSource = this.currentPlacement.place;
-            class_2338 actualSource = this.findNearbyLavaSource(expectedSource);
-            class_2338 probe = actualSource != null ? actualSource : expectedSource;
+            BlockPos expectedSource = this.currentPlacement.place;
+            BlockPos actualSource = this.findNearbyLavaSource(expectedSource);
+            BlockPos probe = actualSource != null ? actualSource : expectedSource;
             boolean flowingLava = this.hasNearbyFlowingLava(probe);
             boolean targetHasWaterBucket = this.targetHasWaterBucket(this.target);
             boolean timedOut = this.retrieveTicks >= this.getLavaTickDelay();
@@ -895,7 +893,7 @@ public class AutoWeb extends Module {
                this.retrieveSourcePos = actualSource;
                if (!shouldAct) {
                   this.waitTicks = 1;
-               } else if (!this.isRotationOnTarget(actualSource.method_46558())) {
+               } else if (!this.isRotationOnTarget(actualSource.toCenterPos())) {
                   this.waitTicks = 1;
                } else {
                   int emptyBucketSlot = this.findEmptyBucketSlot();
@@ -906,14 +904,14 @@ public class AutoWeb extends Module {
                         this.waitTicks = 1;
                      }
                   } else {
-                     this.previousSlot = mc.field_1724.method_31548().field_7545;
-                     mc.field_1724.method_31548().field_7545 = emptyBucketSlot;
-                     class_1269 result = mc.field_1761.method_2919(mc.field_1724, class_1268.field_5808);
-                     if (result.method_23665()) {
-                        mc.field_1724.method_6104(class_1268.field_5808);
+                     this.previousSlot = mc.player.getInventory().selectedSlot;
+                     mc.player.getInventory().selectedSlot = emptyBucketSlot;
+                     ActionResult result = mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
+                     if (result.isAccepted()) {
+                        mc.player.swingHand(Hand.MAIN_HAND);
                      }
 
-                     mc.field_1724.method_31548().field_7545 = this.previousSlot;
+                     mc.player.getInventory().selectedSlot = this.previousSlot;
                      if (++this.retrieveAttempts >= 8) {
                         this.resetState();
                      } else {
@@ -946,15 +944,15 @@ public class AutoWeb extends Module {
       }
    }
 
-   private boolean isLavaSource(class_2338 pos) {
-      return mc.field_1687.method_8320(pos).method_27852(class_2246.field_10164) && mc.field_1687.method_8316(pos).method_15771();
+   private boolean isLavaSource(BlockPos pos) {
+      return mc.world.getBlockState(pos).isOf(Blocks.LAVA) && mc.world.getFluidState(pos).isStill();
    }
 
-   private boolean hasNearbyFlowingLava(class_2338 center) {
+   private boolean hasNearbyFlowingLava(BlockPos center) {
       for (int x = -1; x <= 1; x++) {
          for (int y = -1; y <= 1; y++) {
             for (int z = -1; z <= 1; z++) {
-               if (this.isFlowingLava(center.method_10069(x, y, z))) {
+               if (this.isFlowingLava(center.add(x, y, z))) {
                   return true;
                }
             }
@@ -965,9 +963,9 @@ public class AutoWeb extends Module {
    }
 
    private boolean tryReapplyLava() {
-      if (this.target == null || this.target.method_31481() || !this.target.method_5805()) {
+      if (this.target == null || this.target.isRemoved() || !this.target.isAlive()) {
          return false;
-      } else if (this.target.method_5809()) {
+      } else if (this.target.isOnFire()) {
          return false;
       } else if (this.lavaReapplyCount >= 1) {
          return false;
@@ -992,46 +990,46 @@ public class AutoWeb extends Module {
    }
 
    private int getLavaTickDelay() {
-      return mc.field_1687 == null ? 9 : (mc.field_1687.method_8597().comp_644() ? 10 : 30);
+      return mc.world == null ? 9 : (mc.world.getDimension().ultrawarm() ? 10 : 30);
    }
 
-   private boolean isFlowingLava(class_2338 pos) {
-      class_3610 state = mc.field_1687.method_8316(pos);
-      class_3611 fluid = state.method_15772();
-      return (fluid == class_3612.field_15908 || fluid == class_3612.field_15907) && !state.method_15771();
+   private boolean isFlowingLava(BlockPos pos) {
+      FluidState state = mc.world.getFluidState(pos);
+      Fluid fluid = state.getFluid();
+      return (fluid == Fluids.LAVA || fluid == Fluids.FLOWING_LAVA) && !state.isStill();
    }
 
-   private boolean targetHasWaterBucket(class_1297 entity) {
-      return !(entity instanceof class_1657 player)
+   private boolean targetHasWaterBucket(Entity entity) {
+      return !(entity instanceof PlayerEntity player)
          ? false
-         : player.method_6047().method_31574(class_1802.field_8705) || player.method_6079().method_31574(class_1802.field_8705);
+         : player.getMainHandStack().isOf(Items.WATER_BUCKET) || player.getOffHandStack().isOf(Items.WATER_BUCKET);
    }
 
-   private boolean isWater(class_2338 pos) {
-      class_3611 fluid = mc.field_1687.method_8316(pos).method_15772();
-      return mc.field_1687.method_8320(pos).method_27852(class_2246.field_10382) || fluid == class_3612.field_15910 || fluid == class_3612.field_15909;
+   private boolean isWater(BlockPos pos) {
+      Fluid fluid = mc.world.getFluidState(pos).getFluid();
+      return mc.world.getBlockState(pos).isOf(Blocks.WATER) || fluid == Fluids.WATER || fluid == Fluids.FLOWING_WATER;
    }
 
-   private boolean intersectsSelf(class_2338 pos) {
-      return mc.field_1724 != null && mc.field_1724.method_5829().method_994(new class_238(pos));
+   private boolean intersectsSelf(BlockPos pos) {
+      return mc.player != null && mc.player.getBoundingBox().intersects(new Box(pos));
    }
 
-   private boolean isEntityInCobweb(class_1297 entity) {
-      return entity != null && mc.field_1687 != null && this.hasAnyCobweb(entity.method_5829());
+   private boolean isEntityInCobweb(Entity entity) {
+      return entity != null && mc.world != null && this.hasAnyCobweb(entity.getBoundingBox());
    }
 
-   private boolean isAllCobweb(class_238 box) {
-      if (mc.field_1687 == null) {
+   private boolean isAllCobweb(Box box) {
+      if (mc.world == null) {
          return false;
       } else {
          boolean any = false;
 
-         for (int x = (int)Math.floor(box.field_1323); x <= (int)Math.floor(box.field_1320); x++) {
-            for (int y = (int)Math.floor(box.field_1322); y <= (int)Math.floor(box.field_1325); y++) {
-               for (int z = (int)Math.floor(box.field_1321); z <= (int)Math.floor(box.field_1324); z++) {
-                  class_2338 pos = new class_2338(x, y, z);
-                  if (box.method_994(new class_238(pos))) {
-                     if (!mc.field_1687.method_8320(pos).method_27852(class_2246.field_10343)) {
+         for (int x = (int)Math.floor(box.minX); x <= (int)Math.floor(box.maxX); x++) {
+            for (int y = (int)Math.floor(box.minY); y <= (int)Math.floor(box.maxY); y++) {
+               for (int z = (int)Math.floor(box.minZ); z <= (int)Math.floor(box.maxZ); z++) {
+                  BlockPos pos = new BlockPos(x, y, z);
+                  if (box.intersects(new Box(pos))) {
+                     if (!mc.world.getBlockState(pos).isOf(Blocks.COBWEB)) {
                         return false;
                      }
 
@@ -1045,15 +1043,15 @@ public class AutoWeb extends Module {
       }
    }
 
-   private boolean hasAnyCobweb(class_238 box) {
-      if (mc.field_1687 == null) {
+   private boolean hasAnyCobweb(Box box) {
+      if (mc.world == null) {
          return false;
       } else {
-         for (int x = (int)Math.floor(box.field_1323); x <= (int)Math.floor(box.field_1320); x++) {
-            for (int y = (int)Math.floor(box.field_1322); y <= (int)Math.floor(box.field_1325); y++) {
-               for (int z = (int)Math.floor(box.field_1321); z <= (int)Math.floor(box.field_1324); z++) {
-                  class_2338 pos = new class_2338(x, y, z);
-                  if (mc.field_1687.method_8320(pos).method_27852(class_2246.field_10343) && box.method_994(new class_238(pos))) {
+         for (int x = (int)Math.floor(box.minX); x <= (int)Math.floor(box.maxX); x++) {
+            for (int y = (int)Math.floor(box.minY); y <= (int)Math.floor(box.maxY); y++) {
+               for (int z = (int)Math.floor(box.minZ); z <= (int)Math.floor(box.maxZ); z++) {
+                  BlockPos pos = new BlockPos(x, y, z);
+                  if (mc.world.getBlockState(pos).isOf(Blocks.COBWEB) && box.intersects(new Box(pos))) {
                      return true;
                   }
                }
@@ -1064,19 +1062,19 @@ public class AutoWeb extends Module {
       }
    }
 
-   private class_2338 findNearbyLavaSource(class_2338 center) {
+   private BlockPos findNearbyLavaSource(BlockPos center) {
       if (this.isLavaSource(center)) {
          return center;
       } else {
-         class_2338 best = null;
+         BlockPos best = null;
          double bestDist = Double.POSITIVE_INFINITY;
 
          for (int x = -1; x <= 1; x++) {
             for (int y = -1; y <= 1; y++) {
                for (int z = -1; z <= 1; z++) {
-                  class_2338 pos = center.method_10069(x, y, z);
+                  BlockPos pos = center.add(x, y, z);
                   if (this.isLavaSource(pos)) {
-                     double dist = center.method_46558().method_1025(pos.method_46558());
+                     double dist = center.toCenterPos().squaredDistanceTo(pos.toCenterPos());
                      if (dist < bestDist) {
                         best = pos;
                         bestDist = dist;
@@ -1098,8 +1096,8 @@ public class AutoWeb extends Module {
 
    private int findCobwebSlot() {
       for (int slot = 0; slot < 9; slot++) {
-         class_1799 stack = mc.field_1724.method_31548().method_5438(slot);
-         if (!stack.method_7960() && stack.method_31574(class_1802.field_8786)) {
+         ItemStack stack = mc.player.getInventory().getStack(slot);
+         if (!stack.isEmpty() && stack.isOf(Items.COBWEB)) {
             return slot;
          }
       }
@@ -1109,8 +1107,8 @@ public class AutoWeb extends Module {
 
    private int findBlockSlot() {
       for (int slot = 0; slot < 9; slot++) {
-         class_1799 stack = mc.field_1724.method_31548().method_5438(slot);
-         if (!stack.method_7960() && stack.method_7909() instanceof class_1747 && !stack.method_31574(class_1802.field_8786)) {
+         ItemStack stack = mc.player.getInventory().getStack(slot);
+         if (!stack.isEmpty() && stack.getItem() instanceof BlockItem && !stack.isOf(Items.COBWEB)) {
             return slot;
          }
       }
@@ -1120,8 +1118,8 @@ public class AutoWeb extends Module {
 
    private int findLavaBucketSlot() {
       for (int slot = 0; slot < 9; slot++) {
-         class_1799 stack = mc.field_1724.method_31548().method_5438(slot);
-         if (!stack.method_7960() && stack.method_31574(class_1802.field_8187)) {
+         ItemStack stack = mc.player.getInventory().getStack(slot);
+         if (!stack.isEmpty() && stack.isOf(Items.LAVA_BUCKET)) {
             return slot;
          }
       }
@@ -1131,8 +1129,8 @@ public class AutoWeb extends Module {
 
    private int findEmptyBucketSlot() {
       for (int slot = 0; slot < 9; slot++) {
-         class_1799 stack = mc.field_1724.method_31548().method_5438(slot);
-         if (!stack.method_7960() && stack.method_31574(class_1802.field_8550)) {
+         ItemStack stack = mc.player.getInventory().getStack(slot);
+         if (!stack.isEmpty() && stack.isOf(Items.BUCKET)) {
             return slot;
          }
       }
@@ -1151,10 +1149,10 @@ public class AutoWeb extends Module {
       LAVA_RETRIEVE;
    }
 
-   private record PlacementInfo(class_2338 support, class_2350 face, class_243 aim, class_2338 place) {
+   private record PlacementInfo(BlockPos support, Direction face, Vec3d aim, BlockPos place) {
    }
 
-   private record PlacementTarget(class_1297 target, AutoWeb.PlacementInfo placement, AutoWeb.PlacementType type) {
+   private record PlacementTarget(Entity target, AutoWeb.PlacementInfo placement, AutoWeb.PlacementType type) {
    }
 
    private static enum PlacementType {
@@ -1165,6 +1163,6 @@ public class AutoWeb extends Module {
       LAVA;
    }
 
-   private record PredictionTick(int ticks, class_2338 footPos, class_2338 headPos) {
+   private record PredictionTick(int ticks, BlockPos footPos, BlockPos headPos) {
    }
 }

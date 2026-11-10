@@ -1,8 +1,8 @@
 package dev.southside.mixin.network;
 
-import net.minecraft.class_2658;
+import net.minecraft.network.packet.s2c.common.CustomPayloadS2CPacket;
 import org.spongepowered.asm.mixin.Mixin;
 
-@Mixin({class_2658.class})
+@Mixin({CustomPayloadS2CPacket.class})
 public class MixinCustomPayloadS2CPacket {
 }

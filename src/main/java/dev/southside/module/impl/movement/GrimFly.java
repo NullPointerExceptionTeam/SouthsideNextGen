@@ -16,17 +16,17 @@ import dev.southside.utils.network.PacketUtils;
 import dev.southside.utils.player.PlayerUtils;
 import java.util.Locale;
 import java.util.concurrent.LinkedBlockingQueue;
-import net.minecraft.class_10182;
-import net.minecraft.class_243;
-import net.minecraft.class_2596;
-import net.minecraft.class_2708;
-import net.minecraft.class_2848;
-import net.minecraft.class_6373;
-import net.minecraft.class_2848.class_2849;
+import net.minecraft.entity.player.PlayerPosition;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
+import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket;
+import net.minecraft.network.packet.s2c.common.CommonPingS2CPacket;
+import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket.Mode;
 
 public class GrimFly extends Module {
    public int ticks = 0;
-   private final LinkedBlockingQueue<class_2596<?>> packets = new LinkedBlockingQueue<>();
+   private final LinkedBlockingQueue<Packet<?>> packets = new LinkedBlockingQueue<>();
    private final Dropdown mode = new Dropdown("Mode", new String[]{"1平", "2随意", "3一直"}, "Mode", 1, 0);
    private final Switch velocityHud = new Switch("Velocity HUD", "Velocity HUD", true);
    private final Switch selectMaxVelocity = new Switch("Select Max Velocity", "Select Max Velocity", false);
@@ -96,7 +96,7 @@ public class GrimFly extends Module {
 
    @EventHandler
    public void onMotion(MotionEvent event) {
-      if (mc.field_1724 != null && event.getState() != Stage.POST) {
+      if (mc.player != null && event.getState() != Stage.POST) {
          boolean mode2Active = this.mode.isMode("2随意");
          if (mode2Active && !this.mode2WasActive) {
             this.mode2HeightCaptured = false;
@@ -112,39 +112,39 @@ public class GrimFly extends Module {
          String var3 = this.mode.getMode();
          switch (var3) {
             case "1平":
-               if (Math.abs(mc.field_1724.method_23318() % 1.0 - 0.24919) < 1.0E-4) {
-                  this.shouldEnabled = Math.abs(mc.field_1724.method_23318() % 1.0 - 0.24919) < 0.001;
+               if (Math.abs(mc.player.getY() % 1.0 - 0.24919) < 1.0E-4) {
+                  this.shouldEnabled = Math.abs(mc.player.getY() % 1.0 - 0.24919) < 0.001;
                }
                break;
             case "2随意":
-               boolean jumpPressed = mc.field_1690.field_1903.method_1434();
-               boolean sneakPressed = mc.field_1690.field_1832.method_1434();
+               boolean jumpPressed = mc.options.jumpKey.isPressed();
+               boolean sneakPressed = mc.options.sneakKey.isPressed();
                if (this.selectMaxVelocity.getValue()) {
                   double minYVel = 0.4;
                   if (jumpPressed && !this.mode2JumpWasPressed) {
-                     this.mode2MaxY = mc.field_1724.method_23318();
+                     this.mode2MaxY = mc.player.getY();
                      this.mode2MaxHorizontalSpeed = 0.0;
                      this.mode2HasValidY = false;
                   }
 
                   if (jumpPressed) {
-                     class_243 velocity = mc.field_1724.method_18798();
-                     if (!this.mode2HasValidY && Math.abs(velocity.field_1351) >= minYVel) {
+                     Vec3d velocity = mc.player.getVelocity();
+                     if (!this.mode2HasValidY && Math.abs(velocity.y) >= minYVel) {
                         this.mode2HasValidY = true;
                      }
 
                      if (this.mode2HasValidY) {
-                        double horizontalSpeed = Math.hypot(velocity.field_1352, velocity.field_1350);
+                        double horizontalSpeed = Math.hypot(velocity.x, velocity.z);
                         if (horizontalSpeed > this.mode2MaxHorizontalSpeed) {
                            this.mode2MaxHorizontalSpeed = horizontalSpeed;
                         }
 
-                        if (mc.field_1724.method_23318() > this.mode2MaxY) {
-                           this.mode2MaxY = mc.field_1724.method_23318();
+                        if (mc.player.getY() > this.mode2MaxY) {
+                           this.mode2MaxY = mc.player.getY();
                         }
 
-                        if (mc.field_1724.method_23318() > this.mode2Height) {
-                           this.mode2Height = mc.field_1724.method_23318();
+                        if (mc.player.getY() > this.mode2Height) {
+                           this.mode2Height = mc.player.getY();
                            this.mode2HeightCaptured = true;
                         }
                      }
@@ -155,30 +155,30 @@ public class GrimFly extends Module {
                   }
 
                   if (this.mode2WaitingForApex) {
-                     if (mc.field_1724.method_23318() > this.mode2MaxY) {
-                        this.mode2MaxY = mc.field_1724.method_23318();
+                     if (mc.player.getY() > this.mode2MaxY) {
+                        this.mode2MaxY = mc.player.getY();
                      }
 
-                     if (mc.field_1724.method_18798().field_1351 <= 0.0) {
+                     if (mc.player.getVelocity().y <= 0.0) {
                         this.mode2Height = this.mode2MaxY;
                         this.mode2HeightCaptured = true;
                         this.mode2WaitingForApex = false;
                      }
                   }
                } else {
-                  if (jumpPressed && mc.field_1724.method_23318() > this.mode2Height) {
-                     this.mode2Height = mc.field_1724.method_23318();
+                  if (jumpPressed && mc.player.getY() > this.mode2Height) {
+                     this.mode2Height = mc.player.getY();
                      this.mode2HeightCaptured = true;
                   }
 
                   if (!jumpPressed && this.mode2JumpWasPressed) {
-                     this.mode2Height = mc.field_1724.method_23318();
+                     this.mode2Height = mc.player.getY();
                      this.mode2HeightCaptured = true;
                   }
                }
 
                if (!sneakPressed && this.mode2SneakWasPressed) {
-                  this.mode2Height = mc.field_1724.method_23318();
+                  this.mode2Height = mc.player.getY();
                   this.mode2HeightCaptured = true;
                   this.mode2WaitingForApex = false;
                }
@@ -187,7 +187,7 @@ public class GrimFly extends Module {
                if (jumpPressed) {
                   this.shouldEnabled = true;
                } else {
-                  this.shouldEnabled = heightReady && mc.field_1724.method_23318() <= this.mode2Height;
+                  this.shouldEnabled = heightReady && mc.player.getY() <= this.mode2Height;
                }
 
                this.mode2JumpWasPressed = jumpPressed;
@@ -197,20 +197,20 @@ public class GrimFly extends Module {
                this.shouldEnabled = true;
          }
 
-         if (mc.field_1690.field_1832.method_1434()) {
+         if (mc.options.sneakKey.isPressed()) {
             this.shouldEnabled = false;
          }
 
          this.mode2WasActive = mode2Active;
          if (++this.ticks % 2 == 0 && this.shouldEnabled) {
-            mc.method_1562().method_52787(new class_2848(mc.field_1724, class_2849.field_12982));
+            mc.getNetworkHandler().sendPacket(new ClientCommandC2SPacket(mc.player, Mode.START_FALL_FLYING));
          }
       }
    }
 
    private void releasePackets() {
       while (!this.packets.isEmpty()) {
-         class_2596<?> packet = this.packets.poll();
+         Packet<?> packet = this.packets.poll();
          if (!ServerPacketManager.onPacket(packet)) {
             PacketUtils.handlePacket(packet);
          }
@@ -219,22 +219,22 @@ public class GrimFly extends Module {
 
    @EventHandler
    public void onPacket(PacketEvent event) {
-      if (mc.field_1724 != null) {
+      if (mc.player != null) {
          if (event.getOrigin() == TransferOrigin.RECEIVE) {
-            class_2596<?> packet = event.getPacket();
+            Packet<?> packet = event.getPacket();
             if (event.isCancelled()) {
                return;
             }
 
-            if (event.getPacket() instanceof class_6373) {
+            if (event.getPacket() instanceof CommonPingS2CPacket) {
                event.setCancelled(true);
                this.packets.add(packet);
             }
 
-            if (event.getPacket() instanceof class_2708 pplPacket) {
+            if (event.getPacket() instanceof PlayerPositionLookS2CPacket pplPacket) {
                if (this.mode.isMode("2随意") && !this.mode2HeightCaptured) {
-                  class_10182 change = PlayerUtils.resolvePos(pplPacket.comp_3228(), pplPacket.comp_3229());
-                  this.mode2Height = change.comp_3148().field_1351;
+                  PlayerPosition change = PlayerUtils.resolvePos(pplPacket.change(), pplPacket.relatives());
+                  this.mode2Height = change.position().y;
                   this.mode2HeightCaptured = true;
                }
 
@@ -246,13 +246,13 @@ public class GrimFly extends Module {
 
    @EventHandler
    public void onRender2D(Render2DEvent event) {
-      if (this.isEnabled() && mc.field_1724 != null && this.velocityHud.getValue()) {
-         class_243 velocity = mc.field_1724.method_18798();
-         double speed = velocity.method_1033();
-         String text = String.format(Locale.US, "x: %.3f y: %.3f z: %.3f", velocity.field_1352, velocity.field_1351, velocity.field_1350);
-         int x = (mc.method_22683().method_4486() - mc.field_1772.method_1727(text)) / 2;
-         int y = mc.method_22683().method_4502() / 2 + 30;
-         event.getDrawContext().method_51433(mc.field_1772, text, x, y, 16777215, true);
+      if (this.isEnabled() && mc.player != null && this.velocityHud.getValue()) {
+         Vec3d velocity = mc.player.getVelocity();
+         double speed = velocity.length();
+         String text = String.format(Locale.US, "x: %.3f y: %.3f z: %.3f", velocity.x, velocity.y, velocity.z);
+         int x = (mc.getWindow().getScaledWidth() - mc.textRenderer.getWidth(text)) / 2;
+         int y = mc.getWindow().getScaledHeight() / 2 + 30;
+         event.getDrawContext().drawText(mc.textRenderer, text, x, y, 16777215, true);
       }
    }
 }

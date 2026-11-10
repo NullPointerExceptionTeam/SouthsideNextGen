@@ -1,16 +1,16 @@
 package dev.southside.event.events;
 
 import dev.southside.event.CancellableEvent;
-import net.minecraft.class_4587;
-import net.minecraft.class_804;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.render.model.json.Transformation;
 
 public class ApplyTransformationEvent extends CancellableEvent {
    private static final ApplyTransformationEvent INSTANCE = new ApplyTransformationEvent();
-   public class_804 transformation;
+   public Transformation transformation;
    public boolean leftHanded;
-   public class_4587 matrices;
+   public MatrixStack matrices;
 
-   public static ApplyTransformationEvent get(class_804 transformation, boolean leftHanded, class_4587 matrices) {
+   public static ApplyTransformationEvent get(Transformation transformation, boolean leftHanded, MatrixStack matrices) {
       INSTANCE.setCancelled(false);
       INSTANCE.transformation = transformation;
       INSTANCE.leftHanded = leftHanded;

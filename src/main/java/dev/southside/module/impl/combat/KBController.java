@@ -14,15 +14,15 @@ import dev.southside.orbit.EventHandler;
 import dev.southside.utils.player.EnchantmentUtils;
 import dev.southside.utils.rotation.RotationUtils;
 import dev.southside.utils.types.Rotation;
-import net.minecraft.class_1268;
-import net.minecraft.class_1297;
-import net.minecraft.class_1893;
-import net.minecraft.class_3532;
+import net.minecraft.util.Hand;
+import net.minecraft.entity.Entity;
+import net.minecraft.enchantment.Enchantments;
+import net.minecraft.util.math.MathHelper;
 
 public class KBController extends Module {
    public final Slider horizontalAngle = new Slider("Horizontal Angle", 0.0, -180.0, 180.0, 1.0);
    public final Switch requireKnockbackEnchant = new Switch("Only KB Enchant", false);
-   private class_1297 pendingTarget;
+   private Entity pendingTarget;
    private Rotation pendingRotation;
    private boolean spoofRotationSent;
    private boolean bypassAttackHook;
@@ -54,15 +54,15 @@ public class KBController extends Module {
       priority = 200
    )
    public void onAttack(AttackEvent event) {
-      if (event.stage == Stage.PRE && mc.field_1724 != null && mc.field_1687 != null) {
+      if (event.stage == Stage.PRE && mc.player != null && mc.world != null) {
          if (this.bypassAttackHook) {
             this.bypassAttackHook = false;
-         } else if (event.target != null && event.target.method_5805()) {
-            if (!this.requireKnockbackEnchant.getValue() || EnchantmentUtils.getLevel(class_1893.field_9121, mc.field_1724.method_6047()) > 0) {
+         } else if (event.target != null && event.target.isAlive()) {
+            if (!this.requireKnockbackEnchant.getValue() || EnchantmentUtils.getLevel(Enchantments.KNOCKBACK, mc.player.getMainHandStack()) > 0) {
                event.setCancelled(true);
                this.pendingTarget = event.target;
                Rotation baseRotation = RotationUtils.getRotationSafely();
-               float spoofYaw = class_3532.method_15393(baseRotation.yaw + this.horizontalAngle.getValue().floatValue());
+               float spoofYaw = MathHelper.wrapDegrees(baseRotation.yaw + this.horizontalAngle.getValue().floatValue());
                this.pendingRotation = new Rotation(spoofYaw, baseRotation.pitch);
                this.spoofRotationSent = false;
             }
@@ -74,8 +74,8 @@ public class KBController extends Module {
       priority = 100
    )
    public void onRotation(RotationEvent event) {
-      if (mc.field_1724 != null && mc.field_1687 != null && this.pendingTarget != null && this.pendingRotation != null) {
-         if (!this.pendingTarget.method_5805()) {
+      if (mc.player != null && mc.world != null && this.pendingTarget != null && this.pendingRotation != null) {
+         if (!this.pendingTarget.isAlive()) {
             this.resetState();
          } else {
             if (!this.spoofRotationSent) {
@@ -87,12 +87,12 @@ public class KBController extends Module {
 
    @EventHandler
    public void onMotion(MotionEvent event) {
-      if (event.getState() == Stage.POST && mc.field_1724 != null && mc.field_1687 != null && this.pendingTarget != null && this.pendingRotation != null) {
-         if (!this.pendingTarget.method_5805()) {
+      if (event.getState() == Stage.POST && mc.player != null && mc.world != null && this.pendingTarget != null && this.pendingRotation != null) {
+         if (!this.pendingTarget.isAlive()) {
             this.resetState();
          } else {
             if (!this.spoofRotationSent) {
-               float yawDiff = Math.abs(class_3532.method_15393(event.getYaw() - this.pendingRotation.yaw));
+               float yawDiff = Math.abs(MathHelper.wrapDegrees(event.getYaw() - this.pendingRotation.yaw));
                float pitchDiff = Math.abs(event.getPitch() - this.pendingRotation.pitch);
                if (yawDiff < 1.0F && pitchDiff < 1.0F) {
                   this.spoofRotationSent = true;
@@ -106,13 +106,13 @@ public class KBController extends Module {
       priority = -200
    )
    public void onPlayerUpdate(PlayerUpdateEvent event) {
-      if (this.spoofRotationSent && mc.field_1724 != null && mc.field_1687 != null && this.pendingTarget != null && mc.field_1761 != null) {
-         if (!this.pendingTarget.method_5805()) {
+      if (this.spoofRotationSent && mc.player != null && mc.world != null && this.pendingTarget != null && mc.interactionManager != null) {
+         if (!this.pendingTarget.isAlive()) {
             this.resetState();
          } else {
             this.bypassAttackHook = true;
-            mc.field_1761.method_2918(mc.field_1724, this.pendingTarget);
-            mc.field_1724.method_6104(class_1268.field_5808);
+            mc.interactionManager.attackEntity(mc.player, this.pendingTarget);
+            mc.player.swingHand(Hand.MAIN_HAND);
             this.resetState();
          }
       }

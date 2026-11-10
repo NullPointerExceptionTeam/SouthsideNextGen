@@ -5,12 +5,12 @@ import com.mojang.blaze3d.platform.TextureUtil;
 import com.mojang.blaze3d.systems.RenderSystem;
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.class_276;
-import net.minecraft.class_310;
+import net.minecraft.client.gl.Framebuffer;
+import net.minecraft.client.MinecraftClient;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL30C;
 
-public class StencilFB extends class_276 {
+public class StencilFB extends Framebuffer {
    private static final StencilFB INSTANCE = new StencilFB();
    private static final List<StencilFB> ACTIVE_INSTANCES = new ArrayList<>();
    private int rboStencilDepth;
@@ -18,7 +18,7 @@ public class StencilFB extends class_276 {
 
    public StencilFB() {
       super(true);
-      this.method_1236(1.0F, 1.0F, 1.0F, 0.0F);
+      this.setClearColor(1.0F, 1.0F, 1.0F, 0.0F);
    }
 
    public static boolean framebufferInUse() {
@@ -26,63 +26,63 @@ public class StencilFB extends class_276 {
    }
 
    public static void use(Runnable drawAction) {
-      use(class_310.method_1551().method_1522(), drawAction);
+      use(MinecraftClient.getInstance().getFramebuffer(), drawAction);
    }
 
-   public static void use(class_276 mainBuffer, Runnable drawAction) {
+   public static void use(Framebuffer mainBuffer, Runnable drawAction) {
       RenderSystem.assertOnRenderThreadOrInit();
       StencilFB stencilBuffer = INSTANCE;
-      stencilBuffer.method_1234(mainBuffer.field_1482, mainBuffer.field_1481);
-      GlStateManager._glBindFramebuffer(36008, mainBuffer.field_1476);
-      GlStateManager._glBindFramebuffer(36009, stencilBuffer.field_1476);
-      GL30C.glBlitFramebuffer(0, 0, mainBuffer.field_1482, mainBuffer.field_1481, 0, 0, stencilBuffer.field_1482, stencilBuffer.field_1481, 17664, 9728);
-      stencilBuffer.method_1235(true);
+      stencilBuffer.resize(mainBuffer.textureWidth, mainBuffer.textureHeight);
+      GlStateManager._glBindFramebuffer(36008, mainBuffer.fbo);
+      GlStateManager._glBindFramebuffer(36009, stencilBuffer.fbo);
+      GL30C.glBlitFramebuffer(0, 0, mainBuffer.textureWidth, mainBuffer.textureHeight, 0, 0, stencilBuffer.textureWidth, stencilBuffer.textureHeight, 17664, 9728);
+      stencilBuffer.beginWrite(true);
       drawAction.run();
-      stencilBuffer.method_1240();
-      GlStateManager._glBindFramebuffer(36008, stencilBuffer.field_1476);
-      GlStateManager._glBindFramebuffer(36009, mainBuffer.field_1476);
-      GL30C.glBlitFramebuffer(0, 0, stencilBuffer.field_1482, stencilBuffer.field_1481, 0, 0, mainBuffer.field_1482, mainBuffer.field_1481, 17408, 9728);
-      stencilBuffer.method_1230();
-      mainBuffer.method_1235(false);
+      stencilBuffer.endWrite();
+      GlStateManager._glBindFramebuffer(36008, stencilBuffer.fbo);
+      GlStateManager._glBindFramebuffer(36009, mainBuffer.fbo);
+      GL30C.glBlitFramebuffer(0, 0, stencilBuffer.textureWidth, stencilBuffer.textureHeight, 0, 0, mainBuffer.textureWidth, mainBuffer.textureHeight, 17408, 9728);
+      stencilBuffer.clear();
+      mainBuffer.beginWrite(false);
    }
 
-   public void method_1231(int width, int height) {
+   public void initFbo(int width, int height) {
       RenderSystem.assertOnRenderThreadOrInit();
       int maxSize = RenderSystem.maxSupportedTextureSize();
       if (width > 0 && width <= maxSize && height > 0 && height <= maxSize) {
-         this.field_1480 = width;
-         this.field_1477 = height;
-         this.field_1482 = width;
-         this.field_1481 = height;
-         this.field_1476 = GlStateManager.glGenFramebuffers();
-         GlStateManager._glBindFramebuffer(36160, this.field_1476);
-         this.field_1475 = GlStateManager._genTexture();
-         GlStateManager._bindTexture(this.field_1475);
+         this.viewportWidth = width;
+         this.viewportHeight = height;
+         this.textureWidth = width;
+         this.textureHeight = height;
+         this.fbo = GlStateManager.glGenFramebuffers();
+         GlStateManager._glBindFramebuffer(36160, this.fbo);
+         this.colorAttachment = GlStateManager._genTexture();
+         GlStateManager._bindTexture(this.colorAttachment);
          GlStateManager._texParameter(3553, 10241, 9729);
          GlStateManager._texParameter(3553, 10240, 9729);
          GlStateManager._texImage2D(3553, 0, 32856, width, height, 0, 6408, 5121, null);
-         GL30.glFramebufferTexture2D(36160, 36064, 3553, this.field_1475, 0);
+         GL30.glFramebufferTexture2D(36160, 36064, 3553, this.colorAttachment, 0);
          this.rboStencilDepth = GlStateManager.glGenRenderbuffers();
          GlStateManager._glBindRenderbuffer(36161, this.rboStencilDepth);
          GL30.glRenderbufferStorage(36161, 35056, width, height);
          GL30.glFramebufferRenderbuffer(36160, 33306, 36161, this.rboStencilDepth);
          GlStateManager._glBindRenderbuffer(36161, 0);
-         this.method_1239();
-         this.method_1230();
-         this.method_1242();
+         this.checkFramebufferStatus();
+         this.clear();
+         this.endRead();
       } else {
          throw new IllegalArgumentException("Window " + width + "x" + height + " size out of bounds (max. size: " + maxSize + ")");
       }
    }
 
-   public void method_1238() {
+   public void delete() {
       RenderSystem.assertOnRenderThreadOrInit();
-      this.method_1242();
-      this.method_1240();
-      if (this.field_1476 > -1) {
+      this.endRead();
+      this.endWrite();
+      if (this.fbo > -1) {
          GlStateManager._glBindFramebuffer(36160, 0);
-         GlStateManager._glDeleteFramebuffers(this.field_1476);
-         this.field_1476 = -1;
+         GlStateManager._glDeleteFramebuffers(this.fbo);
+         this.fbo = -1;
       }
 
       if (this.rboStencilDepth > -1) {
@@ -90,25 +90,25 @@ public class StencilFB extends class_276 {
          this.rboStencilDepth = -1;
       }
 
-      if (this.field_1475 > -1) {
-         TextureUtil.releaseTextureId(this.field_1475);
-         this.field_1475 = -1;
+      if (this.colorAttachment > -1) {
+         TextureUtil.releaseTextureId(this.colorAttachment);
+         this.colorAttachment = -1;
       }
 
-      this.field_1482 = -1;
-      this.field_1481 = -1;
+      this.textureWidth = -1;
+      this.textureHeight = -1;
    }
 
-   public void method_1235(boolean setViewport) {
-      super.method_1235(setViewport);
+   public void beginWrite(boolean setViewport) {
+      super.beginWrite(setViewport);
       if (!this.inUse) {
          ACTIVE_INSTANCES.add(this);
          this.inUse = true;
       }
    }
 
-   public void method_1240() {
-      super.method_1240();
+   public void endWrite() {
+      super.endWrite();
       if (this.inUse) {
          this.inUse = false;
          ACTIVE_INSTANCES.remove(this);

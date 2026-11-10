@@ -20,7 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
-import net.minecraft.class_408;
+import net.minecraft.client.gui.screen.ChatScreen;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.nanovg.NVGPaint;
 import org.lwjgl.nanovg.NanoVG;
@@ -247,17 +247,17 @@ public class TabGUI extends Module {
 
       public void render(long vg, float tickDelta) {
          NanoVGHelper nvg = NanoVGHelper.INSTANCE;
-         if (!(TabGUI.mc.field_1755 instanceof class_408)) {
-            int rX = Math.min(this.x, TabGUI.mc.method_22683().method_4489());
-            int rY = Math.min(this.y, TabGUI.mc.method_22683().method_4506());
-            int rX1 = Math.min(rX + this.width, TabGUI.mc.method_22683().method_4489());
-            int rY1 = Math.min(rY + this.height, TabGUI.mc.method_22683().method_4506());
+         if (!(TabGUI.mc.currentScreen instanceof ChatScreen)) {
+            int rX = Math.min(this.x, TabGUI.mc.getWindow().getFramebufferWidth());
+            int rY = Math.min(this.y, TabGUI.mc.getWindow().getFramebufferHeight());
+            int rX1 = Math.min(rX + this.width, TabGUI.mc.getWindow().getFramebufferWidth());
+            int rY1 = Math.min(rY + this.height, TabGUI.mc.getWindow().getFramebufferHeight());
             int rWidth = rX1 - rX;
             int rHeight = rY1 - rY;
             IntBuffer pixelBuffer = BufferUtils.createIntBuffer(rWidth * rHeight);
             GL11.glPixelStorei(3333, 1);
             GL11.glPixelStorei(3317, 1);
-            GL11.glReadPixels(rX, TabGUI.mc.method_22683().method_4506() - rHeight - rY, rWidth, rHeight, 32993, 33639, pixelBuffer);
+            GL11.glReadPixels(rX, TabGUI.mc.getWindow().getFramebufferHeight() - rHeight - rY, rWidth, rHeight, 32993, 33639, pixelBuffer);
             int colorTop = pixelBuffer.get(rWidth * rHeight - 1);
             int colorTopRight = pixelBuffer.get(rWidth * (rHeight - 1));
             int colorBottomRight = pixelBuffer.get(rWidth - 1);

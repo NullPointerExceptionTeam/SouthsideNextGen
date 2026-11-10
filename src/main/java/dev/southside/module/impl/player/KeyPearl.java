@@ -11,13 +11,13 @@ import dev.southside.module.Module;
 import dev.southside.orbit.EventHandler;
 import dev.southside.utils.misc.ClientUtils;
 import dev.southside.utils.network.PacketUtils;
-import net.minecraft.class_1268;
-import net.minecraft.class_1269;
-import net.minecraft.class_1657;
-import net.minecraft.class_1792;
-import net.minecraft.class_1802;
-import net.minecraft.class_2828;
-import net.minecraft.class_2868;
+import net.minecraft.util.Hand;
+import net.minecraft.util.ActionResult;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.Item;
+import net.minecraft.item.Items;
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
+import net.minecraft.network.packet.c2s.play.UpdateSelectedSlotC2SPacket;
 
 public class KeyPearl extends Module {
    private Dropdown modes = new Dropdown("Key Modes", "Mouse3", "Mouse3", "Mouse4", "Middle");
@@ -72,7 +72,7 @@ public class KeyPearl extends Module {
          this.shouldHandleButtonPress = false;
       }
 
-      if (mc.field_1724 != null && mc.field_1724.method_6047().method_31574(class_1802.field_8634)) {
+      if (mc.player != null && mc.player.getMainHandStack().isOf(Items.ENDER_PEARL)) {
          event.setDisableRotation(true);
       }
 
@@ -90,7 +90,7 @@ public class KeyPearl extends Module {
 
    @EventHandler
    public void onPacketSend(PacketSendPostEvent event) {
-      if (!(event.getPacket() instanceof class_2828)) {
+      if (!(event.getPacket() instanceof PlayerMoveC2SPacket)) {
          return;
       }
 
@@ -116,7 +116,7 @@ public class KeyPearl extends Module {
 
       int slot = this.pendingSync;
       this.pendingSync = -1;
-      PacketUtils.sendPacket(new class_2868(slot));
+      PacketUtils.sendPacket(new UpdateSelectedSlotC2SPacket(slot));
    }
 
    private boolean isBusy() {
@@ -124,16 +124,16 @@ public class KeyPearl extends Module {
    }
 
    private void handleButtonPress() {
-      if (mc.field_1724 == null) {
+      if (mc.player == null) {
          return;
       }
 
-      this.originalSlot = mc.field_1724.method_31548().field_7545;
+      this.originalSlot = mc.player.getInventory().selectedSlot;
       this.pearlSlot = -1;
 
       for (int i = 0; i < 9; i++) {
-         class_1792 item = mc.field_1724.method_31548().method_5438(i).method_7909();
-         if (item == class_1802.field_8634) {
+         Item item = mc.player.getInventory().getStack(i).getItem();
+         if (item == Items.ENDER_PEARL) {
             this.pearlSlot = i;
             break;
          }
@@ -144,7 +144,7 @@ public class KeyPearl extends Module {
          return;
       }
 
-      mc.field_1724.method_31548().field_7545 = this.pearlSlot;
+      mc.player.getInventory().selectedSlot = this.pearlSlot;
       this.pendingSync = this.pearlSlot;
       this.isHoldingPearl = true;
    }
@@ -159,19 +159,19 @@ public class KeyPearl extends Module {
          return;
       }
 
-      class_1269 res = this.interactItem(mc.field_1724, class_1268.field_5808);
-      if (res.method_23665()) {
-         mc.field_1724.method_6104(class_1268.field_5808);
+      ActionResult res = this.interactItem(mc.player, Hand.MAIN_HAND);
+      if (res.isAccepted()) {
+         mc.player.swingHand(Hand.MAIN_HAND);
       }
 
       if (back >= 0) {
-         mc.field_1724.method_31548().field_7545 = back;
+         mc.player.getInventory().selectedSlot = back;
          this.pendingSync = back;
       }
    }
 
-   public class_1269 interactItem(class_1657 player, class_1268 hand) {
-      return (class_1269)(mc.field_1761 != null ? mc.field_1761.method_2919(player, hand) : class_1269.field_5814);
+   public ActionResult interactItem(PlayerEntity player, Hand hand) {
+      return (ActionResult)(mc.interactionManager != null ? mc.interactionManager.interactItem(player, hand) : ActionResult.FAIL);
    }
 
    @Override

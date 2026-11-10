@@ -17,17 +17,17 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
-import net.minecraft.class_1268;
-import net.minecraft.class_1937;
-import net.minecraft.class_2338;
-import net.minecraft.class_2350;
-import net.minecraft.class_238;
-import net.minecraft.class_243;
-import net.minecraft.class_310;
+import net.minecraft.util.Hand;
+import net.minecraft.world.World;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.MinecraftClient;
 
 public class AIWalkController {
-   private static final class_310 mc = class_310.method_1551();
-   private static final LinkedList<class_2338> path = new LinkedList<>();
+   private static final MinecraftClient mc = MinecraftClient.getInstance();
+   private static final LinkedList<BlockPos> path = new LinkedList<>();
    private static volatile boolean walking = false;
    public static final AIWalkController INSTANCE = new AIWalkController();
    public static boolean allowDigging = false;
@@ -45,19 +45,19 @@ public class AIWalkController {
       return t;
    });
    private final AtomicBoolean stitcherCancel = new AtomicBoolean(false);
-   private volatile class_2338 originalGoal = null;
+   private volatile BlockPos originalGoal = null;
    private volatile Future<?> currentStitcherFuture = null;
-   private class_243 lastPos = null;
+   private Vec3d lastPos = null;
    private long lastMovedAt = 0L;
    private long lastReplanAt = 0L;
    private final AtomicBoolean mining = new AtomicBoolean(false);
 
-   public static void walkTo(class_2338 target) {
+   public static void walkTo(BlockPos target) {
       INSTANCE._walkTo(target);
    }
 
-   private void _walkTo(class_2338 target) {
-      if (mc.field_1724 != null && mc.field_1687 != null) {
+   private void _walkTo(BlockPos target) {
+      if (mc.player != null && mc.world != null) {
          stopWalking();
          this.originalGoal = target;
          this.stitcherCancel.set(false);
@@ -66,10 +66,10 @@ public class AIWalkController {
                Pathfinder.PathfinderConfig cfg = new Pathfinder.PathfinderConfig();
                cfg.allowUnloadedTraversal = true;
                cfg.unloadedChunkPenalty = 6.0;
-               List<class_2338> fullPath = this.buildFullPathByStitching(mc.field_1687, mc.field_1724.method_24515(), target, cfg);
+               List<BlockPos> fullPath = this.buildFullPathByStitching(mc.world, mc.player.getBlockPos(), target, cfg);
                if (fullPath == null || fullPath.isEmpty()) {
                   mc.execute(() -> {
-                     if (mc.field_1724 != null) {
+                     if (mc.player != null) {
                         ChatUtils.warning("[PathFinder] 无法找到到达目标的路径");
                      }
                   });
@@ -86,7 +86,7 @@ public class AIWalkController {
             } catch (Exception var4) {
                var4.printStackTrace();
                mc.execute(() -> {
-                  if (mc.field_1724 != null) {
+                  if (mc.player != null) {
                      ChatUtils.error("[PathFinder] 寻路异常: " + var4.getMessage());
                   }
                });
@@ -95,11 +95,11 @@ public class AIWalkController {
       }
    }
 
-   private List<class_2338> buildFullPathByStitching(class_1937 world, class_2338 start, class_2338 goal, Pathfinder.PathfinderConfig cfg) {
+   private List<BlockPos> buildFullPathByStitching(World world, BlockPos start, BlockPos goal, Pathfinder.PathfinderConfig cfg) {
       if (world != null && start != null && goal != null) {
-         List<class_2338> resultFull = new LinkedList<>();
-         class_2338 currentStart = start;
-         class_2338 lastReached = null;
+         List<BlockPos> resultFull = new LinkedList<>();
+         BlockPos currentStart = start;
+         BlockPos lastReached = null;
          int segments = 0;
          int retries = 0;
 
@@ -181,18 +181,18 @@ public class AIWalkController {
       }
 
       walking = false;
-      if (mc.field_1724 != null) {
-         mc.field_1690.field_1894.method_23481(false);
-         mc.field_1690.field_1903.method_23481(false);
+      if (mc.player != null) {
+         mc.options.forwardKey.setPressed(false);
+         mc.options.jumpKey.setPressed(false);
       }
    }
 
    @EventHandler
    public void onRotation(RotationEvent event) {
-      if (walking && mc.field_1724 != null && mc.field_1687 != null) {
-         if (mc.field_1755 == null) {
-            class_243 ppos = mc.field_1724.method_19538();
-            class_2338 targetNode = null;
+      if (walking && mc.player != null && mc.world != null) {
+         if (mc.currentScreen == null) {
+            Vec3d ppos = mc.player.getPos();
+            BlockPos targetNode = null;
             double minDistSqr = Double.MAX_VALUE;
             synchronized (path) {
                if (path.isEmpty()) {
@@ -200,8 +200,8 @@ public class AIWalkController {
                   return;
                }
 
-               for (class_2338 node : path) {
-                  double distSqr = ppos.method_1025(node.method_46558());
+               for (BlockPos node : path) {
+                  double distSqr = ppos.squaredDistanceTo(node.toCenterPos());
                   if (distSqr < minDistSqr) {
                      minDistSqr = distSqr;
                      targetNode = node;
@@ -210,23 +210,23 @@ public class AIWalkController {
 
                double followDistanceThresholdSqr = 0.2;
 
-               while (!path.isEmpty() && ppos.method_1025(path.peek().method_46558()) < followDistanceThresholdSqr) {
+               while (!path.isEmpty() && ppos.squaredDistanceTo(path.peek().toCenterPos()) < followDistanceThresholdSqr) {
                   path.poll();
                }
             }
 
             if (targetNode != null) {
-               double targetX = targetNode.method_10263() + 0.5;
-               double targetY = targetNode.method_10264();
-               double targetZ = targetNode.method_10260() + 0.5;
-               double dx = targetX - ppos.field_1352;
-               double dz = targetZ - ppos.field_1350;
-               double dy = targetY - ppos.field_1351;
+               double targetX = targetNode.getX() + 0.5;
+               double targetY = targetNode.getY();
+               double targetZ = targetNode.getZ() + 0.5;
+               double dx = targetX - ppos.x;
+               double dz = targetZ - ppos.z;
+               double dy = targetY - ppos.y;
                double distXZ = Math.sqrt(dx * dx + dz * dz);
                if (this.lastPos == null) {
                   this.lastPos = ppos;
                   this.lastMovedAt = System.currentTimeMillis();
-               } else if (ppos.method_1025(this.lastPos) > 5.0E-4) {
+               } else if (ppos.squaredDistanceTo(this.lastPos) > 5.0E-4) {
                   this.lastPos = ppos;
                   this.lastMovedAt = System.currentTimeMillis();
                } else if (System.currentTimeMillis() - this.lastMovedAt > stuckTimeoutMs) {
@@ -242,7 +242,7 @@ public class AIWalkController {
                   synchronized (path) {
                      path.poll();
                      if (!path.isEmpty()) {
-                        mc.field_1690.field_1903.method_23481(false);
+                        mc.options.jumpKey.setPressed(false);
                         return;
                      }
                   }
@@ -250,19 +250,19 @@ public class AIWalkController {
                   boolean ok = this.finalValidateArrival(this.originalGoal);
                   if (ok) {
                      walking = false;
-                     mc.field_1690.field_1894.method_23481(false);
-                     mc.field_1690.field_1903.method_23481(false);
+                     mc.options.forwardKey.setPressed(false);
+                     mc.options.jumpKey.setPressed(false);
                      ChatUtils.success("[PathFinder] 到达目标");
                   } else {
                      this._attemptFinalStitchRetry();
-                     mc.field_1690.field_1894.method_23481(false);
+                     mc.options.forwardKey.setPressed(false);
                   }
                } else {
                   float yaw = (float)Math.toDegrees(Math.atan2(-dx, dz));
                   if (Southside.get().getModuleManager().isEnabled(StrafeFix.class)) {
-                     RotationUtils.setRotation(new Rotation(yaw, mc.field_1724.method_36455()), 0, MoveFixMode.Strict);
+                     RotationUtils.setRotation(new Rotation(yaw, mc.player.getPitch()), 0, MoveFixMode.Strict);
                   } else {
-                     mc.field_1724.method_36456(yaw);
+                     mc.player.setYaw(yaw);
                   }
 
                   if (this.isFrontBlocked(ppos, dx, dz)) {
@@ -270,22 +270,22 @@ public class AIWalkController {
                         double dist = Math.sqrt(dx * dx + dz * dz);
                         double nx = dx / Math.max(1.0E-6, dist);
                         double nz = dz / Math.max(1.0E-6, dist);
-                        int bx = (int)Math.floor(ppos.field_1352 + nx * 0.6);
-                        int bz = (int)Math.floor(ppos.field_1350 + nz * 0.6);
-                        int by = (int)Math.floor(ppos.field_1351);
-                        class_2338 toMine = new class_2338(bx, by, bz);
-                        mc.field_1761.method_2910(toMine, class_2350.field_11036);
-                        mc.field_1724.method_6104(class_1268.field_5808);
-                        mc.field_1690.field_1894.method_23481(false);
+                        int bx = (int)Math.floor(ppos.x + nx * 0.6);
+                        int bz = (int)Math.floor(ppos.z + nz * 0.6);
+                        int by = (int)Math.floor(ppos.y);
+                        BlockPos toMine = new BlockPos(bx, by, bz);
+                        mc.interactionManager.attackBlock(toMine, Direction.UP);
+                        mc.player.swingHand(Hand.MAIN_HAND);
+                        mc.options.forwardKey.setPressed(false);
                      } else {
                         this.replanToCurrentGoal();
                      }
                   } else {
-                     if (dy > 0.5 && mc.field_1724.method_24828()) {
-                        mc.field_1724.method_6043();
+                     if (dy > 0.5 && mc.player.isOnGround()) {
+                        mc.player.jump();
                      }
 
-                     mc.field_1690.field_1894.method_23481(true);
+                     mc.options.forwardKey.setPressed(true);
                   }
                }
             }
@@ -301,7 +301,7 @@ public class AIWalkController {
                cfg.allowUnloadedTraversal = true;
                cfg.unloadedChunkPenalty = 4.0;
                cfg.chunkSearchRadius = Math.max(cfg.chunkSearchRadius, 12);
-               List<class_2338> partial = this.buildFullPathByStitching(mc.field_1687, mc.field_1724.method_24515(), this.originalGoal, cfg);
+               List<BlockPos> partial = this.buildFullPathByStitching(mc.world, mc.player.getBlockPos(), this.originalGoal, cfg);
                if (partial != null && !partial.isEmpty()) {
                   mc.execute(() -> {
                      synchronized (path) {
@@ -312,7 +312,7 @@ public class AIWalkController {
                   });
                } else {
                   mc.execute(() -> {
-                     if (mc.field_1724 != null) {
+                     if (mc.player != null) {
                         ChatUtils.warning("[PathFinder] 最终拼接失败，尝试重新开始寻路");
                      }
 
@@ -326,37 +326,37 @@ public class AIWalkController {
       }
    }
 
-   private boolean finalValidateArrival(class_2338 goal) {
+   private boolean finalValidateArrival(BlockPos goal) {
       if (goal == null) {
          return true;
       } else {
-         class_243 p = mc.field_1724.method_19538();
-         double dx = p.field_1352 - (goal.method_10263() + 0.5);
-         double dz = p.field_1350 - (goal.method_10260() + 0.5);
+         Vec3d p = mc.player.getPos();
+         double dx = p.x - (goal.getX() + 0.5);
+         double dz = p.z - (goal.getZ() + 0.5);
          double horiz = Math.sqrt(dx * dx + dz * dz);
-         double dy = Math.abs(p.field_1351 - goal.method_10264());
+         double dy = Math.abs(p.y - goal.getY());
          double finalXYTolerance = 0.7;
          double finalYTolerance = 0.9;
          return !requireExactY ? horiz <= finalXYTolerance : horiz <= finalXYTolerance && dy <= finalYTolerance;
       }
    }
 
-   private boolean isFrontBlocked(class_243 playerPos, double dx, double dz) {
+   private boolean isFrontBlocked(Vec3d playerPos, double dx, double dz) {
       double dist = Math.sqrt(dx * dx + dz * dz);
       if (dist < 1.0E-6) {
          return false;
       } else {
          double nx = dx / dist;
          double nz = dz / dist;
-         double checkX = playerPos.field_1352 + nx * 0.6;
-         double checkZ = playerPos.field_1350 + nz * 0.6;
+         double checkX = playerPos.x + nx * 0.6;
+         double checkZ = playerPos.z + nz * 0.6;
          int bx = (int)Math.floor(checkX);
-         int by = (int)Math.floor(playerPos.field_1351);
+         int by = (int)Math.floor(playerPos.y);
          int bz = (int)Math.floor(checkZ);
-         class_2338 body = new class_2338(bx, by, bz);
-         class_2338 head = body.method_10086(1);
-         boolean bodyBlocked = !mc.field_1687.method_8320(body).method_26220(mc.field_1687, body).method_1110();
-         boolean headBlocked = !mc.field_1687.method_8320(head).method_26220(mc.field_1687, head).method_1110();
+         BlockPos body = new BlockPos(bx, by, bz);
+         BlockPos head = body.up(1);
+         boolean bodyBlocked = !mc.world.getBlockState(body).getCollisionShape(mc.world, body).isEmpty();
+         boolean headBlocked = !mc.world.getBlockState(head).getCollisionShape(mc.world, head).isEmpty();
          return bodyBlocked || headBlocked;
       }
    }
@@ -373,7 +373,7 @@ public class AIWalkController {
                   cfg.allowUnloadedTraversal = true;
                   cfg.unloadedChunkPenalty = 6.0;
                   cfg.chunkSearchRadius = Math.max(cfg.chunkSearchRadius, 12);
-                  List<class_2338> full = this.buildFullPathByStitching(mc.field_1687, mc.field_1724.method_24515(), this.originalGoal, cfg);
+                  List<BlockPos> full = this.buildFullPathByStitching(mc.world, mc.player.getBlockPos(), this.originalGoal, cfg);
                   if (full != null && !full.isEmpty()) {
                      mc.execute(() -> {
                         synchronized (path) {
@@ -384,7 +384,7 @@ public class AIWalkController {
                      });
                   } else {
                      mc.execute(() -> {
-                        if (mc.field_1724 != null) {
+                        if (mc.player != null) {
                            ChatUtils.warning("[PathFinder] 重新规划未找到路径");
                         }
                      });
@@ -399,20 +399,20 @@ public class AIWalkController {
 
    @EventHandler
    public void onRenderWorld(Render3DEvent event) {
-      List<class_2338> local;
+      List<BlockPos> local;
       synchronized (path) {
          local = new LinkedList<>(path);
       }
 
       if (!local.isEmpty()) {
-         for (class_2338 p : local) {
-            class_238 b1 = new class_238(p);
+         for (BlockPos p : local) {
+            Box b1 = new Box(p);
             Render3D.boxLines(b1, new Color(0, 200, 0, 120));
             Render3D.boxSides(b1, new Color(0, 200, 0, 60));
          }
 
-         class_2338 g = local.get(local.size() - 1);
-         class_238 b1 = new class_238(g);
+         BlockPos g = local.get(local.size() - 1);
+         Box b1 = new Box(g);
          Render3D.boxLines(b1, new Color(255, 0, 0, 150));
          Render3D.boxSides(b1, new Color(255, 0, 0, 100));
       }

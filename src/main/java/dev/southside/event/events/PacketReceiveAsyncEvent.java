@@ -2,18 +2,18 @@ package dev.southside.event.events;
 
 import dev.southside.event.CancellableEvent;
 import lombok.Generated;
-import net.minecraft.class_2596;
+import net.minecraft.network.packet.Packet;
 
 public class PacketReceiveAsyncEvent extends CancellableEvent {
-   private class_2596 packet;
+   private Packet packet;
 
    @Generated
-   public PacketReceiveAsyncEvent(class_2596 packet) {
+   public PacketReceiveAsyncEvent(Packet packet) {
       this.packet = packet;
    }
 
    @Generated
-   public class_2596 getPacket() {
+   public Packet getPacket() {
       return this.packet;
    }
 }

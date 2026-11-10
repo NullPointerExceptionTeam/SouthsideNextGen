@@ -16,7 +16,7 @@ public class CustomFOV extends Module {
    @EventHandler
    public void onFoV(UpdateFoVEvent event) {
       float targetFov = this.fovValue.getValue().floatValue();
-      float baseFov = ((Integer)mc.field_1690.method_41808().method_41753()).intValue();
+      float baseFov = ((Integer)mc.options.getFov().getValue()).intValue();
       if (baseFov != 0.0F) {
          event.setFov(targetFov / baseFov);
       }

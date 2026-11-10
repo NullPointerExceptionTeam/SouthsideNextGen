@@ -1,14 +1,14 @@
 package dev.southside.mixin.accessors;
 
-import net.minecraft.class_9928;
+import net.minecraft.client.input.Scroller;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
-@Mixin({class_9928.class})
+@Mixin({Scroller.class})
 public interface IScroller {
-   @Accessor("field_52764")
+   @Accessor("cumulHorizontal")
    double getCumulHorizontal();
 
-   @Accessor("field_52765")
+   @Accessor("cumulVertical")
    double getCumulVertical();
 }

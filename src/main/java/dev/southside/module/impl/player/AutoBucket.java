@@ -22,27 +22,27 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicBoolean;
-import net.minecraft.class_1268;
-import net.minecraft.class_1269;
-import net.minecraft.class_1293;
-import net.minecraft.class_1294;
-import net.minecraft.class_1309;
-import net.minecraft.class_1657;
-import net.minecraft.class_1792;
-import net.minecraft.class_1799;
-import net.minecraft.class_1802;
-import net.minecraft.class_1937;
-import net.minecraft.class_2338;
-import net.minecraft.class_2350;
-import net.minecraft.class_238;
-import net.minecraft.class_2382;
-import net.minecraft.class_2404;
-import net.minecraft.class_243;
-import net.minecraft.class_2680;
-import net.minecraft.class_3610;
-import net.minecraft.class_3612;
-import net.minecraft.class_3965;
-import net.minecraft.class_9362;
+import net.minecraft.util.Hand;
+import net.minecraft.util.ActionResult;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.world.World;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3i;
+import net.minecraft.block.FluidBlock;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.block.BlockState;
+import net.minecraft.fluid.FluidState;
+import net.minecraft.fluid.Fluids;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.item.MaceItem;
 
 public class AutoBucket
 extends Module {
@@ -70,7 +70,7 @@ extends Module {
                 this.interactRequired = false;
                 this.busyTicks = 0;
                 if (this.oldSlot != -1) {
-                    AutoBucket.mc.field_1724.method_31548().field_7545 = this.oldSlot;
+                    AutoBucket.mc.player.getInventory().selectedSlot = this.oldSlot;
                     this.oldSlot = -1;
                 }
                 return false;
@@ -86,14 +86,14 @@ extends Module {
             return false;
         }
         ModuleManager moduleManager = Southside.INSTANCE.getModuleManager();
-        boolean killAuraBusy = KillAura.target != null && (double)AutoBucket.mc.field_1724.method_5739(KillAura.target) <= ((Number)moduleManager.get(KillAura.class).range.getValue()).doubleValue();
+        boolean killAuraBusy = KillAura.target != null && (double)AutoBucket.mc.player.distanceTo(KillAura.target) <= ((Number)moduleManager.get(KillAura.class).range.getValue()).doubleValue();
         boolean velocityBusy = moduleManager.get(Velocity.class).isEnabled() && Velocity.gotKB;
         return killAuraBusy || velocityBusy;
     }
 
     @EventHandler(priority=-200)
     public void onItemUse(ItemUseEvent event) {
-        if (((Boolean)this.fireballCooldown.getValue()).booleanValue() && !event.isCancelled() && AutoBucket.mc.field_1724 != null && (AutoBucket.mc.field_1724.method_6079().method_7909().equals(class_1802.field_8814) || AutoBucket.mc.field_1724.method_6047().method_7909().equals(class_1802.field_8814))) {
+        if (((Boolean)this.fireballCooldown.getValue()).booleanValue() && !event.isCancelled() && AutoBucket.mc.player != null && (AutoBucket.mc.player.getOffHandStack().getItem().equals(Items.FIRE_CHARGE) || AutoBucket.mc.player.getMainHandStack().getItem().equals(Items.FIRE_CHARGE))) {
             this.coolDownTicks = 10;
         }
     }
@@ -101,23 +101,23 @@ extends Module {
     @EventHandler
     public void onTick(RotationEvent event) {
         boolean shouldPlaceWater;
-        if (AutoBucket.mc.field_1724 == null || PlayerUtils.ticksSinceTeleport < 3) {
+        if (AutoBucket.mc.player == null || PlayerUtils.ticksSinceTeleport < 3) {
             return;
         }
         if (this.coolDownTicks > 0) {
             --this.coolDownTicks;
         }
-        if (AutoBucket.mc.field_1724.method_7337() || Southside.get().getModuleManager().get(LongJump.class).isEnabled()) {
+        if (AutoBucket.mc.player.isCreative() || Southside.get().getModuleManager().get(LongJump.class).isEnabled()) {
             return;
         }
-        if (AutoBucket.mc.field_1724.method_6115() || AutoBucket.mc.field_1755 != null) {
+        if (AutoBucket.mc.player.isUsingItem() || AutoBucket.mc.currentScreen != null) {
             return;
         }
-        boolean shouldMLG = (Boolean)this.mlg.getValue() != false && this.willTakeFallDamage() && !AutoBucket.mc.field_1724.method_5816() && !AutoBucket.nextTickWillLanding();
-        boolean shouldAntiFire = (Boolean)this.fire.getValue() != false && AutoBucket.mc.field_1724.method_5809() && !AutoBucket.mc.field_1724.method_6059(class_1294.field_5918) && !AutoBucket.mc.field_1724.method_5816() && !this.isAuraWorking() && this.coolDownTicks <= 0;
+        boolean shouldMLG = (Boolean)this.mlg.getValue() != false && this.willTakeFallDamage() && !AutoBucket.mc.player.isInsideWaterOrBubbleColumn() && !AutoBucket.nextTickWillLanding();
+        boolean shouldAntiFire = (Boolean)this.fire.getValue() != false && AutoBucket.mc.player.isOnFire() && !AutoBucket.mc.player.hasStatusEffect(StatusEffects.FIRE_RESISTANCE) && !AutoBucket.mc.player.isInsideWaterOrBubbleColumn() && !this.isAuraWorking() && this.coolDownTicks <= 0;
         boolean bl = shouldPlaceWater = shouldMLG || shouldAntiFire;
         if (shouldPlaceWater) {
-            int waterBucketSlot = this.getBucketSlot(class_1802.field_8705);
+            int waterBucketSlot = this.getBucketSlot(Items.WATER_BUCKET);
             if (waterBucketSlot == -1) {
                 shouldPlaceWater = false;
             }
@@ -134,34 +134,34 @@ extends Module {
             return;
         }
         if (this.interactRequired) {
-            class_3965 result = ClientRayTraceUtil.getFacedBlock(RotationUtils.getRotation().yaw, RotationUtils.getRotation().pitch, blockState -> {
-                if (blockState.method_26204() instanceof class_2404) {
+            BlockHitResult result = ClientRayTraceUtil.getFacedBlock(RotationUtils.getRotation().yaw, RotationUtils.getRotation().pitch, blockState -> {
+                if (blockState.getBlock() instanceof FluidBlock) {
                     return false;
                 }
                 return ClientRayTraceUtil.isIgnoredBlock(blockState);
             });
             if (result == null) {
-                if (AutoBucket.mc.field_1724.method_31548().method_5438(AutoBucket.mc.field_1724.method_31548().field_7545).method_7909().equals(class_1802.field_8550)) {
+                if (AutoBucket.mc.player.getInventory().getStack(AutoBucket.mc.player.getInventory().selectedSlot).getItem().equals(Items.BUCKET)) {
                     this.shouldReceive = true;
                 }
                 if (this.oldSlot != -1) {
-                    AutoBucket.mc.field_1724.method_31548().field_7545 = this.oldSlot;
+                    AutoBucket.mc.player.getInventory().selectedSlot = this.oldSlot;
                     this.oldSlot = -1;
                 }
                 return;
             }
             this.interactRequired = false;
-            AutoBucket.mc.field_1765 = result;
-            class_1269 res = AutoBucket.mc.field_1761.method_2919((class_1657)AutoBucket.mc.field_1724, class_1268.field_5808);
+            AutoBucket.mc.crosshairTarget = result;
+            ActionResult res = AutoBucket.mc.interactionManager.interactItem((PlayerEntity)AutoBucket.mc.player, Hand.MAIN_HAND);
             PacketOrderManager.rightClicking = true;
-            if (res.method_23665()) {
-                AutoBucket.mc.field_1724.method_6104(class_1268.field_5808);
+            if (res.isAccepted()) {
+                AutoBucket.mc.player.swingHand(Hand.MAIN_HAND);
             }
-            if (AutoBucket.mc.field_1724.method_31548().method_5438(AutoBucket.mc.field_1724.method_31548().field_7545).method_7909().equals(class_1802.field_8550)) {
+            if (AutoBucket.mc.player.getInventory().getStack(AutoBucket.mc.player.getInventory().selectedSlot).getItem().equals(Items.BUCKET)) {
                 this.shouldReceive = true;
             }
             if (this.oldSlot != -1) {
-                AutoBucket.mc.field_1724.method_31548().field_7545 = this.oldSlot;
+                AutoBucket.mc.player.getInventory().selectedSlot = this.oldSlot;
                 this.oldSlot = -1;
             }
         }
@@ -169,8 +169,8 @@ extends Module {
 
     private boolean hasEmptyBucket() {
         for (int i = 0; i < 9; ++i) {
-            class_1799 stack = AutoBucket.mc.field_1724.method_31548().method_5438(i);
-            if (stack == null || stack.method_7909() != class_1802.field_8550) continue;
+            ItemStack stack = AutoBucket.mc.player.getInventory().getStack(i);
+            if (stack == null || stack.getItem() != Items.BUCKET) continue;
             return true;
         }
         return false;
@@ -178,25 +178,25 @@ extends Module {
 
     private PlaceData findBestPlacePos() {
         ArrayList<PlaceData> possibleBoxes = new ArrayList<PlaceData>();
-        class_238 playerBox = AutoBucket.mc.field_1724.method_5829();
-        playerBox.method_997(AutoBucket.mc.field_1724.method_18798());
+        Box playerBox = AutoBucket.mc.player.getBoundingBox();
+        playerBox.offset(AutoBucket.mc.player.getVelocity());
         for (int x = -AutoBucket.getXMotion(); x <= AutoBucket.getXMotion(); ++x) {
             for (int z = -AutoBucket.getZMotion(); z <= AutoBucket.getZMotion(); ++z) {
                 for (int y = 0; y <= AutoBucket.getYMotion(); ++y) {
-                    class_2338 pos = AutoBucket.mc.field_1724.method_24515().method_10069(x, 0, z).method_10087(y);
-                    class_2680 state = AutoBucket.mc.field_1687.method_8320(pos);
-                    class_238 bb = new class_238(pos).method_35578((double)(pos.method_10264() + 3));
-                    if (!bb.method_994(playerBox) || state.method_26215()) continue;
+                    BlockPos pos = AutoBucket.mc.player.getBlockPos().add(x, 0, z).down(y);
+                    BlockState state = AutoBucket.mc.world.getBlockState(pos);
+                    Box bb = new Box(pos).withMaxY((double)(pos.getY() + 3));
+                    if (!bb.intersects(playerBox) || state.isAir()) continue;
                     possibleBoxes.add(new PlaceData(pos, bb, new AtomicBoolean(false)));
                 }
             }
         }
-        possibleBoxes.sort(Comparator.comparingDouble(p -> p.pos.method_10264()));
+        possibleBoxes.sort(Comparator.comparingDouble(p -> p.pos.getY()));
         Collections.reverse(possibleBoxes);
         PlaceData best = (PlaceData)possibleBoxes.getFirst();
-        possibleBoxes.removeIf(p -> p.pos.method_10264() != best.pos().method_10264());
-        possibleBoxes.sort(Comparator.comparingDouble(p -> class_243.method_24954((class_2382)p.pos()).method_1025(playerBox.method_1005().method_38499(class_2350.class_2351.field_11052, playerBox.field_1322))));
-        possibleBoxes.sort(Comparator.comparing(p -> !p.bb.method_1006(AutoBucket.mc.field_1724.method_19538())));
+        possibleBoxes.removeIf(p -> p.pos.getY() != best.pos().getY());
+        possibleBoxes.sort(Comparator.comparingDouble(p -> Vec3d.of((Vec3i)p.pos()).squaredDistanceTo(playerBox.getCenter().withAxis(Direction.Axis.Y, playerBox.minY))));
+        possibleBoxes.sort(Comparator.comparing(p -> !p.bb.contains(AutoBucket.mc.player.getPos())));
         return (PlaceData)possibleBoxes.getFirst();
     }
 
@@ -204,14 +204,14 @@ extends Module {
         if (waterBucketSlot == -1) {
             return;
         }
-        this.oldSlot = AutoBucket.mc.field_1724.method_31548().field_7545;
+        this.oldSlot = AutoBucket.mc.player.getInventory().selectedSlot;
         PlaceData best = this.findBestPlacePos();
         Rotation r = AutoBucket.getLookAtWaterBlock(best.pos());
         if (best.pitchOnly().get()) {
-            r.setYaw(AutoBucket.mc.field_1724.method_36454());
+            r.setYaw(AutoBucket.mc.player.getYaw());
             r.setPitch(90.0f);
         }
-        AutoBucket.mc.field_1724.method_31548().field_7545 = waterBucketSlot;
+        AutoBucket.mc.player.getInventory().selectedSlot = waterBucketSlot;
         this.interactItem(r);
         this.shouldReceive = true;
     }
@@ -221,10 +221,10 @@ extends Module {
         for (int x = -AutoBucket.getXMotion(); x <= AutoBucket.getXMotion(); ++x) {
             for (int z = -AutoBucket.getZMotion(); z <= AutoBucket.getZMotion(); ++z) {
                 for (int y = 0; y <= high; ++y) {
-                    class_2338 pos = AutoBucket.mc.field_1724.method_24515().method_10069(x, 0, z).method_10087(y);
-                    class_2680 state = AutoBucket.mc.field_1687.method_8320(pos);
-                    class_238 bb = new class_238(pos).method_35578((double)(pos.method_10264() + 3));
-                    if (!bb.method_994(AutoBucket.mc.field_1724.method_5829()) || state.method_26215()) continue;
+                    BlockPos pos = AutoBucket.mc.player.getBlockPos().add(x, 0, z).down(y);
+                    BlockState state = AutoBucket.mc.world.getBlockState(pos);
+                    Box bb = new Box(pos).withMaxY((double)(pos.getY() + 3));
+                    if (!bb.intersects(AutoBucket.mc.player.getBoundingBox()) || state.isAir()) continue;
                     possibleBoxes.add(new PlaceData(pos, bb, new AtomicBoolean(false)));
                 }
             }
@@ -233,15 +233,15 @@ extends Module {
     }
 
     private static int getYMotion() {
-        return (int)Math.ceil(AutoBucket.mc.field_1724.method_18798().field_1351 * AutoBucket.mc.field_1724.method_18798().field_1351);
+        return (int)Math.ceil(AutoBucket.mc.player.getVelocity().y * AutoBucket.mc.player.getVelocity().y);
     }
 
     private static int getXMotion() {
-        return (int)Math.ceil(AutoBucket.mc.field_1724.method_18798().field_1352 * AutoBucket.mc.field_1724.method_18798().field_1352);
+        return (int)Math.ceil(AutoBucket.mc.player.getVelocity().x * AutoBucket.mc.player.getVelocity().x);
     }
 
     private static int getZMotion() {
-        return (int)Math.ceil(AutoBucket.mc.field_1724.method_18798().field_1350 * AutoBucket.mc.field_1724.method_18798().field_1350);
+        return (int)Math.ceil(AutoBucket.mc.player.getVelocity().z * AutoBucket.mc.player.getVelocity().z);
     }
 
     private static boolean nextTickWillLanding() {
@@ -249,35 +249,35 @@ extends Module {
     }
 
     private void retrieveWaterBlock() {
-        this.oldSlot = AutoBucket.mc.field_1724.method_31548().field_7545;
-        int emptyBucketSlot = this.getBucketSlot(class_1802.field_8550);
+        this.oldSlot = AutoBucket.mc.player.getInventory().selectedSlot;
+        int emptyBucketSlot = this.getBucketSlot(Items.BUCKET);
         if (emptyBucketSlot == -1) {
             return;
         }
-        class_2338 pos = AutoBucket.findScoopableWaterBlock();
+        BlockPos pos = AutoBucket.findScoopableWaterBlock();
         if (pos == null) {
             return;
         }
         Rotation r = AutoBucket.getLookAtWaterBlock(pos);
-        AutoBucket.mc.field_1724.method_31548().field_7545 = emptyBucketSlot;
+        AutoBucket.mc.player.getInventory().selectedSlot = emptyBucketSlot;
         this.interactItem(r);
         this.shouldReceive = false;
     }
 
-    private int getBucketSlot(class_1792 item) {
+    private int getBucketSlot(Item item) {
         for (int i = 0; i < 9; ++i) {
-            class_1799 stack = AutoBucket.mc.field_1724.method_31548().method_5438(i);
-            if (stack == null || stack.method_7909() != item) continue;
+            ItemStack stack = AutoBucket.mc.player.getInventory().getStack(i);
+            if (stack == null || stack.getItem() != item) continue;
             return i;
         }
         return -1;
     }
 
-    private static Rotation getLookAtWaterBlock(class_2338 targetPos) {
-        if (AutoBucket.mc.field_1724 == null || targetPos == null) {
+    private static Rotation getLookAtWaterBlock(BlockPos targetPos) {
+        if (AutoBucket.mc.player == null || targetPos == null) {
             return new Rotation(0.0f, 0.0f);
         }
-        return RotationUtils.getRandomRotationTo(targetPos, class_2350.field_11036);
+        return RotationUtils.getRandomRotationTo(targetPos, Direction.UP);
     }
 
     public void interactItem(Rotation rotation) {
@@ -285,26 +285,26 @@ extends Module {
         this.interactRequired = true;
     }
 
-    public static class_2338 findScoopableWaterBlock() {
-        class_1937 world = AutoBucket.mc.field_1724.method_37908();
-        class_2338 playerBlockPos = AutoBucket.mc.field_1724.method_24515();
-        double maxReachDistance = AutoBucket.mc.field_1724.method_55754();
+    public static BlockPos findScoopableWaterBlock() {
+        World world = AutoBucket.mc.player.getWorld();
+        BlockPos playerBlockPos = AutoBucket.mc.player.getBlockPos();
+        double maxReachDistance = AutoBucket.mc.player.getBlockInteractionRange();
         int reach = (int)Math.ceil(maxReachDistance);
-        ArrayList<class_2338> possible = new ArrayList<class_2338>();
+        ArrayList<BlockPos> possible = new ArrayList<BlockPos>();
         for (int x = -reach; x <= reach; ++x) {
             for (int y = -reach; y <= reach; ++y) {
                 for (int z = -reach; z <= reach; ++z) {
-                    class_2338 currentPos = playerBlockPos.method_10069(x, y, z);
-                    class_3610 fluidState = world.method_8316(currentPos);
-                    if (!fluidState.method_15771() || fluidState.method_15772() != class_3612.field_15910) continue;
+                    BlockPos currentPos = playerBlockPos.add(x, y, z);
+                    FluidState fluidState = world.getFluidState(currentPos);
+                    if (!fluidState.isStill() || fluidState.getFluid() != Fluids.WATER) continue;
                     possible.add(currentPos);
                 }
             }
         }
         possible.removeIf(blockPos -> {
             Rotation rotation = AutoBucket.getLookAtWaterBlock(blockPos);
-            return !ClientRayTraceUtil.didHitBlockFace((class_1657)AutoBucket.mc.field_1724, rotation.yaw, rotation.pitch, blockPos, class_2350.field_11036, false, blockState -> {
-                if (blockState.method_26204() instanceof class_2404) {
+            return !ClientRayTraceUtil.didHitBlockFace((PlayerEntity)AutoBucket.mc.player, rotation.yaw, rotation.pitch, blockPos, Direction.UP, false, blockState -> {
+                if (blockState.getBlock() instanceof FluidBlock) {
                     return false;
                 }
                 return ClientRayTraceUtil.isIgnoredBlock(blockState);
@@ -313,23 +313,23 @@ extends Module {
         if (possible.isEmpty()) {
             return null;
         }
-        return (class_2338)possible.getFirst();
+        return (BlockPos)possible.getFirst();
     }
 
     private boolean willTakeFallDamage() {
-        class_1293 effect;
+        StatusEffectInstance effect;
         float safeDistance = ((Number)this.minDistance.getValue()).floatValue();
-        if (AutoBucket.mc.field_1724.method_6059(class_1294.field_5913) && (effect = AutoBucket.mc.field_1724.method_6112(class_1294.field_5913)) != null) {
-            int jumpBoostLevel = effect.method_5578() + 1;
+        if (AutoBucket.mc.player.hasStatusEffect(StatusEffects.JUMP_BOOST) && (effect = AutoBucket.mc.player.getStatusEffect(StatusEffects.JUMP_BOOST)) != null) {
+            int jumpBoostLevel = effect.getAmplifier() + 1;
             safeDistance += (float)jumpBoostLevel;
         }
-        return AutoBucket.mc.field_1724.field_6017 > safeDistance;
+        return AutoBucket.mc.player.fallDistance > safeDistance;
     }
 
     @Override
     public int rotationPriority() {
-        class_1799 item;
-        if (((Boolean)this.macePriority.getValue()).booleanValue() && (item = AutoBucket.mc.field_1724.method_6047()) != null && item.method_7909() instanceof class_9362 && class_9362.method_58659((class_1309)AutoBucket.mc.field_1724)) {
+        ItemStack item;
+        if (((Boolean)this.macePriority.getValue()).booleanValue() && (item = AutoBucket.mc.player.getMainHandStack()) != null && item.getItem() instanceof MaceItem && MaceItem.shouldDealAdditionalDamage((LivingEntity)AutoBucket.mc.player)) {
             KillAura killaura = Southside.get().getModuleManager().get(KillAura.class);
             return killaura.rotationPriority() - 1;
         }
@@ -341,7 +341,7 @@ extends Module {
         return 495;
     }
 
-    record PlaceData(class_2338 pos, class_238 bb, AtomicBoolean pitchOnly) {
+    record PlaceData(BlockPos pos, Box bb, AtomicBoolean pitchOnly) {
     }
 }
 

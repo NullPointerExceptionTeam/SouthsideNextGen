@@ -16,31 +16,31 @@ import dev.southside.utils.rotation.RotationUtils;
 import dev.southside.utils.types.Rotation;
 import java.util.HashMap;
 import java.util.Map;
-import net.minecraft.class_1268;
-import net.minecraft.class_1269;
-import net.minecraft.class_1747;
-import net.minecraft.class_1799;
-import net.minecraft.class_2246;
-import net.minecraft.class_2338;
-import net.minecraft.class_2350;
-import net.minecraft.class_243;
-import net.minecraft.class_2680;
-import net.minecraft.class_3610;
-import net.minecraft.class_3965;
+import net.minecraft.util.Hand;
+import net.minecraft.util.ActionResult;
+import net.minecraft.item.BlockItem;
+import net.minecraft.item.ItemStack;
+import net.minecraft.block.Blocks;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.block.BlockState;
+import net.minecraft.fluid.FluidState;
+import net.minecraft.util.hit.BlockHitResult;
 
 public class AntiLiquid extends Module {
    private final Slider range = new Slider("Range", 4.0, 3.0, 5.0, 0.5);
    private final Switch water = new Switch("Water", true);
    private final Switch lava = new Switch("Lava", true);
    private static final int RETRY_COOLDOWN = 15;
-   private final Map<class_2338, Integer> attempted = new HashMap<>();
-   private static final class_2350[] PLACE_DIRECTIONS = new class_2350[]{
-      class_2350.field_11033, class_2350.field_11043, class_2350.field_11035, class_2350.field_11034, class_2350.field_11039, class_2350.field_11036
+   private final Map<BlockPos, Integer> attempted = new HashMap<>();
+   private static final Direction[] PLACE_DIRECTIONS = new Direction[]{
+      Direction.DOWN, Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST, Direction.UP
    };
    private AntiLiquid.Phase phase = AntiLiquid.Phase.SCAN;
-   private class_2338 targetFluidPos;
-   private class_2338 supportPos;
-   private class_2350 placeFace;
+   private BlockPos targetFluidPos;
+   private BlockPos supportPos;
+   private Direction placeFace;
    private int delayTicks;
    private int savedSlot = -1;
    private boolean placeReady;
@@ -57,8 +57,8 @@ public class AntiLiquid extends Module {
 
    @Override
    public void onDisable() {
-      if (this.savedSlot != -1 && mc.field_1724 != null) {
-         mc.field_1724.method_31548().field_7545 = this.savedSlot;
+      if (this.savedSlot != -1 && mc.player != null) {
+         mc.player.getInventory().selectedSlot = this.savedSlot;
       }
 
       this.reset();
@@ -83,7 +83,7 @@ public class AntiLiquid extends Module {
 
    @EventHandler
    public void onRotation(RotationEvent event) {
-      if (mc.field_1724 != null && mc.field_1687 != null && mc.field_1761 != null) {
+      if (mc.player != null && mc.world != null && mc.interactionManager != null) {
          switch (this.phase) {
             case SCAN:
                this.scan();
@@ -100,7 +100,7 @@ public class AntiLiquid extends Module {
                break;
             case RESTORE:
                if (this.savedSlot != -1) {
-                  mc.field_1724.method_31548().field_7545 = this.savedSlot;
+                  mc.player.getInventory().selectedSlot = this.savedSlot;
                   this.savedSlot = -1;
                }
 
@@ -111,7 +111,7 @@ public class AntiLiquid extends Module {
 
    @EventHandler
    public void onRotationApplied(RotationAppliedEvent event) {
-      if (mc.field_1724 != null && mc.field_1687 != null && mc.field_1761 != null) {
+      if (mc.player != null && mc.world != null && mc.interactionManager != null) {
          if (this.phase == AntiLiquid.Phase.PLACE && this.placeReady) {
             this.placeReady = false;
             ClientRayTraceUtil.updateEyePos();
@@ -122,14 +122,14 @@ public class AntiLiquid extends Module {
                this.attempted.put(this.targetFluidPos, 15);
                this.phase = AntiLiquid.Phase.RESTORE;
             } else {
-               class_3965 hit = ClientRayTraceUtil.getFacedBlock(rotation.yaw, rotation.pitch);
+               BlockHitResult hit = ClientRayTraceUtil.getFacedBlock(rotation.yaw, rotation.pitch);
                if (hit == null) {
                   this.attempted.put(this.targetFluidPos, 15);
                   this.phase = AntiLiquid.Phase.RESTORE;
                } else {
-                  class_1269 result = mc.field_1761.method_2896(mc.field_1724, class_1268.field_5808, hit);
-                  if (result.method_23665()) {
-                     mc.field_1724.method_6104(class_1268.field_5808);
+                  ActionResult result = mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, hit);
+                  if (result.isAccepted()) {
+                     mc.player.swingHand(Hand.MAIN_HAND);
                   }
 
                   this.attempted.put(this.targetFluidPos, 15);
@@ -143,21 +143,21 @@ public class AntiLiquid extends Module {
    private void scan() {
       this.attempted.entrySet().removeIf(e -> e.setValue(e.getValue() - 1) <= 0);
       ClientRayTraceUtil.updateEyePos();
-      class_2338 playerPos = mc.field_1724.method_24515();
+      BlockPos playerPos = mc.player.getBlockPos();
       int rangeInt = (int)Math.ceil(this.range.getValue().floatValue());
-      class_243 eyePos = mc.field_1724.method_33571();
+      Vec3d eyePos = mc.player.getEyePos();
 
       for (int x = -rangeInt; x <= rangeInt; x++) {
          for (int y = -rangeInt; y <= rangeInt; y++) {
             for (int z = -rangeInt; z <= rangeInt; z++) {
-               class_2338 pos = playerPos.method_10069(x, y, z);
+               BlockPos pos = playerPos.add(x, y, z);
                if (!this.attempted.containsKey(pos)) {
-                  double distance = eyePos.method_1022(class_243.method_24953(pos));
+                  double distance = eyePos.distanceTo(Vec3d.ofCenter(pos));
                   if (!(distance > this.range.getValue().floatValue())) {
-                     class_3610 fluidState = mc.field_1687.method_8316(pos);
-                     if (fluidState.method_15771()) {
-                        boolean isWater = mc.field_1687.method_8320(pos).method_26204() == class_2246.field_10382;
-                        boolean isLava = mc.field_1687.method_8320(pos).method_26204() == class_2246.field_10164;
+                     FluidState fluidState = mc.world.getFluidState(pos);
+                     if (fluidState.isStill()) {
+                        boolean isWater = mc.world.getBlockState(pos).getBlock() == Blocks.WATER;
+                        boolean isLava = mc.world.getBlockState(pos).getBlock() == Blocks.LAVA;
                         if ((!isWater || this.water.getValue())
                            && (!isLava || this.lava.getValue())
                            && (isWater || isLava)
@@ -189,8 +189,8 @@ public class AntiLiquid extends Module {
                this.attempted.put(this.targetFluidPos, 15);
                this.phase = AntiLiquid.Phase.SCAN;
             } else {
-               this.savedSlot = mc.field_1724.method_31548().field_7545;
-               mc.field_1724.method_31548().field_7545 = blockSlot;
+               this.savedSlot = mc.player.getInventory().selectedSlot;
+               mc.player.getInventory().selectedSlot = blockSlot;
                RotationUtils.setRotation(rotation, this.rotationPriority());
                this.placeReady = true;
                this.phase = AntiLiquid.Phase.PLACE;
@@ -206,13 +206,13 @@ public class AntiLiquid extends Module {
       return 2;
    }
 
-   private boolean findSupport(class_2338 fluidPos) {
-      for (class_2350 dir : PLACE_DIRECTIONS) {
-         class_2338 neighbor = fluidPos.method_10093(dir);
-         class_2680 state = mc.field_1687.method_8320(neighbor);
-         if (!state.method_26215() && !state.method_51176() && !state.method_45474()) {
+   private boolean findSupport(BlockPos fluidPos) {
+      for (Direction dir : PLACE_DIRECTIONS) {
+         BlockPos neighbor = fluidPos.offset(dir);
+         BlockState state = mc.world.getBlockState(neighbor);
+         if (!state.isAir() && !state.isLiquid() && !state.isReplaceable()) {
             this.supportPos = neighbor;
-            this.placeFace = dir.method_10153();
+            this.placeFace = dir.getOpposite();
             return true;
          }
       }
@@ -220,12 +220,12 @@ public class AntiLiquid extends Module {
       return false;
    }
 
-   private boolean canSeeFluid(class_2338 pos, class_243 eyePos) {
-      class_243 blockCenter = class_243.method_24953(pos);
+   private boolean canSeeFluid(BlockPos pos, Vec3d eyePos) {
+      Vec3d blockCenter = Vec3d.ofCenter(pos);
       Rotation rotation = RotationUtils.calculate(blockCenter);
-      double fluidDist = eyePos.method_1025(blockCenter);
-      class_3965 hit = ClientRayTraceUtil.getFacedBlock(rotation.yaw, rotation.pitch);
-      return hit == null ? true : eyePos.method_1025(hit.method_17784()) >= fluidDist;
+      double fluidDist = eyePos.squaredDistanceTo(blockCenter);
+      BlockHitResult hit = ClientRayTraceUtil.getFacedBlock(rotation.yaw, rotation.pitch);
+      return hit == null ? true : eyePos.squaredDistanceTo(hit.getPos()) >= fluidDist;
    }
 
    private boolean isAutoBucketWater() {
@@ -233,12 +233,12 @@ public class AntiLiquid extends Module {
       return !autoBucket.isEnabled() ? false : autoBucket.shouldReceive || autoBucket.interactRequired;
    }
 
-   private boolean hasAdjacentSource(class_2338 pos) {
-      for (class_2350 dir : class_2350.values()) {
-         if (dir != class_2350.field_11036 && dir != class_2350.field_11033) {
-            class_2338 neighbor = pos.method_10093(dir);
-            class_3610 neighborFluid = mc.field_1687.method_8316(neighbor);
-            if (neighborFluid.method_15771()) {
+   private boolean hasAdjacentSource(BlockPos pos) {
+      for (Direction dir : Direction.values()) {
+         if (dir != Direction.UP && dir != Direction.DOWN) {
+            BlockPos neighbor = pos.offset(dir);
+            FluidState neighborFluid = mc.world.getFluidState(neighbor);
+            if (neighborFluid.isStill()) {
                return true;
             }
          }
@@ -248,12 +248,12 @@ public class AntiLiquid extends Module {
    }
 
    private int findBlockSlot() {
-      if (mc.field_1724 == null) {
+      if (mc.player == null) {
          return -1;
       } else {
          for (int i = 0; i <= 8; i++) {
-            class_1799 stack = mc.field_1724.method_31548().method_5438(i);
-            if (!stack.method_7960() && stack.method_7909() instanceof class_1747 && SlotUtils.isGoodForBridging(stack.method_7909())) {
+            ItemStack stack = mc.player.getInventory().getStack(i);
+            if (!stack.isEmpty() && stack.getItem() instanceof BlockItem && SlotUtils.isGoodForBridging(stack.getItem())) {
                return i;
             }
          }

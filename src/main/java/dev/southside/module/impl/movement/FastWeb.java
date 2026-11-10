@@ -17,7 +17,7 @@ public class FastWeb extends Module {
 
    @EventHandler
    public void onEntityCobwebCollision(EntityCobwebCollisionEvent event) {
-      if (event.getEntity().method_5628() == mc.field_1724.method_5628()) {
+      if (event.getEntity().getId() == mc.player.getId()) {
          if (!ClientUtils.nullCheck()) {
             if (PlayerUtils.onGroundTicks >= 2) {
                PlayerUtils.strafe(0.5F);
@@ -26,9 +26,9 @@ public class FastWeb extends Module {
             }
 
             if (!this.noYMotion.getValue()) {
-               mc.field_1724
-                  .method_18800(
-                     mc.field_1724.method_18798().field_1352, mc.field_1690.field_1903.method_1434() ? 1.4 : -3.6, mc.field_1724.method_18798().field_1350
+               mc.player
+                  .setVelocity(
+                     mc.player.getVelocity().x, mc.options.jumpKey.isPressed() ? 1.4 : -3.6, mc.player.getVelocity().z
                   );
             }
          }

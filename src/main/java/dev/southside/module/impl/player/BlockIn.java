@@ -15,32 +15,32 @@ import dev.southside.utils.rotation.RotationUtils;
 import dev.southside.utils.types.Rotation;
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.class_1268;
-import net.minecraft.class_1747;
-import net.minecraft.class_1799;
-import net.minecraft.class_2246;
-import net.minecraft.class_2248;
-import net.minecraft.class_2338;
-import net.minecraft.class_2350;
-import net.minecraft.class_243;
-import net.minecraft.class_2680;
-import net.minecraft.class_3965;
+import net.minecraft.util.Hand;
+import net.minecraft.item.BlockItem;
+import net.minecraft.item.ItemStack;
+import net.minecraft.block.Blocks;
+import net.minecraft.block.Block;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.block.BlockState;
+import net.minecraft.util.hit.BlockHitResult;
 
 public class BlockIn extends Module {
    public Slider delay = new Slider("Delay", 50.0, 0.0, 500.0, 10.0);
    public Switch autoCenter = new Switch("AutoCenter", false);
    private static final double CENTER_THRESHOLD = 0.15;
-   private static final List<class_2350> CARDINAL = List.of(class_2350.field_11043, class_2350.field_11035, class_2350.field_11034, class_2350.field_11039);
-   private static final class_2350[] PLACE_FACES = new class_2350[]{
-      class_2350.field_11036, class_2350.field_11043, class_2350.field_11035, class_2350.field_11034, class_2350.field_11039
+   private static final List<Direction> CARDINAL = List.of(Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST);
+   private static final Direction[] PLACE_FACES = new Direction[]{
+      Direction.UP, Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST
    };
    private static final int MAX_PLAN_ATTEMPTS = 6;
    private final MSTimer timer = new MSTimer();
    private BlockIn.Phase phase = BlockIn.Phase.DONE;
-   private class_2338 basePos;
-   private class_2338 headTarget;
-   private class_2350 tallDirection;
-   private final List<class_2338> columnTargets = new ArrayList<>();
+   private BlockPos basePos;
+   private BlockPos headTarget;
+   private Direction tallDirection;
+   private final List<BlockPos> columnTargets = new ArrayList<>();
    private BlockIn.PlacePlan pendingPlan;
    private int planAttempts;
    private boolean jumpIssued;
@@ -54,12 +54,12 @@ public class BlockIn extends Module {
 
    @EventHandler
    public void onRotation(RotationEvent event) {
-      if (mc.field_1724 != null && mc.field_1687 != null) {
-         if (mc.field_1755 == null) {
+      if (mc.player != null && mc.world != null) {
+         if (mc.currentScreen == null) {
             if (this.phase != BlockIn.Phase.DONE) {
                if (this.basePos == null) {
-                  this.basePos = mc.field_1724.method_24515();
-                  this.headTarget = this.basePos.method_10086(2);
+                  this.basePos = mc.player.getBlockPos();
+                  this.headTarget = this.basePos.up(2);
                }
 
                switch (this.phase) {
@@ -87,20 +87,20 @@ public class BlockIn extends Module {
    @EventHandler
    public void onRotationApplied(RotationAppliedEvent event) {
       if (this.pendingPlan != null) {
-         if (mc.field_1724 != null && mc.field_1687 != null && mc.field_1761 != null) {
+         if (mc.player != null && mc.world != null && mc.interactionManager != null) {
             if (this.findBlockSlot() == -1) {
                this.finish();
             } else {
                Rotation rotation = RotationUtils.getRotation();
                if (rotation != null) {
                   ClientRayTraceUtil.updateEyePos();
-                  if (!ClientRayTraceUtil.didHitBlockFace(mc.field_1724, rotation.yaw, rotation.pitch, this.pendingPlan.placeOn, this.pendingPlan.face, true)) {
+                  if (!ClientRayTraceUtil.didHitBlockFace(mc.player, rotation.yaw, rotation.pitch, this.pendingPlan.placeOn, this.pendingPlan.face, true)) {
                      this.planAttempts++;
                      if (this.planAttempts >= 6) {
                         this.failCurrentPlan();
                      }
                   } else {
-                     class_3965 hit = ClientRayTraceUtil.getFacedBlock(rotation.yaw, rotation.pitch);
+                     BlockHitResult hit = ClientRayTraceUtil.getFacedBlock(rotation.yaw, rotation.pitch);
                      if (hit == null) {
                         this.planAttempts++;
                         if (this.planAttempts >= 6) {
@@ -111,18 +111,18 @@ public class BlockIn extends Module {
                         if (slot == -1) {
                            this.finish();
                         } else {
-                           int previousSlot = mc.field_1724.method_31548().field_7545;
+                           int previousSlot = mc.player.getInventory().selectedSlot;
                            boolean success = false;
-                           class_2338 placedTarget = this.pendingPlan.target;
-                           mc.field_1724.method_31548().field_7545 = slot;
+                           BlockPos placedTarget = this.pendingPlan.target;
+                           mc.player.getInventory().selectedSlot = slot;
 
                            try {
-                              success = mc.field_1761.method_2896(mc.field_1724, class_1268.field_5808, hit).method_23665();
+                              success = mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, hit).isAccepted();
                               if (success) {
-                                 mc.field_1724.method_6104(class_1268.field_5808);
+                                 mc.player.swingHand(Hand.MAIN_HAND);
                               }
                            } finally {
-                              mc.field_1724.method_31548().field_7545 = previousSlot;
+                              mc.player.getInventory().selectedSlot = previousSlot;
                            }
 
                            if (success) {
@@ -146,9 +146,9 @@ public class BlockIn extends Module {
    }
 
    private void startSequence() {
-      if (mc.field_1724 != null) {
-         this.basePos = mc.field_1724.method_24515();
-         this.headTarget = this.basePos.method_10086(2);
+      if (mc.player != null) {
+         this.basePos = mc.player.getBlockPos();
+         this.headTarget = this.basePos.up(2);
          this.columnTargets.clear();
          this.prepareColumnTargets();
          this.tallDirection = null;
@@ -157,7 +157,7 @@ public class BlockIn extends Module {
          this.jumpIssued = false;
          this.centering = false;
          this.timer.reset();
-         this.headAlreadyExists = mc.field_1687 != null && !this.canPlaceAt(this.headTarget);
+         this.headAlreadyExists = mc.world != null && !this.canPlaceAt(this.headTarget);
          if (this.autoCenter.getValue()) {
             this.phase = BlockIn.Phase.CENTER;
             this.centering = true;
@@ -168,18 +168,18 @@ public class BlockIn extends Module {
    }
 
    private void handleCenter() {
-      if (mc.field_1724 != null) {
-         double centerX = this.basePos.method_10263() + 0.5;
-         double centerZ = this.basePos.method_10260() + 0.5;
-         double dx = centerX - mc.field_1724.method_23317();
-         double dz = centerZ - mc.field_1724.method_23321();
+      if (mc.player != null) {
+         double centerX = this.basePos.getX() + 0.5;
+         double centerZ = this.basePos.getZ() + 0.5;
+         double dx = centerX - mc.player.getX();
+         double dz = centerZ - mc.player.getZ();
          double dist = Math.sqrt(dx * dx + dz * dz);
          if (dist <= 0.15) {
             this.centering = false;
             this.advancePhase(BlockIn.Phase.PLACE_COLUMNS);
          } else {
-            class_243 eyePos = mc.field_1724.method_33571();
-            class_243 target = new class_243(centerX, eyePos.field_1351, centerZ);
+            Vec3d eyePos = mc.player.getEyePos();
+            Vec3d target = new Vec3d(centerX, eyePos.y, centerZ);
             Rotation rot = RotationUtils.getRotationTo(eyePos, target);
             if (rot != null) {
                RotationUtils.setRotation(rot, 0, MoveFixMode.Strict);
@@ -195,7 +195,7 @@ public class BlockIn extends Module {
          RotationUtils.setRotation(this.pendingPlan.rotation);
       } else if (this.timer.hasTimePassed(this.delay.getValue().longValue())) {
          while (!this.columnTargets.isEmpty()) {
-            class_2338 target = this.columnTargets.get(0);
+            BlockPos target = this.columnTargets.get(0);
             if (!this.canPlaceAt(target)) {
                this.columnTargets.remove(0);
             } else {
@@ -214,18 +214,18 @@ public class BlockIn extends Module {
    }
 
    private void handleJump() {
-      if (!this.jumpIssued && mc.field_1724.method_24828()) {
-         mc.field_1690.field_1903.method_23481(true);
+      if (!this.jumpIssued && mc.player.isOnGround()) {
+         mc.options.jumpKey.setPressed(true);
          this.jumpIssued = true;
          this.jumpKeyHeld = true;
          this.timer.reset();
       } else {
-         if (this.jumpKeyHeld && (!mc.field_1724.method_24828() || this.timer.hasTimePassed(150L))) {
-            mc.field_1690.field_1903.method_23481(false);
+         if (this.jumpKeyHeld && (!mc.player.isOnGround() || this.timer.hasTimePassed(150L))) {
+            mc.options.jumpKey.setPressed(false);
             this.jumpKeyHeld = false;
          }
 
-         if (this.jumpIssued && !mc.field_1724.method_24828()) {
+         if (this.jumpIssued && !mc.player.isOnGround()) {
             this.advancePhase(BlockIn.Phase.PLACE_THIRD);
          }
       }
@@ -245,12 +245,12 @@ public class BlockIn extends Module {
             }
          }
 
-         class_2338 target = this.basePos.method_10093(this.tallDirection).method_10086(2);
+         BlockPos target = this.basePos.offset(this.tallDirection).up(2);
          if (!this.canPlaceAt(target)) {
             this.advancePhase(BlockIn.Phase.PLACE_HEAD);
          } else {
-            class_2338 placeOn = this.basePos.method_10093(this.tallDirection).method_10086(1);
-            BlockIn.PlacePlan plan = this.buildPlan(target, placeOn, class_2350.field_11036);
+            BlockPos placeOn = this.basePos.offset(this.tallDirection).up(1);
+            BlockIn.PlacePlan plan = this.buildPlan(target, placeOn, Direction.UP);
             if (plan == null) {
                plan = this.buildPlan(target, null, null);
             }
@@ -266,12 +266,12 @@ public class BlockIn extends Module {
 
    private void handlePlaceHead() {
       if (this.headTarget == null) {
-         this.headTarget = this.basePos.method_10086(2);
+         this.headTarget = this.basePos.up(2);
       }
 
       if (!this.canPlaceAt(this.headTarget)) {
          this.finish();
-      } else if (mc.field_1724.method_24828() && this.jumpIssued) {
+      } else if (mc.player.isOnGround() && this.jumpIssued) {
          if (this.findBlockSlot() == -1) {
             this.finish();
          } else if (this.pendingPlan != null) {
@@ -285,8 +285,8 @@ public class BlockIn extends Module {
                }
             }
 
-            class_2338 placeOn = this.basePos.method_10093(this.tallDirection).method_10086(2);
-            class_2350 face = this.tallDirection.method_10153();
+            BlockPos placeOn = this.basePos.offset(this.tallDirection).up(2);
+            Direction face = this.tallDirection.getOpposite();
             BlockIn.PlacePlan plan = this.buildPlan(this.headTarget, placeOn, face);
             if (plan == null) {
                this.finish();
@@ -315,7 +315,7 @@ public class BlockIn extends Module {
    }
 
    private void failCurrentPlan() {
-      class_2338 target = this.pendingPlan != null ? this.pendingPlan.target : null;
+      BlockPos target = this.pendingPlan != null ? this.pendingPlan.target : null;
       this.pendingPlan = null;
       this.planAttempts = 0;
       this.timer.reset();
@@ -333,7 +333,7 @@ public class BlockIn extends Module {
       }
    }
 
-   private void onPlaced(class_2338 target) {
+   private void onPlaced(BlockPos target) {
       if (this.phase == BlockIn.Phase.PLACE_COLUMNS) {
          this.columnTargets.remove(target);
          if (this.columnTargets.isEmpty()) {
@@ -354,7 +354,7 @@ public class BlockIn extends Module {
       this.planAttempts = 0;
       this.timer.reset();
       if (this.jumpKeyHeld) {
-         mc.field_1690.field_1903.method_23481(false);
+         mc.options.jumpKey.setPressed(false);
          this.jumpKeyHeld = false;
       }
 
@@ -363,31 +363,31 @@ public class BlockIn extends Module {
 
    private void prepareColumnTargets() {
       this.columnTargets.clear();
-      class_2350 facing = mc.field_1724.method_5735();
-      this.columnTargets.add(this.basePos.method_10093(facing));
+      Direction facing = mc.player.getHorizontalFacing();
+      this.columnTargets.add(this.basePos.offset(facing));
 
-      for (class_2350 dir : CARDINAL) {
+      for (Direction dir : CARDINAL) {
          if (dir != facing) {
-            this.columnTargets.add(this.basePos.method_10093(dir));
+            this.columnTargets.add(this.basePos.offset(dir));
          }
       }
 
-      this.columnTargets.add(this.basePos.method_10093(facing).method_10084());
+      this.columnTargets.add(this.basePos.offset(facing).up());
 
-      for (class_2350 dirx : CARDINAL) {
+      for (Direction dirx : CARDINAL) {
          if (dirx != facing) {
-            this.columnTargets.add(this.basePos.method_10093(dirx).method_10084());
+            this.columnTargets.add(this.basePos.offset(dirx).up());
          }
       }
    }
 
-   private class_2350 chooseTallDirection() {
-      if (mc.field_1687 != null && mc.field_1724 != null) {
-         class_2350 facing = mc.field_1724.method_5735();
+   private Direction chooseTallDirection() {
+      if (mc.world != null && mc.player != null) {
+         Direction facing = mc.player.getHorizontalFacing();
          if (this.hasTwoHighColumn(facing)) {
             return facing;
          } else {
-            for (class_2350 dir : CARDINAL) {
+            for (Direction dir : CARDINAL) {
                if (dir != facing && this.hasTwoHighColumn(dir)) {
                   return dir;
                }
@@ -396,7 +396,7 @@ public class BlockIn extends Module {
             if (this.hasBaseBlock(facing)) {
                return facing;
             } else {
-               for (class_2350 dirx : CARDINAL) {
+               for (Direction dirx : CARDINAL) {
                   if (dirx != facing && this.hasBaseBlock(dirx)) {
                      return dirx;
                   }
@@ -410,26 +410,26 @@ public class BlockIn extends Module {
       }
    }
 
-   private boolean hasTwoHighColumn(class_2350 dir) {
-      if (mc.field_1687 == null) {
+   private boolean hasTwoHighColumn(Direction dir) {
+      if (mc.world == null) {
          return false;
       } else {
-         class_2338 base = this.basePos.method_10093(dir);
-         return !mc.field_1687.method_8320(base).method_26215() && !mc.field_1687.method_8320(base.method_10084()).method_26215();
+         BlockPos base = this.basePos.offset(dir);
+         return !mc.world.getBlockState(base).isAir() && !mc.world.getBlockState(base.up()).isAir();
       }
    }
 
-   private boolean hasBaseBlock(class_2350 dir) {
-      if (mc.field_1687 == null) {
+   private boolean hasBaseBlock(Direction dir) {
+      if (mc.world == null) {
          return false;
       } else {
-         class_2338 base = this.basePos.method_10093(dir);
-         return !mc.field_1687.method_8320(base).method_26215();
+         BlockPos base = this.basePos.offset(dir);
+         return !mc.world.getBlockState(base).isAir();
       }
    }
 
-   private BlockIn.PlacePlan buildPlan(class_2338 target, class_2338 preferredPlaceOn, class_2350 preferredFace) {
-      if (mc.field_1724 != null && mc.field_1687 != null) {
+   private BlockIn.PlacePlan buildPlan(BlockPos target, BlockPos preferredPlaceOn, Direction preferredFace) {
+      if (mc.player != null && mc.world != null) {
          if (!this.canPlaceAt(target)) {
             return null;
          } else {
@@ -440,8 +440,8 @@ public class BlockIn extends Module {
                }
             }
 
-            for (class_2350 face : PLACE_FACES) {
-               class_2338 placeOn = target.method_10093(face.method_10153());
+            for (Direction face : PLACE_FACES) {
+               BlockPos placeOn = target.offset(face.getOpposite());
                if (this.isClickable(placeOn)) {
                   Rotation rotation = RotationUtils.getRotationToBlock(placeOn, face);
                   if (rotation != null) {
@@ -457,35 +457,35 @@ public class BlockIn extends Module {
       }
    }
 
-   private boolean canPlaceAt(class_2338 pos) {
-      if (mc.field_1687 == null) {
+   private boolean canPlaceAt(BlockPos pos) {
+      if (mc.world == null) {
          return false;
       } else {
-         class_2680 state = mc.field_1687.method_8320(pos);
-         return state.method_26215() || state.method_26204() == class_2246.field_10382 || state.method_26204() == class_2246.field_10164;
+         BlockState state = mc.world.getBlockState(pos);
+         return state.isAir() || state.getBlock() == Blocks.WATER || state.getBlock() == Blocks.LAVA;
       }
    }
 
-   private boolean isClickable(class_2338 pos) {
-      if (mc.field_1687 == null) {
+   private boolean isClickable(BlockPos pos) {
+      if (mc.world == null) {
          return false;
       } else {
-         class_2680 state = mc.field_1687.method_8320(pos);
-         if (state.method_26215()) {
+         BlockState state = mc.world.getBlockState(pos);
+         if (state.isAir()) {
             return false;
          } else {
-            class_2248 block = state.method_26204();
-            return block != class_2246.field_10382 && block != class_2246.field_10164;
+            Block block = state.getBlock();
+            return block != Blocks.WATER && block != Blocks.LAVA;
          }
       }
    }
 
    private int findBlockSlot() {
-      if (mc.field_1724 == null) {
+      if (mc.player == null) {
          return -1;
       } else {
          for (int i = 0; i < 9; i++) {
-            class_1799 stack = mc.field_1724.method_31548().method_5438(i);
+            ItemStack stack = mc.player.getInventory().getStack(i);
             if (this.isValidBlock(stack)) {
                return i;
             }
@@ -495,16 +495,16 @@ public class BlockIn extends Module {
       }
    }
 
-   private boolean isValidBlock(class_1799 stack) {
-      if (stack.method_7960()) {
+   private boolean isValidBlock(ItemStack stack) {
+      if (stack.isEmpty()) {
          return false;
-      } else if (stack.method_7909() instanceof class_1747 blockItem) {
-         class_2248 block = blockItem.method_7711();
-         return block != class_2246.field_10375
-            && block != class_2246.field_10102
-            && block != class_2246.field_10255
-            && block != class_2246.field_10382
-            && block != class_2246.field_10164
+      } else if (stack.getItem() instanceof BlockItem blockItem) {
+         Block block = blockItem.getBlock();
+         return block != Blocks.TNT
+            && block != Blocks.SAND
+            && block != Blocks.GRAVEL
+            && block != Blocks.WATER
+            && block != Blocks.LAVA
             && !block.toString().toLowerCase().contains("door")
             && !block.toString().toLowerCase().contains("trapdoor");
       } else {
@@ -520,7 +520,7 @@ public class BlockIn extends Module {
 
    @EventHandler
    public void onMoveInput(MovementInputEvent event) {
-      if (mc.field_1724 != null && this.phase != BlockIn.Phase.DONE) {
+      if (mc.player != null && this.phase != BlockIn.Phase.DONE) {
          if (this.centering) {
             event.setForward(false);
             event.setBack(false);
@@ -529,10 +529,10 @@ public class BlockIn extends Module {
             event.setJump(false);
             event.setSneak(false);
             event.setSprint(false);
-            double centerX = this.basePos.method_10263() + 0.5;
-            double centerZ = this.basePos.method_10260() + 0.5;
-            double dx = centerX - mc.field_1724.method_23317();
-            double dz = centerZ - mc.field_1724.method_23321();
+            double centerX = this.basePos.getX() + 0.5;
+            double centerZ = this.basePos.getZ() + 0.5;
+            double dx = centerX - mc.player.getX();
+            double dz = centerZ - mc.player.getZ();
             double dist = Math.sqrt(dx * dx + dz * dz);
             if (dist > 0.15) {
                event.setForward(true);
@@ -553,7 +553,7 @@ public class BlockIn extends Module {
       this.planAttempts = 0;
       this.jumpIssued = false;
       if (this.jumpKeyHeld) {
-         mc.field_1690.field_1903.method_23481(false);
+         mc.options.jumpKey.setPressed(false);
       }
 
       this.jumpKeyHeld = false;
@@ -572,12 +572,12 @@ public class BlockIn extends Module {
    }
 
    private static class PlacePlan {
-      private final class_2338 target;
-      private final class_2338 placeOn;
-      private final class_2350 face;
+      private final BlockPos target;
+      private final BlockPos placeOn;
+      private final Direction face;
       private final Rotation rotation;
 
-      private PlacePlan(class_2338 target, class_2338 placeOn, class_2350 face, Rotation rotation) {
+      private PlacePlan(BlockPos target, BlockPos placeOn, Direction face, Rotation rotation) {
          this.target = target;
          this.placeOn = placeOn;
          this.face = face;

@@ -28,37 +28,37 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import net.minecraft.class_1657;
-import net.minecraft.class_1713;
-import net.minecraft.class_1738;
-import net.minecraft.class_1743;
-import net.minecraft.class_1747;
-import net.minecraft.class_1753;
-import net.minecraft.class_1764;
-import net.minecraft.class_1787;
-import net.minecraft.class_1792;
-import net.minecraft.class_1794;
-import net.minecraft.class_1799;
-import net.minecraft.class_1802;
-import net.minecraft.class_1810;
-import net.minecraft.class_1821;
-import net.minecraft.class_1829;
-import net.minecraft.class_2266;
-import net.minecraft.class_2269;
-import net.minecraft.class_2292;
-import net.minecraft.class_2349;
-import net.minecraft.class_2354;
-import net.minecraft.class_2356;
-import net.minecraft.class_2399;
-import net.minecraft.class_2440;
-import net.minecraft.class_2482;
-import net.minecraft.class_2510;
-import net.minecraft.class_2533;
-import net.minecraft.class_2577;
-import net.minecraft.class_2815;
-import net.minecraft.class_465;
-import net.minecraft.class_490;
-import net.minecraft.class_7923;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.screen.slot.SlotActionType;
+import net.minecraft.item.ArmorItem;
+import net.minecraft.item.AxeItem;
+import net.minecraft.item.BlockItem;
+import net.minecraft.item.BowItem;
+import net.minecraft.item.CrossbowItem;
+import net.minecraft.item.FishingRodItem;
+import net.minecraft.item.Item;
+import net.minecraft.item.HoeItem;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.item.PickaxeItem;
+import net.minecraft.item.ShovelItem;
+import net.minecraft.item.SwordItem;
+import net.minecraft.block.CactusBlock;
+import net.minecraft.block.ButtonBlock;
+import net.minecraft.block.ConcretePowderBlock;
+import net.minecraft.block.FenceGateBlock;
+import net.minecraft.block.FenceBlock;
+import net.minecraft.block.FlowerBlock;
+import net.minecraft.block.LadderBlock;
+import net.minecraft.block.PressurePlateBlock;
+import net.minecraft.block.SlabBlock;
+import net.minecraft.block.StairsBlock;
+import net.minecraft.block.TrapdoorBlock;
+import net.minecraft.block.CarpetBlock;
+import net.minecraft.network.packet.c2s.play.CloseHandledScreenC2SPacket;
+import net.minecraft.client.gui.screen.ingame.HandledScreen;
+import net.minecraft.client.gui.screen.ingame.InventoryScreen;
+import net.minecraft.registry.Registries;
 import org.apache.commons.lang3.tuple.Pair;
 
 public class InvManagerN extends Module {
@@ -176,18 +176,18 @@ public class InvManagerN extends Module {
       this.hideIf(this.rodSlot.getLabel(), () -> !this.switchRod.getValue() || this.offhandItems.isMode("Fishing Rod"));
    }
 
-   public static boolean isItemUseful(class_1799 stack) {
-      if (stack.method_7960()) {
+   public static boolean isItemUseful(ItemStack stack) {
+      if (stack.isEmpty()) {
          return false;
-      } else if (stack.method_7909().equals(class_1802.field_8529)
-         || stack.method_7909().equals(class_1802.field_8536)
-         || stack.method_7909().equals(class_1802.field_8674)) {
+      } else if (stack.getItem().equals(Items.BOOK)
+         || stack.getItem().equals(Items.BOOKSHELF)
+         || stack.getItem().equals(Items.WRITABLE_BOOK)) {
          return false;
       } else if (InventoryUtils.isGodItem(stack)) {
          return true;
-      } else if (stack.method_7964().getString().contains("点击使用")) {
+      } else if (stack.getName().getString().contains("点击使用")) {
          return false;
-      } else if (stack.method_7909() instanceof class_1738) {
+      } else if (stack.getItem() instanceof ArmorItem) {
          float protection = InventoryUtils.getProtection(stack);
          if (InventoryUtils.getCurrentArmorScore(ItemUtils.getEquippableSlotType(stack)) >= protection) {
             return false;
@@ -195,19 +195,19 @@ public class InvManagerN extends Module {
             float bestArmor = InventoryUtils.getBestArmorScore(ItemUtils.getEquippableSlotType(stack));
             return !(protection < bestArmor);
          }
-      } else if (stack.method_7909() instanceof class_1829) {
+      } else if (stack.getItem() instanceof SwordItem) {
          return InventoryUtils.getBestSword() == stack;
-      } else if (stack.method_7909() instanceof class_1810) {
+      } else if (stack.getItem() instanceof PickaxeItem) {
          return InventoryUtils.getBestPickaxe() == stack;
-      } else if (stack.method_7909() instanceof class_1743 && !InventoryUtils.isSharpnessAxe(stack)) {
+      } else if (stack.getItem() instanceof AxeItem && !InventoryUtils.isSharpnessAxe(stack)) {
          return InventoryUtils.getBestAxe() == stack;
-      } else if (stack.method_7909() instanceof class_1821) {
+      } else if (stack.getItem() instanceof ShovelItem) {
          return InventoryUtils.getBestShovel() == stack;
-      } else if (stack.method_7909() instanceof class_1794) {
+      } else if (stack.getItem() instanceof HoeItem) {
          return false;
-      } else if (stack.method_7909() instanceof class_1764) {
+      } else if (stack.getItem() instanceof CrossbowItem) {
          return InventoryUtils.getBestCrossbow() == stack;
-      } else if (stack.method_7909() instanceof class_1753) {
+      } else if (stack.getItem() instanceof BowItem) {
          if (InventoryUtils.isPunchBow(stack) && InventoryUtils.getBestPunchBow() == stack) {
             return true;
          } else if (InventoryUtils.isPowerBow(stack) && InventoryUtils.getBestPowerBow() == stack) {
@@ -215,65 +215,65 @@ public class InvManagerN extends Module {
          } else {
             return InventoryUtils.isFlameBow(stack) && InventoryUtils.getBestFlameBow() == stack
                ? true
-               : InventoryUtils.getItemCount(class_1802.field_8102) <= 1;
+               : InventoryUtils.getItemCount(Items.BOW) <= 1;
          }
-      } else if (stack.method_7909() == class_1802.field_8705 && InventoryUtils.getItemCount(class_1802.field_8705) > waterBucketCount.getValue().intValue()) {
+      } else if (stack.getItem() == Items.WATER_BUCKET && InventoryUtils.getItemCount(Items.WATER_BUCKET) > waterBucketCount.getValue().intValue()) {
          return false;
-      } else if (stack.method_7909() == class_1802.field_8187 && InventoryUtils.getItemCount(class_1802.field_8187) > lavaBucketCount.getValue().intValue()) {
+      } else if (stack.getItem() == Items.LAVA_BUCKET && InventoryUtils.getItemCount(Items.LAVA_BUCKET) > lavaBucketCount.getValue().intValue()) {
          return false;
-      } else if (stack.method_7909() == class_1802.field_8786) {
-         return InventoryUtils.getItemCount(class_1802.field_8786) <= 64;
-      } else if (stack.method_7909() instanceof class_1787 && InventoryUtils.getItemCount(class_1802.field_8378) > 1) {
+      } else if (stack.getItem() == Items.COBWEB) {
+         return InventoryUtils.getItemCount(Items.COBWEB) <= 64;
+      } else if (stack.getItem() instanceof FishingRodItem && InventoryUtils.getItemCount(Items.FISHING_ROD) > 1) {
          return false;
-      } else if ((stack.method_7909() == class_1802.field_8543 || stack.method_7909() == class_1802.field_8803) && !keepProjectile.getValue()) {
+      } else if ((stack.getItem() == Items.SNOWBALL || stack.getItem() == Items.EGG) && !keepProjectile.getValue()) {
          return false;
-      } else if (stack.method_7909() == class_1802.field_8626) {
+      } else if (stack.getItem() == Items.TNT) {
          return true;
-      } else if (stack.method_7909() instanceof class_1747 blockItem && blockItem.method_7711() instanceof class_2482) {
+      } else if (stack.getItem() instanceof BlockItem blockItem && blockItem.getBlock() instanceof SlabBlock) {
          return false;
-      } else if (stack.method_7909() == class_1802.field_8662) {
+      } else if (stack.getItem() == Items.PRISMARINE_SHARD) {
          return false;
-      } else if (stack.method_7909() != class_1802.field_8110
-         && stack.method_7909() != class_1802.field_8145
-         && stack.method_7909() != class_1802.field_8858
-         && stack.method_7909() != class_1802.field_8200) {
-         if (stack.method_7909() instanceof class_1747 blockItem && blockItem.method_7711() instanceof class_2356) {
+      } else if (stack.getItem() != Items.GRAVEL
+         && stack.getItem() != Items.FLINT
+         && stack.getItem() != Items.SAND
+         && stack.getItem() != Items.RED_SAND) {
+         if (stack.getItem() instanceof BlockItem blockItem && blockItem.getBlock() instanceof FlowerBlock) {
             return false;
-         } else if (stack.method_7909() instanceof class_1747 blockItem && blockItem.method_7711() instanceof class_2440) {
+         } else if (stack.getItem() instanceof BlockItem blockItem && blockItem.getBlock() instanceof PressurePlateBlock) {
             return false;
-         } else if (stack.method_7909() instanceof class_1747 blockItem && blockItem.method_7711() instanceof class_2510) {
+         } else if (stack.getItem() instanceof BlockItem blockItem && blockItem.getBlock() instanceof StairsBlock) {
             return false;
-         } else if (stack.method_7909() != class_1802.field_8861
-            && stack.method_7909() != class_1802.field_8179
-            && stack.method_7909() != class_1802.field_8276) {
-            if (stack.method_7909() instanceof class_1747 blockItem && blockItem.method_7711() instanceof class_2354) {
+         } else if (stack.getItem() != Items.WHEAT
+            && stack.getItem() != Items.CARROT
+            && stack.getItem() != Items.STRING) {
+            if (stack.getItem() instanceof BlockItem blockItem && blockItem.getBlock() instanceof FenceBlock) {
                return false;
-            } else if (stack.method_7909() instanceof class_1747 blockItem && blockItem.method_7711() instanceof class_2349) {
+            } else if (stack.getItem() instanceof BlockItem blockItem && blockItem.getBlock() instanceof FenceGateBlock) {
                return false;
-            } else if (stack.method_7909() instanceof class_1747 blockItem && blockItem.method_7711() instanceof class_2269) {
+            } else if (stack.getItem() instanceof BlockItem blockItem && blockItem.getBlock() instanceof ButtonBlock) {
                return false;
-            } else if (stack.method_7909() instanceof class_1747 blockItem && blockItem.method_7711() instanceof class_2577) {
+            } else if (stack.getItem() instanceof BlockItem blockItem && blockItem.getBlock() instanceof CarpetBlock) {
                return false;
-            } else if (stack.method_7909() instanceof class_1747 blockItem && blockItem.method_7711() instanceof class_2292) {
+            } else if (stack.getItem() instanceof BlockItem blockItem && blockItem.getBlock() instanceof ConcretePowderBlock) {
                return false;
-            } else if (stack.method_7909() != class_1802.field_17535
-               && stack.method_7909() != class_1802.field_17536
-               && stack.method_7909() != class_1802.field_17537
-               && stack.method_7909() != class_1802.field_17538
-               && stack.method_7909() != class_1802.field_17539
-               && stack.method_7909() != class_1802.field_17540
-               && stack.method_7909() != class_1802.field_42688
-               && stack.method_7909() != class_1802.field_37508) {
-               if (stack.method_7909() instanceof class_1747 blockItem && blockItem.method_7711() instanceof class_2266) {
+            } else if (stack.getItem() != Items.OAK_SAPLING
+               && stack.getItem() != Items.SPRUCE_SAPLING
+               && stack.getItem() != Items.BIRCH_SAPLING
+               && stack.getItem() != Items.JUNGLE_SAPLING
+               && stack.getItem() != Items.ACACIA_SAPLING
+               && stack.getItem() != Items.DARK_OAK_SAPLING
+               && stack.getItem() != Items.CHERRY_SAPLING
+               && stack.getItem() != Items.MANGROVE_PROPAGULE) {
+               if (stack.getItem() instanceof BlockItem blockItem && blockItem.getBlock() instanceof CactusBlock) {
                   return false;
-               } else if (stack.method_7909() instanceof class_1747 blockItem
-                  && class_7923.field_41175.method_10221(blockItem.method_7711()).method_12832().contains("terracotta")) {
-                  String path = class_7923.field_41175.method_10221(blockItem.method_7711()).method_12832();
+               } else if (stack.getItem() instanceof BlockItem blockItem
+                  && Registries.BLOCK.getId(blockItem.getBlock()).getPath().contains("terracotta")) {
+                  String path = Registries.BLOCK.getId(blockItem.getBlock()).getPath();
                   return path.equals("blue_terracotta") || path.equals("red_terracotta");
-               } else if (stack.method_7909() instanceof class_1747 blockItem && blockItem.method_7711() instanceof class_2533) {
+               } else if (stack.getItem() instanceof BlockItem blockItem && blockItem.getBlock() instanceof TrapdoorBlock) {
                   return false;
                } else {
-                  return stack.method_7909() instanceof class_1747 blockItem && blockItem.method_7711() instanceof class_2399
+                  return stack.getItem() instanceof BlockItem blockItem && blockItem.getBlock() instanceof LadderBlock
                      ? false
                      : InventoryUtils.isCommonItemUseful(stack);
                }
@@ -351,13 +351,13 @@ public class InvManagerN extends Module {
       priority = 1
    )
    public void onMotion(MotionEvent e) {
-      if (e.getState() == Stage.PRE && this.autoDisable.getValue() && mc.field_1687 != null) {
-         if (mc.field_1724 != null && !mc.field_1724.method_5805()) {
+      if (e.getState() == Stage.PRE && this.autoDisable.getValue() && mc.world != null) {
+         if (mc.player != null && !mc.player.isAlive()) {
             this.setEnable(false);
             return;
          }
 
-         if (mc.field_1724.field_6012 <= 1) {
+         if (mc.player.age <= 1) {
             this.setEnable(false);
          }
       }
@@ -365,7 +365,7 @@ public class InvManagerN extends Module {
 
    @EventHandler
    public void onRotation(RotationEvent e) {
-      if (!(mc.field_1755 instanceof OneConfigGui) && !this.checkConfig()) {
+      if (!(mc.currentScreen instanceof OneConfigGui) && !this.checkConfig()) {
          this.message("[Inv]配置错误请检查", new Object[0]);
          this.toggle();
       } else {
@@ -377,7 +377,7 @@ public class InvManagerN extends Module {
                this.noMoveTicks++;
             }
 
-            if (mc.field_1724 != null && mc.field_1724.method_6115()) {
+            if (mc.player != null && mc.player.isUsingItem()) {
                this.usingItemTicks = 0;
                this.wasUsingItem = true;
             } else if (this.wasUsingItem) {
@@ -388,13 +388,13 @@ public class InvManagerN extends Module {
                }
             }
 
-            boolean isUsingItemWithDelay = mc.field_1724.method_6115()
+            boolean isUsingItemWithDelay = mc.player.isUsingItem()
                || this.wasUsingItem
-               || KillAura.target != null && this.delay.getValue().doubleValue() != 0.0 && mc.field_1755 == null;
+               || KillAura.target != null && this.delay.getValue().doubleValue() != 0.0 && mc.currentScreen == null;
             if (!StealerN.isWorking()
                && !Southside.INSTANCE.getModuleManager().isEnabled(Scaffold.class)
-               && (this.inventoryOnly.getValue() ? mc.field_1755 instanceof class_490 : !isUsingItemWithDelay)) {
-               if (!(mc.field_1755 instanceof class_465 container && container.method_17577().field_7763 != mc.field_1724.field_7498.field_7763)) {
+               && (this.inventoryOnly.getValue() ? mc.currentScreen instanceof InventoryScreen : !isUsingItemWithDelay)) {
+               if (!(mc.currentScreen instanceof HandledScreen container && container.getScreenHandler().syncId != mc.player.playerScreenHandler.syncId)) {
                   boolean movingNow = this.hasMoveInput();
                   boolean walkingSort = !this.inventoryOnly.getValue()
                      && !Southside.INSTANCE.getModuleManager().isEnabled(Scaffold.class)
@@ -438,13 +438,13 @@ public class InvManagerN extends Module {
 
                   if (shouldClickThisTick) {
                      if (this.autoArmor.getValue()) {
-                        for (int i = 0; i < mc.field_1724.method_31548().field_7548.size(); i++) {
-                           class_1799 stack = (class_1799)mc.field_1724.method_31548().field_7548.get(i);
-                           if (stack.method_7909() instanceof class_1738) {
-                              class_1738 item = (class_1738)stack.method_7909();
-                              if (!stack.method_7960()
+                        for (int i = 0; i < mc.player.getInventory().armor.size(); i++) {
+                           ItemStack stack = (ItemStack)mc.player.getInventory().armor.get(i);
+                           if (stack.getItem() instanceof ArmorItem) {
+                              ArmorItem item = (ArmorItem)stack.getItem();
+                              if (!stack.isEmpty()
                                  && InventoryUtils.getBestArmorScore(ItemUtils.getEquippableSlotType(stack)) > InventoryUtils.getProtection(stack)) {
-                                 this.clickSlot(mc.field_1724.field_7498.field_7763, 4 + (4 - i), 1, class_1713.field_7795, mc.field_1724);
+                                 this.clickSlot(mc.player.playerScreenHandler.syncId, 4 + (4 - i), 1, SlotActionType.THROW, mc.player);
                                  this.inventoryOpen = true;
                               }
                            }
@@ -452,18 +452,18 @@ public class InvManagerN extends Module {
                            this.mergePartialStacks();
                         }
 
-                        for (int ix = 0; ix < mc.field_1724.method_31548().field_7547.size(); ix++) {
-                           class_1799 stack = (class_1799)mc.field_1724.method_31548().field_7547.get(ix);
-                           if (!stack.method_7960() && stack.method_7909() instanceof class_1738) {
-                              class_1738 item = (class_1738)stack.method_7909();
+                        for (int ix = 0; ix < mc.player.getInventory().main.size(); ix++) {
+                           ItemStack stack = (ItemStack)mc.player.getInventory().main.get(ix);
+                           if (!stack.isEmpty() && stack.getItem() instanceof ArmorItem) {
+                              ArmorItem item = (ArmorItem)stack.getItem();
                               float currentItemScore = InventoryUtils.getProtection(stack);
                               boolean isBestItem = InventoryUtils.getBestArmorScore(ItemUtils.getEquippableSlotType(stack)) == currentItemScore;
                               boolean isBetterItem = InventoryUtils.getCurrentArmorScore(ItemUtils.getEquippableSlotType(stack)) < currentItemScore;
                               if (isBestItem && isBetterItem) {
                                  if (ix < 9) {
-                                    this.clickSlot(mc.field_1724.field_7498.field_7763, ix + 36, 0, class_1713.field_7794, mc.field_1724);
+                                    this.clickSlot(mc.player.playerScreenHandler.syncId, ix + 36, 0, SlotActionType.QUICK_MOVE, mc.player);
                                  } else {
-                                    this.clickSlot(mc.field_1724.field_7498.field_7763, ix, 0, class_1713.field_7794, mc.field_1724);
+                                    this.clickSlot(mc.player.playerScreenHandler.syncId, ix, 0, SlotActionType.QUICK_MOVE, mc.player);
                                  }
 
                                  this.inventoryOpen = true;
@@ -473,22 +473,22 @@ public class InvManagerN extends Module {
                      }
 
                      if (this.clickOffHand) {
-                        this.clickSlot(mc.field_1724.field_7498.field_7763, 45, 0, class_1713.field_7790, mc.field_1724);
+                        this.clickSlot(mc.player.playerScreenHandler.syncId, 45, 0, SlotActionType.PICKUP, mc.player);
                         this.inventoryOpen = true;
                         this.clickOffHand = false;
                      }
 
                      if (this.offhandItems.isMode("Golden Apple")) {
-                        class_1799 offHand = (class_1799)mc.field_1724.method_31548().field_7544.get(0);
-                        int slot = InventoryUtils.getItemSlot(class_1802.field_8463);
+                        ItemStack offHand = (ItemStack)mc.player.getInventory().offHand.get(0);
+                        int slot = InventoryUtils.getItemSlot(Items.GOLDEN_APPLE);
                         if (slot != -1) {
-                           if (offHand.method_7909() == class_1802.field_8463) {
-                              class_1799 goldenAppleStack = (class_1799)mc.field_1724.method_31548().field_7547.get(slot);
-                              if (offHand.method_7947() + goldenAppleStack.method_7947() <= 64) {
+                           if (offHand.getItem() == Items.GOLDEN_APPLE) {
+                              ItemStack goldenAppleStack = (ItemStack)mc.player.getInventory().main.get(slot);
+                              if (offHand.getCount() + goldenAppleStack.getCount() <= 64) {
                                  if (slot < 9) {
-                                    this.clickSlot(mc.field_1724.field_7498.field_7763, slot + 36, 0, class_1713.field_7790, mc.field_1724);
+                                    this.clickSlot(mc.player.playerScreenHandler.syncId, slot + 36, 0, SlotActionType.PICKUP, mc.player);
                                  } else {
-                                    this.clickSlot(mc.field_1724.field_7498.field_7763, slot, 0, class_1713.field_7790, mc.field_1724);
+                                    this.clickSlot(mc.player.playerScreenHandler.syncId, slot, 0, SlotActionType.PICKUP, mc.player);
                                  }
 
                                  this.inventoryOpen = true;
@@ -499,14 +499,14 @@ public class InvManagerN extends Module {
                            }
                         }
                      } else if (this.offhandItems.isMode("Projectile")) {
-                        class_1799 offHand = (class_1799)mc.field_1724.method_31548().field_7544.get(0);
-                        class_1799 bestProjectile = InventoryUtils.getBestProjectile();
+                        ItemStack offHand = (ItemStack)mc.player.getInventory().offHand.get(0);
+                        ItemStack bestProjectile = InventoryUtils.getBestProjectile();
                         if (bestProjectile != null) {
                            int slot = InventoryUtils.getItemStackSlot(bestProjectile);
                            boolean shouldSwap = false;
-                           if (offHand.method_7909() != class_1802.field_8803 && offHand.method_7909() != class_1802.field_8543) {
+                           if (offHand.getItem() != Items.EGG && offHand.getItem() != Items.SNOWBALL) {
                               shouldSwap = true;
-                           } else if (offHand.method_7947() < bestProjectile.method_7947()) {
+                           } else if (offHand.getCount() < bestProjectile.getCount()) {
                               shouldSwap = true;
                            }
 
@@ -515,19 +515,19 @@ public class InvManagerN extends Module {
                            }
                         }
                      } else if (this.offhandItems.isMode("Fishing Rod")) {
-                        class_1799 offHand = (class_1799)mc.field_1724.method_31548().field_7544.get(0);
-                        int slotx = InventoryUtils.getItemSlot(class_1802.field_8378);
-                        if (slotx != -1 && offHand.method_7909() != class_1802.field_8378) {
+                        ItemStack offHand = (ItemStack)mc.player.getInventory().offHand.get(0);
+                        int slotx = InventoryUtils.getItemSlot(Items.FISHING_ROD);
+                        if (slotx != -1 && offHand.getItem() != Items.FISHING_ROD) {
                            this.swapOffHand(slotx);
                         }
                      } else if (this.offhandItems.isMode("Block")) {
-                        class_1799 offHand = (class_1799)mc.field_1724.method_31548().field_7544.get(0);
-                        class_1799 bestBlock = InventoryUtils.getBestBlock();
+                        ItemStack offHand = (ItemStack)mc.player.getInventory().offHand.get(0);
+                        ItemStack bestBlock = InventoryUtils.getBestBlock();
                         if (bestBlock != null) {
                            int slotx = InventoryUtils.getItemStackSlot(bestBlock);
                            boolean shouldSwapx = false;
                            if (!InventoryUtils.isInvalidBlock(offHand)) {
-                              if (offHand.method_7947() < bestBlock.method_7947()) {
+                              if (offHand.getCount() < bestBlock.getCount()) {
                                  shouldSwapx = true;
                               }
                            } else {
@@ -541,39 +541,39 @@ public class InvManagerN extends Module {
                      }
 
                      if (this.switchGoldenApple.getValue() && !this.offhandItems.isMode("Golden Apple")) {
-                        this.swapItem((int)(this.goldenAppleSlot.getValue().floatValue() - 1.0F), class_1802.field_8463);
+                        this.swapItem((int)(this.goldenAppleSlot.getValue().floatValue() - 1.0F), Items.GOLDEN_APPLE);
                      }
 
                      if (this.switchBlock.getValue()) {
                         int blockSlot = (int)(this.blockSlot.getValue().floatValue() - 1.0F);
-                        class_1799 currentBlock = (class_1799)mc.field_1724.method_31548().field_7547.get(blockSlot);
-                        class_1799 bestBlock = InventoryUtils.getBestBlock();
+                        ItemStack currentBlock = (ItemStack)mc.player.getInventory().main.get(blockSlot);
+                        ItemStack bestBlock = InventoryUtils.getBestBlock();
                         if (bestBlock != null
-                           && (bestBlock.method_7947() > currentBlock.method_7947() || InventoryUtils.isInvalidBlock(currentBlock))
+                           && (bestBlock.getCount() > currentBlock.getCount() || InventoryUtils.isInvalidBlock(currentBlock))
                            && !this.offhandItems.isMode("Block")) {
                            this.swapItem(blockSlot, bestBlock);
                         }
 
                         if (InventoryUtils.getBlockCountInInventory() > maxBlockSize.getValue().intValue()) {
-                           class_1799 worstBlock = InventoryUtils.getWorstBlock();
+                           ItemStack worstBlock = InventoryUtils.getWorstBlock();
                            this.throwItem(worstBlock);
                         }
                      }
 
                      if (this.switchSword.getValue()) {
                         int slotxx = (int)(this.swordSlot.getValue().floatValue() - 1.0F);
-                        class_1799 currentSword = (class_1799)mc.field_1724.method_31548().field_7547.get(slotxx);
-                        class_1799 bestSword = InventoryUtils.getBestSword();
-                        class_1799 bestShapeAxe = InventoryUtils.getBestShapeAxe();
+                        ItemStack currentSword = (ItemStack)mc.player.getInventory().main.get(slotxx);
+                        ItemStack bestSword = InventoryUtils.getBestSword();
+                        ItemStack bestShapeAxe = InventoryUtils.getBestShapeAxe();
                         if (InventoryUtils.getAxeDamage(bestShapeAxe) > InventoryUtils.getSwordDamage(bestSword)) {
                            bestSword = bestShapeAxe;
                         }
 
                         if (bestSword != null) {
-                           float currentDamage = currentSword.method_7909() instanceof class_1829
+                           float currentDamage = currentSword.getItem() instanceof SwordItem
                               ? InventoryUtils.getSwordDamage(currentSword)
                               : InventoryUtils.getAxeDamage(currentSword);
-                           float bestWeaponDamage = bestSword.method_7909() instanceof class_1829
+                           float bestWeaponDamage = bestSword.getItem() instanceof SwordItem
                               ? InventoryUtils.getSwordDamage(bestSword)
                               : InventoryUtils.getAxeDamage(bestSword);
                            if (bestWeaponDamage > currentDamage) {
@@ -584,13 +584,13 @@ public class InvManagerN extends Module {
 
                      if (this.switchPickaxe.getValue()) {
                         int slotxxx = (int)(this.pickaxeSlot.getValue().floatValue() - 1.0F);
-                        class_1799 bestPickaxe = InventoryUtils.getBestPickaxe();
-                        class_1799 currentPickaxe = (class_1799)mc.field_1724.method_31548().field_7547.get(slotxxx);
+                        ItemStack bestPickaxe = InventoryUtils.getBestPickaxe();
+                        ItemStack currentPickaxe = (ItemStack)mc.player.getInventory().main.get(slotxxx);
                         if (bestPickaxe != null
-                           && bestPickaxe.method_7909() instanceof class_1810
+                           && bestPickaxe.getItem() instanceof PickaxeItem
                            && (
                               InventoryUtils.getToolScore(bestPickaxe) > InventoryUtils.getToolScore(currentPickaxe)
-                                 || !(currentPickaxe.method_7909() instanceof class_1810)
+                                 || !(currentPickaxe.getItem() instanceof PickaxeItem)
                            )) {
                            this.swapItem(slotxxx, bestPickaxe);
                         }
@@ -598,13 +598,13 @@ public class InvManagerN extends Module {
 
                      if (this.switchAxe.getValue()) {
                         int slotxxx = (int)(this.axeSlot.getValue().floatValue() - 1.0F);
-                        class_1799 bestAxe = InventoryUtils.getBestAxe();
-                        class_1799 currentAxe = (class_1799)mc.field_1724.method_31548().field_7547.get(slotxxx);
+                        ItemStack bestAxe = InventoryUtils.getBestAxe();
+                        ItemStack currentAxe = (ItemStack)mc.player.getInventory().main.get(slotxxx);
                         if (bestAxe != null
-                           && bestAxe.method_7909() instanceof class_1743
+                           && bestAxe.getItem() instanceof AxeItem
                            && (
                               InventoryUtils.getToolScore(bestAxe) > InventoryUtils.getToolScore(currentAxe)
-                                 || !(currentAxe.method_7909() instanceof class_1743)
+                                 || !(currentAxe.getItem() instanceof AxeItem)
                            )) {
                            this.swapItem(slotxxx, bestAxe);
                         }
@@ -612,17 +612,17 @@ public class InvManagerN extends Module {
 
                      if (this.switchRod.getValue() && !this.offhandItems.isMode("Fishing Rod")) {
                         int slotxxx = (int)(this.rodSlot.getValue().floatValue() - 1.0F);
-                        class_1799 bestRod = InventoryUtils.getFishingRod();
-                        class_1799 currentRod = (class_1799)mc.field_1724.method_31548().field_7547.get(slotxxx);
-                        if (!(currentRod.method_7909() instanceof class_1787)) {
+                        ItemStack bestRod = InventoryUtils.getFishingRod();
+                        ItemStack currentRod = (ItemStack)mc.player.getInventory().main.get(slotxxx);
+                        if (!(currentRod.getItem() instanceof FishingRodItem)) {
                            this.swapItem(slotxxx, bestRod);
                         }
                      }
 
                      if (this.switchBow.getValue()) {
                         int slotxxx = (int)(this.bowSlot.getValue().floatValue() - 1.0F);
-                        class_1799 currentBow = (class_1799)mc.field_1724.method_31548().field_7547.get(slotxxx);
-                        class_1799 bestBow;
+                        ItemStack currentBow = (ItemStack)mc.player.getInventory().main.get(slotxxx);
+                        ItemStack bestBow;
                         float bestBowScore;
                         float currentBowScore;
                         if (this.preferBow.isMode("Crossbow")) {
@@ -661,48 +661,48 @@ public class InvManagerN extends Module {
                            this.swapItem(slotxxx, bestBow);
                         }
 
-                        if (InventoryUtils.getItemCount(class_1802.field_8107) > maxArrowSize.getValue().intValue()) {
-                           class_1799 worstArrow = InventoryUtils.getWorstArrow();
+                        if (InventoryUtils.getItemCount(Items.ARROW) > maxArrowSize.getValue().intValue()) {
+                           ItemStack worstArrow = InventoryUtils.getWorstArrow();
                            this.throwItem(worstArrow);
                         }
                      }
 
                      if (this.switchEnderPearl.getValue()) {
-                        this.swapItem((int)(this.enderPearlSlot.getValue().floatValue() - 1.0F), class_1802.field_8634);
+                        this.swapItem((int)(this.enderPearlSlot.getValue().floatValue() - 1.0F), Items.ENDER_PEARL);
                      }
 
                      if (this.switchWaterBucket.getValue()) {
-                        this.swapItem((int)(this.waterBucketSlot.getValue().floatValue() - 1.0F), class_1802.field_8705);
+                        this.swapItem((int)(this.waterBucketSlot.getValue().floatValue() - 1.0F), Items.WATER_BUCKET);
                      }
 
                      if (this.switchFireball.getValue()) {
-                        this.swapItem((int)(this.fireballSlot.getValue().floatValue() - 1.0F), class_1802.field_8814);
+                        this.swapItem((int)(this.fireballSlot.getValue().floatValue() - 1.0F), Items.FIRE_CHARGE);
                      }
 
                      if (keepProjectile.getValue()) {
-                        if (InventoryUtils.getItemCount(class_1802.field_8803) + InventoryUtils.getItemCount(class_1802.field_8543)
+                        if (InventoryUtils.getItemCount(Items.EGG) + InventoryUtils.getItemCount(Items.SNOWBALL)
                            > maxProjectileSize.getValue().intValue()) {
-                           class_1799 worstProjectile = InventoryUtils.getWorstProjectile();
+                           ItemStack worstProjectile = InventoryUtils.getWorstProjectile();
                            this.throwItem(worstProjectile);
                         }
 
                         if (this.switchProjectile.getValue() && !this.offhandItems.isMode("Projectile")) {
                            int projectileSlot = (int)(this.projectileSlot.getValue().floatValue() - 1.0F);
-                           if (InventoryUtils.getItemCount(class_1802.field_8803) > 0) {
-                              this.swapItem(projectileSlot, class_1802.field_8803);
-                           } else if (InventoryUtils.getItemCount(class_1802.field_8543) > 0) {
-                              this.swapItem(projectileSlot, class_1802.field_8543);
+                           if (InventoryUtils.getItemCount(Items.EGG) > 0) {
+                              this.swapItem(projectileSlot, Items.EGG);
+                           } else if (InventoryUtils.getItemCount(Items.SNOWBALL) > 0) {
+                              this.swapItem(projectileSlot, Items.SNOWBALL);
                            }
                         }
                      }
 
                      if (this.throwItems.getValue()) {
-                        List<Integer> slots = IntStream.range(0, mc.field_1724.method_31548().field_7547.size()).boxed().collect(Collectors.toList());
+                        List<Integer> slots = IntStream.range(0, mc.player.getInventory().main.size()).boxed().collect(Collectors.toList());
                         Collections.shuffle(slots);
 
                         for (Integer slotxxxx : slots) {
-                           class_1799 stack = (class_1799)mc.field_1724.method_31548().field_7547.get(slotxxxx);
-                           if (!stack.method_7960() && !isItemUseful(stack)) {
+                           ItemStack stack = (ItemStack)mc.player.getInventory().main.get(slotxxxx);
+                           if (!stack.isEmpty() && !isItemUseful(stack)) {
                               this.throwItem(stack);
                            }
                         }
@@ -718,22 +718,22 @@ public class InvManagerN extends Module {
 
    private void swapOffHand(int slot) {
       if (slot < 9) {
-         this.clickSlot(mc.field_1724.field_7498.field_7763, slot + 36, 40, class_1713.field_7791, mc.field_1724);
+         this.clickSlot(mc.player.playerScreenHandler.syncId, slot + 36, 40, SlotActionType.SWAP, mc.player);
       } else {
-         this.clickSlot(mc.field_1724.field_7498.field_7763, slot, 40, class_1713.field_7791, mc.field_1724);
+         this.clickSlot(mc.player.playerScreenHandler.syncId, slot, 40, SlotActionType.SWAP, mc.player);
       }
 
       this.inventoryOpen = true;
    }
 
-   private void throwItem(class_1799 item) {
+   private void throwItem(ItemStack item) {
       if (InventoryUtils.isItemValid(item)) {
          int itemSlot = InventoryUtils.getItemStackSlot(item);
          if (itemSlot != -1) {
             if (itemSlot < 9) {
-               this.clickSlot(mc.field_1724.field_7498.field_7763, itemSlot + 36, 1, class_1713.field_7795, mc.field_1724);
+               this.clickSlot(mc.player.playerScreenHandler.syncId, itemSlot + 36, 1, SlotActionType.THROW, mc.player);
             } else {
-               this.clickSlot(mc.field_1724.field_7498.field_7763, itemSlot, 1, class_1713.field_7795, mc.field_1724);
+               this.clickSlot(mc.player.playerScreenHandler.syncId, itemSlot, 1, SlotActionType.THROW, mc.player);
             }
 
             this.inventoryOpen = true;
@@ -741,15 +741,15 @@ public class InvManagerN extends Module {
       }
    }
 
-   private void swapItem(int targetSlot, class_1799 bestItem) {
-      class_1799 currentSlot = (class_1799)mc.field_1724.method_31548().field_7547.get(targetSlot);
+   private void swapItem(int targetSlot, ItemStack bestItem) {
+      ItemStack currentSlot = (ItemStack)mc.player.getInventory().main.get(targetSlot);
       if (InventoryUtils.isItemValid(currentSlot) && bestItem != currentSlot) {
          int bestItemSlot = InventoryUtils.getItemStackSlot(bestItem);
          if (bestItemSlot != -1) {
             if (bestItemSlot < 9) {
-               this.clickSlot(mc.field_1724.field_7498.field_7763, bestItemSlot + 36, targetSlot, class_1713.field_7791, mc.field_1724);
+               this.clickSlot(mc.player.playerScreenHandler.syncId, bestItemSlot + 36, targetSlot, SlotActionType.SWAP, mc.player);
             } else {
-               this.clickSlot(mc.field_1724.field_7498.field_7763, bestItemSlot, targetSlot, class_1713.field_7791, mc.field_1724);
+               this.clickSlot(mc.player.playerScreenHandler.syncId, bestItemSlot, targetSlot, SlotActionType.SWAP, mc.player);
             }
 
             this.inventoryOpen = true;
@@ -757,17 +757,17 @@ public class InvManagerN extends Module {
       }
    }
 
-   private void swapItem(int targetSlot, class_1792 item) {
-      class_1799 currentSlot = (class_1799)mc.field_1724.method_31548().field_7547.get(targetSlot);
+   private void swapItem(int targetSlot, Item item) {
+      ItemStack currentSlot = (ItemStack)mc.player.getInventory().main.get(targetSlot);
       if (InventoryUtils.isItemValid(currentSlot)) {
          int bestItemSlot = InventoryUtils.getItemSlot(item);
          if (bestItemSlot != -1) {
-            class_1799 bestItemStack = (class_1799)mc.field_1724.method_31548().field_7547.get(bestItemSlot);
-            if (currentSlot.method_7909() != item || currentSlot.method_7909() == item && currentSlot.method_7947() < bestItemStack.method_7947()) {
+            ItemStack bestItemStack = (ItemStack)mc.player.getInventory().main.get(bestItemSlot);
+            if (currentSlot.getItem() != item || currentSlot.getItem() == item && currentSlot.getCount() < bestItemStack.getCount()) {
                if (bestItemSlot < 9) {
-                  this.clickSlot(mc.field_1724.field_7498.field_7763, bestItemSlot + 36, targetSlot, class_1713.field_7791, mc.field_1724);
+                  this.clickSlot(mc.player.playerScreenHandler.syncId, bestItemSlot + 36, targetSlot, SlotActionType.SWAP, mc.player);
                } else {
-                  this.clickSlot(mc.field_1724.field_7498.field_7763, bestItemSlot, targetSlot, class_1713.field_7791, mc.field_1724);
+                  this.clickSlot(mc.player.playerScreenHandler.syncId, bestItemSlot, targetSlot, SlotActionType.SWAP, mc.player);
                }
 
                this.inventoryOpen = true;
@@ -788,7 +788,7 @@ public class InvManagerN extends Module {
       }
 
       if (this.microStopPending) {
-         if (mc.field_1724 != null && mc.field_1724.method_24828() && !mc.field_1724.method_5681()) {
+         if (mc.player != null && mc.player.isOnGround() && !mc.player.isSwimming()) {
             e.setForward(false);
             e.setBack(false);
             e.setLeft(false);
@@ -804,41 +804,41 @@ public class InvManagerN extends Module {
       }
 
       if (needStopSprint) {
-         if (mc.field_1690.field_1903.method_1434() && mc.field_1724.method_24828()) {
+         if (mc.options.jumpKey.isPressed() && mc.player.isOnGround()) {
             return;
          }
 
-         mc.field_1690.field_1867.method_23481(false);
-         mc.field_1724.method_5728(false);
+         mc.options.sprintKey.setPressed(false);
+         mc.player.setSprinting(false);
          e.setSprint(false);
       }
    }
 
-   private void clickSlot(int syncId, int slotId, int button, class_1713 actionType, class_1657 player) {
+   private void clickSlot(int syncId, int slotId, int button, SlotActionType actionType, PlayerEntity player) {
       if (!Southside.INSTANCE.getModuleManager().isEnabled(Scaffold.class) && !this.noMove.getValue()) {
          needStopSprint = true;
       }
 
       if (timer.hasPassed(this.delay.getValue().longValue()) || this.delay.getValue().doubleValue() == 0.0) {
-         if (!this.inventoryOnly.getValue() && mc.field_1724.field_3919) {
+         if (!this.inventoryOnly.getValue() && mc.player.lastSprinting) {
             return;
          }
 
-         mc.field_1761.method_2906(syncId, slotId, button, actionType, player);
+         mc.interactionManager.clickSlot(syncId, slotId, button, actionType, player);
          timer.reset();
          active = true;
-         if (!this.inventoryOnly.getValue() && mc.field_1724.field_7512 == mc.field_1724.field_7498) {
-            mc.field_1724.field_3944.method_52787(new class_2815(mc.field_1724.field_7498.field_7763));
+         if (!this.inventoryOnly.getValue() && mc.player.currentScreenHandler == mc.player.playerScreenHandler) {
+            mc.player.networkHandler.sendPacket(new CloseHandledScreenC2SPacket(mc.player.playerScreenHandler.syncId));
          }
       }
    }
 
    private boolean hasMoveInput() {
-      return mc.field_1690.field_1894.method_1434()
-         || mc.field_1690.field_1881.method_1434()
-         || mc.field_1690.field_1913.method_1434()
-         || mc.field_1690.field_1849.method_1434()
-         || mc.field_1690.field_1903.method_1434();
+      return mc.options.forwardKey.isPressed()
+         || mc.options.backKey.isPressed()
+         || mc.options.leftKey.isPressed()
+         || mc.options.rightKey.isPressed()
+         || mc.options.jumpKey.isPressed();
    }
 
    private boolean needsWork() {
@@ -846,10 +846,10 @@ public class InvManagerN extends Module {
          return true;
       } else {
          if (this.autoArmor.getValue()) {
-            for (int i = 0; i < mc.field_1724.method_31548().field_7548.size(); i++) {
-               class_1799 stack = (class_1799)mc.field_1724.method_31548().field_7548.get(i);
-               if (!stack.method_7960()
-                  && stack.method_7909() instanceof class_1738
+            for (int i = 0; i < mc.player.getInventory().armor.size(); i++) {
+               ItemStack stack = (ItemStack)mc.player.getInventory().armor.get(i);
+               if (!stack.isEmpty()
+                  && stack.getItem() instanceof ArmorItem
                   && InventoryUtils.getBestArmorScore(ItemUtils.getEquippableSlotType(stack)) > InventoryUtils.getProtection(stack)) {
                   return true;
                }
@@ -859,14 +859,14 @@ public class InvManagerN extends Module {
                return true;
             }
 
-            List<class_1799> main = mc.field_1724.method_31548().field_7547;
+            List<ItemStack> main = mc.player.getInventory().main;
 
             for (int ix = 0; ix < main.size(); ix++) {
-               class_1799 stackA = main.get(ix);
-               if (!stackA.method_7960() && stackA.method_7947() < stackA.method_7914() && stackA.method_7946()) {
+               ItemStack stackA = main.get(ix);
+               if (!stackA.isEmpty() && stackA.getCount() < stackA.getMaxCount() && stackA.isStackable()) {
                   for (int j = ix + 1; j < main.size(); j++) {
-                     class_1799 stackB = main.get(j);
-                     if (!stackB.method_7960() && stackB.method_7947() < stackB.method_7914() && class_1799.method_31577(stackA, stackB)) {
+                     ItemStack stackB = main.get(j);
+                     if (!stackB.isEmpty() && stackB.getCount() < stackB.getMaxCount() && ItemStack.areItemsAndComponentsEqual(stackA, stackB)) {
                         return true;
                      }
                   }
@@ -874,9 +874,9 @@ public class InvManagerN extends Module {
             }
          }
 
-         for (int ixx = 0; ixx < mc.field_1724.method_31548().field_7547.size(); ixx++) {
-            class_1799 stack = (class_1799)mc.field_1724.method_31548().field_7547.get(ixx);
-            if (!stack.method_7960() && stack.method_7909() instanceof class_1738) {
+         for (int ixx = 0; ixx < mc.player.getInventory().main.size(); ixx++) {
+            ItemStack stack = (ItemStack)mc.player.getInventory().main.get(ixx);
+            if (!stack.isEmpty() && stack.getItem() instanceof ArmorItem) {
                float currentItemScore = InventoryUtils.getProtection(stack);
                if (InventoryUtils.getBestArmorScore(ItemUtils.getEquippableSlotType(stack)) == currentItemScore
                   && InventoryUtils.getCurrentArmorScore(ItemUtils.getEquippableSlotType(stack)) < currentItemScore) {
@@ -886,40 +886,40 @@ public class InvManagerN extends Module {
          }
 
          if (this.offhandItems.isMode("Golden Apple")) {
-            class_1799 offHand = (class_1799)mc.field_1724.method_31548().field_7544.get(0);
-            int slot = InventoryUtils.getItemSlot(class_1802.field_8463);
+            ItemStack offHand = (ItemStack)mc.player.getInventory().offHand.get(0);
+            int slot = InventoryUtils.getItemSlot(Items.GOLDEN_APPLE);
             if (slot != -1) {
-               if (offHand.method_7909() != class_1802.field_8463) {
+               if (offHand.getItem() != Items.GOLDEN_APPLE) {
                   return true;
                }
 
-               class_1799 goldenAppleStack = (class_1799)mc.field_1724.method_31548().field_7547.get(slot);
-               if (offHand.method_7947() + goldenAppleStack.method_7947() <= 64) {
+               ItemStack goldenAppleStack = (ItemStack)mc.player.getInventory().main.get(slot);
+               if (offHand.getCount() + goldenAppleStack.getCount() <= 64) {
                   return true;
                }
             }
          } else if (this.offhandItems.isMode("Projectile")) {
-            class_1799 bestProjectile = InventoryUtils.getBestProjectile();
+            ItemStack bestProjectile = InventoryUtils.getBestProjectile();
             if (bestProjectile != null) {
                int slot = InventoryUtils.getItemStackSlot(bestProjectile);
-               class_1799 offHand = (class_1799)mc.field_1724.method_31548().field_7544.get(0);
-               boolean shouldSwap = offHand.method_7909() != class_1802.field_8803 && offHand.method_7909() != class_1802.field_8543
-                  || offHand.method_7947() < bestProjectile.method_7947();
+               ItemStack offHand = (ItemStack)mc.player.getInventory().offHand.get(0);
+               boolean shouldSwap = offHand.getItem() != Items.EGG && offHand.getItem() != Items.SNOWBALL
+                  || offHand.getCount() < bestProjectile.getCount();
                if (shouldSwap && slot != -1) {
                   return true;
                }
             }
          } else if (this.offhandItems.isMode("Fishing Rod")) {
-            int slotx = InventoryUtils.getItemSlot(class_1802.field_8378);
-            if (slotx != -1 && ((class_1799)mc.field_1724.method_31548().field_7544.get(0)).method_7909() != class_1802.field_8378) {
+            int slotx = InventoryUtils.getItemSlot(Items.FISHING_ROD);
+            if (slotx != -1 && ((ItemStack)mc.player.getInventory().offHand.get(0)).getItem() != Items.FISHING_ROD) {
                return true;
             }
          } else if (this.offhandItems.isMode("Block")) {
-            class_1799 bestBlock = InventoryUtils.getBestBlock();
+            ItemStack bestBlock = InventoryUtils.getBestBlock();
             if (bestBlock != null) {
                int slotx = InventoryUtils.getItemStackSlot(bestBlock);
-               class_1799 offHand = (class_1799)mc.field_1724.method_31548().field_7544.get(0);
-               boolean shouldSwapx = InventoryUtils.isInvalidBlock(offHand) || offHand.method_7947() < bestBlock.method_7947();
+               ItemStack offHand = (ItemStack)mc.player.getInventory().offHand.get(0);
+               boolean shouldSwapx = InventoryUtils.isInvalidBlock(offHand) || offHand.getCount() < bestBlock.getCount();
                if (shouldSwapx && slotx != -1) {
                   return true;
                }
@@ -928,13 +928,13 @@ public class InvManagerN extends Module {
 
          if (this.switchGoldenApple.getValue() && !this.offhandItems.isMode("Golden Apple")) {
             int targetSlot = (int)(this.goldenAppleSlot.getValue().floatValue() - 1.0F);
-            class_1799 currentSlot = (class_1799)mc.field_1724.method_31548().field_7547.get(targetSlot);
+            ItemStack currentSlot = (ItemStack)mc.player.getInventory().main.get(targetSlot);
             if (InventoryUtils.isItemValid(currentSlot)) {
-               int bestItemSlot = InventoryUtils.getItemSlot(class_1802.field_8463);
+               int bestItemSlot = InventoryUtils.getItemSlot(Items.GOLDEN_APPLE);
                if (bestItemSlot != -1) {
-                  class_1799 bestItemStack = (class_1799)mc.field_1724.method_31548().field_7547.get(bestItemSlot);
-                  if (currentSlot.method_7909() != class_1802.field_8463
-                     || currentSlot.method_7909() == class_1802.field_8463 && currentSlot.method_7947() < bestItemStack.method_7947()) {
+                  ItemStack bestItemStack = (ItemStack)mc.player.getInventory().main.get(bestItemSlot);
+                  if (currentSlot.getItem() != Items.GOLDEN_APPLE
+                     || currentSlot.getItem() == Items.GOLDEN_APPLE && currentSlot.getCount() < bestItemStack.getCount()) {
                      return true;
                   }
                }
@@ -943,10 +943,10 @@ public class InvManagerN extends Module {
 
          if (this.switchBlock.getValue()) {
             int blockSlot = (int)(this.blockSlot.getValue().floatValue() - 1.0F);
-            class_1799 currentBlock = (class_1799)mc.field_1724.method_31548().field_7547.get(blockSlot);
-            class_1799 bestBlock = InventoryUtils.getBestBlock();
+            ItemStack currentBlock = (ItemStack)mc.player.getInventory().main.get(blockSlot);
+            ItemStack bestBlock = InventoryUtils.getBestBlock();
             if (bestBlock != null
-               && (bestBlock.method_7947() > currentBlock.method_7947() || InventoryUtils.isInvalidBlock(currentBlock))
+               && (bestBlock.getCount() > currentBlock.getCount() || InventoryUtils.isInvalidBlock(currentBlock))
                && !this.offhandItems.isMode("Block")) {
                return true;
             }
@@ -958,18 +958,18 @@ public class InvManagerN extends Module {
 
          if (this.switchSword.getValue()) {
             int slotxx = (int)(this.swordSlot.getValue().floatValue() - 1.0F);
-            class_1799 currentSword = (class_1799)mc.field_1724.method_31548().field_7547.get(slotxx);
-            class_1799 bestSword = InventoryUtils.getBestSword();
-            class_1799 bestShapeAxe = InventoryUtils.getBestShapeAxe();
+            ItemStack currentSword = (ItemStack)mc.player.getInventory().main.get(slotxx);
+            ItemStack bestSword = InventoryUtils.getBestSword();
+            ItemStack bestShapeAxe = InventoryUtils.getBestShapeAxe();
             if (InventoryUtils.getAxeDamage(bestShapeAxe) > InventoryUtils.getSwordDamage(bestSword)) {
                bestSword = bestShapeAxe;
             }
 
             if (bestSword != null) {
-               float currentDamage = currentSword.method_7909() instanceof class_1829
+               float currentDamage = currentSword.getItem() instanceof SwordItem
                   ? InventoryUtils.getSwordDamage(currentSword)
                   : InventoryUtils.getAxeDamage(currentSword);
-               float bestWeaponDamage = bestSword.method_7909() instanceof class_1829
+               float bestWeaponDamage = bestSword.getItem() instanceof SwordItem
                   ? InventoryUtils.getSwordDamage(bestSword)
                   : InventoryUtils.getAxeDamage(bestSword);
                if (bestWeaponDamage > currentDamage) {
@@ -980,13 +980,13 @@ public class InvManagerN extends Module {
 
          if (this.switchPickaxe.getValue()) {
             int slotxxx = (int)(this.pickaxeSlot.getValue().floatValue() - 1.0F);
-            class_1799 bestPickaxe = InventoryUtils.getBestPickaxe();
-            class_1799 currentPickaxe = (class_1799)mc.field_1724.method_31548().field_7547.get(slotxxx);
+            ItemStack bestPickaxe = InventoryUtils.getBestPickaxe();
+            ItemStack currentPickaxe = (ItemStack)mc.player.getInventory().main.get(slotxxx);
             if (bestPickaxe != null
-               && bestPickaxe.method_7909() instanceof class_1810
+               && bestPickaxe.getItem() instanceof PickaxeItem
                && (
                   InventoryUtils.getToolScore(bestPickaxe) > InventoryUtils.getToolScore(currentPickaxe)
-                     || !(currentPickaxe.method_7909() instanceof class_1810)
+                     || !(currentPickaxe.getItem() instanceof PickaxeItem)
                )) {
                return true;
             }
@@ -994,27 +994,27 @@ public class InvManagerN extends Module {
 
          if (this.switchAxe.getValue()) {
             int slotxxx = (int)(this.axeSlot.getValue().floatValue() - 1.0F);
-            class_1799 bestAxe = InventoryUtils.getBestAxe();
-            class_1799 currentAxe = (class_1799)mc.field_1724.method_31548().field_7547.get(slotxxx);
+            ItemStack bestAxe = InventoryUtils.getBestAxe();
+            ItemStack currentAxe = (ItemStack)mc.player.getInventory().main.get(slotxxx);
             if (bestAxe != null
-               && bestAxe.method_7909() instanceof class_1743
-               && (InventoryUtils.getToolScore(bestAxe) > InventoryUtils.getToolScore(currentAxe) || !(currentAxe.method_7909() instanceof class_1743))) {
+               && bestAxe.getItem() instanceof AxeItem
+               && (InventoryUtils.getToolScore(bestAxe) > InventoryUtils.getToolScore(currentAxe) || !(currentAxe.getItem() instanceof AxeItem))) {
                return true;
             }
          }
 
          if (this.switchRod.getValue() && !this.offhandItems.isMode("Fishing Rod")) {
             int slotxxx = (int)(this.rodSlot.getValue().floatValue() - 1.0F);
-            class_1799 currentRod = (class_1799)mc.field_1724.method_31548().field_7547.get(slotxxx);
-            if (!(currentRod.method_7909() instanceof class_1787)) {
+            ItemStack currentRod = (ItemStack)mc.player.getInventory().main.get(slotxxx);
+            if (!(currentRod.getItem() instanceof FishingRodItem)) {
                return true;
             }
          }
 
          if (this.switchBow.getValue()) {
             int slotxxx = (int)(this.bowSlot.getValue().floatValue() - 1.0F);
-            class_1799 currentBow = (class_1799)mc.field_1724.method_31548().field_7547.get(slotxxx);
-            class_1799 bestBow;
+            ItemStack currentBow = (ItemStack)mc.player.getInventory().main.get(slotxxx);
+            ItemStack bestBow;
             float bestBowScore;
             float currentBowScore;
             if (this.preferBow.isMode("Crossbow")) {
@@ -1053,20 +1053,20 @@ public class InvManagerN extends Module {
                return true;
             }
 
-            if (InventoryUtils.getItemCount(class_1802.field_8107) > maxArrowSize.getValue().intValue()) {
+            if (InventoryUtils.getItemCount(Items.ARROW) > maxArrowSize.getValue().intValue()) {
                return true;
             }
          }
 
          if (this.switchEnderPearl.getValue()) {
             int targetSlot = (int)(this.enderPearlSlot.getValue().floatValue() - 1.0F);
-            class_1799 currentSlot = (class_1799)mc.field_1724.method_31548().field_7547.get(targetSlot);
+            ItemStack currentSlot = (ItemStack)mc.player.getInventory().main.get(targetSlot);
             if (InventoryUtils.isItemValid(currentSlot)) {
-               int bestItemSlot = InventoryUtils.getItemSlot(class_1802.field_8634);
+               int bestItemSlot = InventoryUtils.getItemSlot(Items.ENDER_PEARL);
                if (bestItemSlot != -1) {
-                  class_1799 bestItemStack = (class_1799)mc.field_1724.method_31548().field_7547.get(bestItemSlot);
-                  if (currentSlot.method_7909() != class_1802.field_8634
-                     || currentSlot.method_7909() == class_1802.field_8634 && currentSlot.method_7947() < bestItemStack.method_7947()) {
+                  ItemStack bestItemStack = (ItemStack)mc.player.getInventory().main.get(bestItemSlot);
+                  if (currentSlot.getItem() != Items.ENDER_PEARL
+                     || currentSlot.getItem() == Items.ENDER_PEARL && currentSlot.getCount() < bestItemStack.getCount()) {
                      return true;
                   }
                }
@@ -1075,13 +1075,13 @@ public class InvManagerN extends Module {
 
          if (this.switchWaterBucket.getValue()) {
             int targetSlot = (int)(this.waterBucketSlot.getValue().floatValue() - 1.0F);
-            class_1799 currentSlot = (class_1799)mc.field_1724.method_31548().field_7547.get(targetSlot);
+            ItemStack currentSlot = (ItemStack)mc.player.getInventory().main.get(targetSlot);
             if (InventoryUtils.isItemValid(currentSlot)) {
-               int bestItemSlot = InventoryUtils.getItemSlot(class_1802.field_8705);
+               int bestItemSlot = InventoryUtils.getItemSlot(Items.WATER_BUCKET);
                if (bestItemSlot != -1) {
-                  class_1799 bestItemStack = (class_1799)mc.field_1724.method_31548().field_7547.get(bestItemSlot);
-                  if (currentSlot.method_7909() != class_1802.field_8705
-                     || currentSlot.method_7909() == class_1802.field_8705 && currentSlot.method_7947() < bestItemStack.method_7947()) {
+                  ItemStack bestItemStack = (ItemStack)mc.player.getInventory().main.get(bestItemSlot);
+                  if (currentSlot.getItem() != Items.WATER_BUCKET
+                     || currentSlot.getItem() == Items.WATER_BUCKET && currentSlot.getCount() < bestItemStack.getCount()) {
                      return true;
                   }
                }
@@ -1090,13 +1090,13 @@ public class InvManagerN extends Module {
 
          if (this.switchFireball.getValue()) {
             int targetSlot = (int)(this.fireballSlot.getValue().floatValue() - 1.0F);
-            class_1799 currentSlot = (class_1799)mc.field_1724.method_31548().field_7547.get(targetSlot);
+            ItemStack currentSlot = (ItemStack)mc.player.getInventory().main.get(targetSlot);
             if (InventoryUtils.isItemValid(currentSlot)) {
-               int bestItemSlot = InventoryUtils.getItemSlot(class_1802.field_8814);
+               int bestItemSlot = InventoryUtils.getItemSlot(Items.FIRE_CHARGE);
                if (bestItemSlot != -1) {
-                  class_1799 bestItemStack = (class_1799)mc.field_1724.method_31548().field_7547.get(bestItemSlot);
-                  if (currentSlot.method_7909() != class_1802.field_8814
-                     || currentSlot.method_7909() == class_1802.field_8814 && currentSlot.method_7947() < bestItemStack.method_7947()) {
+                  ItemStack bestItemStack = (ItemStack)mc.player.getInventory().main.get(bestItemSlot);
+                  if (currentSlot.getItem() != Items.FIRE_CHARGE
+                     || currentSlot.getItem() == Items.FIRE_CHARGE && currentSlot.getCount() < bestItemStack.getCount()) {
                      return true;
                   }
                }
@@ -1104,27 +1104,27 @@ public class InvManagerN extends Module {
          }
 
          if (keepProjectile.getValue()) {
-            if (InventoryUtils.getItemCount(class_1802.field_8803) + InventoryUtils.getItemCount(class_1802.field_8543)
+            if (InventoryUtils.getItemCount(Items.EGG) + InventoryUtils.getItemCount(Items.SNOWBALL)
                > maxProjectileSize.getValue().intValue()) {
                return true;
             }
 
             if (this.switchProjectile.getValue() && !this.offhandItems.isMode("Projectile")) {
                int projectileSlot = (int)(this.projectileSlot.getValue().floatValue() - 1.0F);
-               class_1799 currentSlot = (class_1799)mc.field_1724.method_31548().field_7547.get(projectileSlot);
-               if (InventoryUtils.getItemCount(class_1802.field_8803) > 0) {
-                  if (currentSlot.method_7909() != class_1802.field_8803) {
+               ItemStack currentSlot = (ItemStack)mc.player.getInventory().main.get(projectileSlot);
+               if (InventoryUtils.getItemCount(Items.EGG) > 0) {
+                  if (currentSlot.getItem() != Items.EGG) {
                      return true;
                   }
-               } else if (InventoryUtils.getItemCount(class_1802.field_8543) > 0 && currentSlot.method_7909() != class_1802.field_8543) {
+               } else if (InventoryUtils.getItemCount(Items.SNOWBALL) > 0 && currentSlot.getItem() != Items.SNOWBALL) {
                   return true;
                }
             }
          }
 
          if (this.throwItems.getValue()) {
-            for (class_1799 stack : mc.field_1724.method_31548().field_7547) {
-               if (!stack.method_7960() && !isItemUseful(stack)) {
+            for (ItemStack stack : mc.player.getInventory().main) {
+               if (!stack.isEmpty() && !isItemUseful(stack)) {
                   return true;
                }
             }
@@ -1137,28 +1137,28 @@ public class InvManagerN extends Module {
    private void mergePartialStacks() {
       if (this.mergeSrc >= 0 && this.mergeDst >= 0) {
          if (this.mergeDst < 9) {
-            this.clickSlot(mc.field_1724.field_7498.field_7763, this.mergeDst + 36, 0, class_1713.field_7790, mc.field_1724);
+            this.clickSlot(mc.player.playerScreenHandler.syncId, this.mergeDst + 36, 0, SlotActionType.PICKUP, mc.player);
          } else {
-            this.clickSlot(mc.field_1724.field_7498.field_7763, this.mergeDst, 0, class_1713.field_7790, mc.field_1724);
+            this.clickSlot(mc.player.playerScreenHandler.syncId, this.mergeDst, 0, SlotActionType.PICKUP, mc.player);
          }
 
          this.mergeSrc = -1;
          this.mergeDst = -1;
       } else {
-         List<class_1799> main = mc.field_1724.method_31548().field_7547;
+         List<ItemStack> main = mc.player.getInventory().main;
 
          for (int i = 0; i < main.size(); i++) {
-            class_1799 stackA = main.get(i);
-            if (!stackA.method_7960() && stackA.method_7947() < stackA.method_7914() && stackA.method_7946()) {
+            ItemStack stackA = main.get(i);
+            if (!stackA.isEmpty() && stackA.getCount() < stackA.getMaxCount() && stackA.isStackable()) {
                for (int j = i + 1; j < main.size(); j++) {
-                  class_1799 stackB = main.get(j);
-                  if (!stackB.method_7960() && stackB.method_7947() < stackB.method_7914() && class_1799.method_31577(stackA, stackB)) {
-                     int smaller = stackA.method_7947() <= stackB.method_7947() ? i : j;
+                  ItemStack stackB = main.get(j);
+                  if (!stackB.isEmpty() && stackB.getCount() < stackB.getMaxCount() && ItemStack.areItemsAndComponentsEqual(stackA, stackB)) {
+                     int smaller = stackA.getCount() <= stackB.getCount() ? i : j;
                      int larger = smaller == i ? j : i;
                      if (smaller < 9) {
-                        this.clickSlot(mc.field_1724.field_7498.field_7763, smaller + 36, 0, class_1713.field_7790, mc.field_1724);
+                        this.clickSlot(mc.player.playerScreenHandler.syncId, smaller + 36, 0, SlotActionType.PICKUP, mc.player);
                      } else {
-                        this.clickSlot(mc.field_1724.field_7498.field_7763, smaller, 0, class_1713.field_7790, mc.field_1724);
+                        this.clickSlot(mc.player.playerScreenHandler.syncId, smaller, 0, SlotActionType.PICKUP, mc.player);
                      }
 
                      this.mergeSrc = smaller;

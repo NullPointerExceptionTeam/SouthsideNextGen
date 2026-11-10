@@ -6,9 +6,9 @@ import dev.southside.module.Category;
 import dev.southside.module.Module;
 import dev.southside.orbit.EventHandler;
 import dev.southside.utils.ChatUtils;
-import net.minecraft.class_2338;
-import net.minecraft.class_7438;
-import net.minecraft.class_7439;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.network.packet.s2c.play.ChatMessageS2CPacket;
+import net.minecraft.network.packet.s2c.play.GameMessageS2CPacket;
 
 public class MatchingBypass extends Module {
    private int currentPlayers = -1;
@@ -22,11 +22,11 @@ public class MatchingBypass extends Module {
 
    @EventHandler
    public void onPacket(PacketEvent e) {
-      if (e.getPacket() instanceof class_7438 packet) {
-         String msg = packet.comp_1102().comp_1090();
+      if (e.getPacket() instanceof ChatMessageS2CPacket packet) {
+         String msg = packet.body().content();
          this.start(msg);
-      } else if (e.getPacket() instanceof class_7439 chatPacket) {
-         String msg = chatPacket.comp_763().getString();
+      } else if (e.getPacket() instanceof GameMessageS2CPacket chatPacket) {
+         String msg = chatPacket.content().getString();
          this.start(msg);
       }
    }
@@ -44,12 +44,12 @@ public class MatchingBypass extends Module {
    @EventHandler
    public void onTick(PlayerTickEvent e) {
       if (this.waiting && System.currentTimeMillis() - this.lastCheckTime >= 5000L) {
-         if (mc.field_1724 != null
-            && mc.field_1724.field_3944 != null
+         if (mc.player != null
+            && mc.player.networkHandler != null
             && this.isInGlassCage()
             && this.currentPlayers < this.maxPlayers
             && this.currentPlayers <= 7) {
-            mc.field_1724.field_3944.method_45731("play swrsolo");
+            mc.player.networkHandler.sendCommand("play swrsolo");
             ChatUtils.message("bypass");
          }
 
@@ -60,10 +60,10 @@ public class MatchingBypass extends Module {
    }
 
    private boolean isInGlassCage() {
-      if (mc.field_1687 != null && mc.field_1724 != null) {
-         class_2338 pos = mc.field_1724.method_24515();
-         String blockBelow = mc.field_1687.method_8320(pos.method_10074()).method_26204().toString().toLowerCase();
-         String blockAbove = mc.field_1687.method_8320(pos.method_10084()).method_26204().toString().toLowerCase();
+      if (mc.world != null && mc.player != null) {
+         BlockPos pos = mc.player.getBlockPos();
+         String blockBelow = mc.world.getBlockState(pos.down()).getBlock().toString().toLowerCase();
+         String blockAbove = mc.world.getBlockState(pos.up()).getBlock().toString().toLowerCase();
          return blockBelow.contains("glass") || blockAbove.contains("glass");
       } else {
          return false;

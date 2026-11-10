@@ -5,11 +5,11 @@ import cc.polyfrost.oneconfig.config.options.impl.Switch;
 import dev.southside.Southside;
 import dev.southside.module.Category;
 import dev.southside.module.Module;
-import net.minecraft.class_1297;
-import net.minecraft.class_1299;
-import net.minecraft.class_1308;
-import net.minecraft.class_1309;
-import net.minecraft.class_1657;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityType;
+import net.minecraft.entity.mob.MobEntity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
 
 public class EntityEditor extends Module {
    public final Dropdown model = new Dropdown("Model", "Pig", "Pig", "Sheep", "Wolf", "Camel", "Donkey", "Creeper", "Skeleton", "Zombie", "Blaze", "Iron Golem");
@@ -30,39 +30,39 @@ public class EntityEditor extends Module {
       this.setSuffix(this.model.getMode());
    }
 
-   public static boolean shouldReplace(class_1297 entity) {
-      if (mc.field_1724 == null) {
+   public static boolean shouldReplace(Entity entity) {
+      if (mc.player == null) {
          return false;
-      } else if (entity == mc.field_1724) {
+      } else if (entity == mc.player) {
          return false;
       } else {
          EntityEditor module = getInstance();
          if (module == null || !module.isEnabled()) {
             return false;
          } else if (module.allEntities.getValue()) {
-            return entity instanceof class_1309;
+            return entity instanceof LivingEntity;
          } else {
-            return module.players.getValue() && entity instanceof class_1657 ? true : module.mobs.getValue() && entity instanceof class_1308;
+            return module.players.getValue() && entity instanceof PlayerEntity ? true : module.mobs.getValue() && entity instanceof MobEntity;
          }
       }
    }
 
-   public static class_1299<?> getTargetEntityType() {
+   public static EntityType<?> getTargetEntityType() {
       EntityEditor module = getInstance();
       if (module == null) {
-         return class_1299.field_6093;
+         return EntityType.PIG;
       } else {
          return switch (module.model.getValue()) {
-            case 1 -> class_1299.field_6115;
-            case 2 -> class_1299.field_6055;
-            case 3 -> class_1299.field_40116;
-            case 4 -> class_1299.field_6067;
-            case 5 -> class_1299.field_6046;
-            case 6 -> class_1299.field_6137;
-            case 7 -> class_1299.field_6051;
-            case 8 -> class_1299.field_6099;
-            case 9 -> class_1299.field_6147;
-            default -> class_1299.field_6093;
+            case 1 -> EntityType.SHEEP;
+            case 2 -> EntityType.WOLF;
+            case 3 -> EntityType.CAMEL;
+            case 4 -> EntityType.DONKEY;
+            case 5 -> EntityType.CREEPER;
+            case 6 -> EntityType.SKELETON;
+            case 7 -> EntityType.ZOMBIE;
+            case 8 -> EntityType.BLAZE;
+            case 9 -> EntityType.IRON_GOLEM;
+            default -> EntityType.PIG;
          };
       }
    }

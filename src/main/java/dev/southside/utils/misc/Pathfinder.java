@@ -16,16 +16,16 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
-import net.minecraft.class_1923;
-import net.minecraft.class_1937;
-import net.minecraft.class_2246;
-import net.minecraft.class_2338;
-import net.minecraft.class_2680;
-import net.minecraft.class_2791;
-import net.minecraft.class_2806;
-import net.minecraft.class_3486;
-import net.minecraft.class_3611;
-import net.minecraft.class_3612;
+import net.minecraft.util.math.ChunkPos;
+import net.minecraft.world.World;
+import net.minecraft.block.Blocks;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.block.BlockState;
+import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.ChunkStatus;
+import net.minecraft.registry.tag.FluidTags;
+import net.minecraft.fluid.Fluid;
+import net.minecraft.fluid.Fluids;
 
 public class Pathfinder {
    private static final int[][] DIRS = new int[][]{
@@ -59,7 +59,7 @@ public class Pathfinder {
    private static final double SQRT2 = Math.sqrt(2.0);
    private static final double SQRT3 = Math.sqrt(3.0);
 
-   public static Pathfinder.PathResult findPathInternalForExternal(class_1937 world, class_2338 currentStart, class_2338 goal, Pathfinder.PathfinderConfig cfg) {
+   public static Pathfinder.PathResult findPathInternalForExternal(World world, BlockPos currentStart, BlockPos goal, Pathfinder.PathfinderConfig cfg) {
       if (cfg == null) {
          cfg = new Pathfinder.PathfinderConfig();
       }
@@ -72,7 +72,7 @@ public class Pathfinder {
       } else if (primary.complete && primary.reached.equals(goal)) {
          return primary;
       } else {
-         class_2338 near = findNearestReachable(world, goal, cfg, cache, Math.max(6, cfg.chunkSearchRadius));
+         BlockPos near = findNearestReachable(world, goal, cfg, cache, Math.max(6, cfg.chunkSearchRadius));
          if (near != null && !near.equals(goal)) {
             Pathfinder.PathResult alt = aStar(world, currentStart, near, cfg, cache, cancelFlag);
             if (alt != null && !alt.path.isEmpty()) {
@@ -84,24 +84,24 @@ public class Pathfinder {
       }
    }
 
-   private static class_2338 findReachableYColumn(
-      class_1937 world, class_2338 goal, Pathfinder.PathfinderConfig cfg, Pathfinder.ChunkCache cache, int verticalRange
+   private static BlockPos findReachableYColumn(
+      World world, BlockPos goal, Pathfinder.PathfinderConfig cfg, Pathfinder.ChunkCache cache, int verticalRange
    ) {
-      if (cfg.dynamicChunkLoading && !cache.isLoaded(new class_1923(goal)) && !cfg.allowUnloadedTraversal
+      if (cfg.dynamicChunkLoading && !cache.isLoaded(new ChunkPos(goal)) && !cfg.allowUnloadedTraversal
          || !hasSpaceForEntity(world, goal, cfg)
          || !canStandOn(world, goal)
          || cfg.avoidDanger && isDangerousBlock(world, goal)) {
          int d = 1;
 
          while (d <= verticalRange) {
-            class_2338 up = goal.method_10086(d);
-            class_1923 upChunk = new class_1923(up);
+            BlockPos up = goal.up(d);
+            ChunkPos upChunk = new ChunkPos(up);
             if (cfg.dynamicChunkLoading && !cache.isLoaded(upChunk) && !cfg.allowUnloadedTraversal
                || !hasSpaceForEntity(world, up, cfg)
                || !canStandOn(world, up)
                || cfg.avoidDanger && isDangerousBlock(world, up)) {
-               class_2338 down = goal.method_10087(d);
-               class_1923 downChunk = new class_1923(down);
+               BlockPos down = goal.down(d);
+               ChunkPos downChunk = new ChunkPos(down);
                if (cfg.dynamicChunkLoading && !cache.isLoaded(downChunk) && !cfg.allowUnloadedTraversal
                   || !hasSpaceForEntity(world, down, cfg)
                   || !canStandOn(world, down)
@@ -122,10 +122,10 @@ public class Pathfinder {
       }
    }
 
-   private static double heuristic(class_2338 a, class_2338 b) {
-      double dx = a.method_10263() - b.method_10263();
-      double dy = a.method_10264() - b.method_10264();
-      double dz = a.method_10260() - b.method_10260();
+   private static double heuristic(BlockPos a, BlockPos b) {
+      double dx = a.getX() - b.getX();
+      double dy = a.getY() - b.getY();
+      double dz = a.getZ() - b.getZ();
       return Math.sqrt(dx * dx + dy * dy + dz * dz);
    }
 
@@ -138,49 +138,49 @@ public class Pathfinder {
       }
    }
 
-   private static boolean isLadder(class_1937 world, class_2338 pos) {
-      class_2680 st = world.method_8320(pos);
-      return st.method_27852(class_2246.field_9983) || st.method_27852(class_2246.field_10597) || st.method_27852(class_2246.field_16492);
+   private static boolean isLadder(World world, BlockPos pos) {
+      BlockState st = world.getBlockState(pos);
+      return st.isOf(Blocks.LADDER) || st.isOf(Blocks.VINE) || st.isOf(Blocks.SCAFFOLDING);
    }
 
-   private static boolean isDangerousBlock(class_1937 world, class_2338 pos) {
-      class_2680 st = world.method_8320(pos);
-      class_3611 f = st.method_26227().method_15772();
-      if (f == class_3612.field_15908) {
+   private static boolean isDangerousBlock(World world, BlockPos pos) {
+      BlockState st = world.getBlockState(pos);
+      Fluid f = st.getFluidState().getFluid();
+      if (f == Fluids.LAVA) {
          return true;
-      } else if (st.method_27852(class_2246.field_10036) || st.method_27852(class_2246.field_22089)) {
+      } else if (st.isOf(Blocks.FIRE) || st.isOf(Blocks.SOUL_FIRE)) {
          return true;
-      } else if (st.method_27852(class_2246.field_10029)) {
+      } else if (st.isOf(Blocks.CACTUS)) {
          return true;
       } else {
-         return st.method_27852(class_2246.field_16999) ? true : st.method_27852(class_2246.field_10092);
+         return st.isOf(Blocks.SWEET_BERRY_BUSH) ? true : st.isOf(Blocks.MAGMA_BLOCK);
       }
    }
 
-   private static int waterDepth(class_1937 world, class_2338 pos, int maxCheck) {
+   private static int waterDepth(World world, BlockPos pos, int maxCheck) {
       int depth = 0;
-      class_2338 p = pos;
+      BlockPos p = pos;
 
       for (int i = 0; i < maxCheck; i++) {
-         class_2680 s = world.method_8320(p);
-         if (!s.method_26227().method_15767(class_3486.field_15517) && !s.method_26227().method_15771()) {
+         BlockState s = world.getBlockState(p);
+         if (!s.getFluidState().isIn(FluidTags.WATER) && !s.getFluidState().isStill()) {
             break;
          }
 
          depth++;
-         p = p.method_10074();
+         p = p.down();
       }
 
       return depth;
    }
 
-   private static boolean hasSpaceForEntity(class_1937 world, class_2338 pos, Pathfinder.PathfinderConfig cfg) {
+   private static boolean hasSpaceForEntity(World world, BlockPos pos, Pathfinder.PathfinderConfig cfg) {
       int height = (int)Math.ceil(cfg.entityHeight);
 
       for (int y = 0; y < height; y++) {
-         class_2338 p = pos.method_10086(y);
-         class_2680 st = world.method_8320(p);
-         if (!st.method_26215() && !st.method_26227().method_15771() && !st.method_26220(world, p).method_1110()) {
+         BlockPos p = pos.up(y);
+         BlockState st = world.getBlockState(p);
+         if (!st.isAir() && !st.getFluidState().isStill() && !st.getCollisionShape(world, p).isEmpty()) {
             return false;
          }
       }
@@ -188,20 +188,20 @@ public class Pathfinder {
       return true;
    }
 
-   private static boolean canStandOn(class_1937 world, class_2338 pos) {
-      class_2680 below = world.method_8320(pos.method_10074());
-      return below.method_26212(world, pos.method_10074()) || below.method_26227().method_15767(class_3486.field_15517) || isLadder(world, pos.method_10074());
+   private static boolean canStandOn(World world, BlockPos pos) {
+      BlockState below = world.getBlockState(pos.down());
+      return below.isSolidBlock(world, pos.down()) || below.getFluidState().isIn(FluidTags.WATER) || isLadder(world, pos.down());
    }
 
    private static Pathfinder.MovementType getMovementType(
-      class_1937 world, class_2338 from, class_2338 to, Pathfinder.PathfinderConfig cfg, Pathfinder.ChunkCache cache
+      World world, BlockPos from, BlockPos to, Pathfinder.PathfinderConfig cfg, Pathfinder.ChunkCache cache
    ) {
-      class_1923 cp = new class_1923(to);
+      ChunkPos cp = new ChunkPos(to);
       if (!cache.isLoaded(cp) && !cfg.allowUnloadedTraversal) {
          return Pathfinder.MovementType.INVALID;
       } else {
          boolean isUnloaded = !cache.isLoaded(cp);
-         int dy = to.method_10264() - from.method_10264();
+         int dy = to.getY() - from.getY();
          if (!isUnloaded) {
             if (!hasSpaceForEntity(world, to, cfg)) {
                return Pathfinder.MovementType.INVALID;
@@ -212,8 +212,8 @@ public class Pathfinder {
             }
          }
 
-         class_2680 toState = isUnloaded ? class_2246.field_10124.method_9564() : world.method_8320(to);
-         boolean inWater = toState.method_26227().method_15767(class_3486.field_15517) || toState.method_26227().method_15771();
+         BlockState toState = isUnloaded ? Blocks.AIR.getDefaultState() : world.getBlockState(to);
+         boolean inWater = toState.getFluidState().isIn(FluidTags.WATER) || toState.getFluidState().isStill();
          boolean onLadder = cfg.allowLadders && !isUnloaded && isLadder(world, to);
          if (inWater) {
             if (!cfg.allowSwimming) {
@@ -251,15 +251,15 @@ public class Pathfinder {
       }
    }
 
-   private static boolean checkDiagonal(class_1937 world, class_2338 from, int[] dir, Pathfinder.PathfinderConfig cfg, Pathfinder.ChunkCache cache) {
+   private static boolean checkDiagonal(World world, BlockPos from, int[] dir, Pathfinder.PathfinderConfig cfg, Pathfinder.ChunkCache cache) {
       int dx = dir[0];
       int dy = dir[1];
       int dz = dir[2];
       if (Math.abs(dx) + Math.abs(dz) >= 2) {
-         class_2338 a = from.method_10069(dx, 0, 0);
-         class_2338 b = from.method_10069(0, 0, dz);
-         class_1923 ap = new class_1923(a);
-         class_1923 bp = new class_1923(b);
+         BlockPos a = from.add(dx, 0, 0);
+         BlockPos b = from.add(0, 0, dz);
+         ChunkPos ap = new ChunkPos(a);
+         ChunkPos bp = new ChunkPos(b);
          if (!cfg.dynamicChunkLoading || cache.isLoaded(ap) && cache.isLoaded(bp)) {
             if (!hasSpaceForEntity(world, a, cfg) || !hasSpaceForEntity(world, b, cfg)) {
                return false;
@@ -274,11 +274,11 @@ public class Pathfinder {
       }
 
       if (Math.abs(dx) + Math.abs(dy) + Math.abs(dz) >= 3) {
-         class_2338 p1 = from.method_10069(dx, dy, 0);
-         class_2338 p2 = from.method_10069(0, dy, dz);
-         class_2338 p3 = from.method_10069(dx, 0, dz);
+         BlockPos p1 = from.add(dx, dy, 0);
+         BlockPos p2 = from.add(0, dy, dz);
+         BlockPos p3 = from.add(dx, 0, dz);
          if (cfg.dynamicChunkLoading
-            && (!cache.isLoaded(new class_1923(p1)) || !cache.isLoaded(new class_1923(p2)) || !cache.isLoaded(new class_1923(p3)))
+            && (!cache.isLoaded(new ChunkPos(p1)) || !cache.isLoaded(new ChunkPos(p2)) || !cache.isLoaded(new ChunkPos(p3)))
             && !cfg.allowUnloadedTraversal) {
             return false;
          }
@@ -291,8 +291,8 @@ public class Pathfinder {
       return true;
    }
 
-   private static List<class_2338> reconstruct(Pathfinder.Node node) {
-      List<class_2338> out = new ArrayList<>();
+   private static List<BlockPos> reconstruct(Pathfinder.Node node) {
+      List<BlockPos> out = new ArrayList<>();
 
       while (node != null) {
          out.add(node.pos);
@@ -304,11 +304,11 @@ public class Pathfinder {
    }
 
    private static Pathfinder.PathResult aStar(
-      class_1937 world, class_2338 start, class_2338 goal, Pathfinder.PathfinderConfig cfg, Pathfinder.ChunkCache cache, AtomicBoolean cancelFlag
+      World world, BlockPos start, BlockPos goal, Pathfinder.PathfinderConfig cfg, Pathfinder.ChunkCache cache, AtomicBoolean cancelFlag
    ) {
       PriorityQueue<Pathfinder.Node> open = new PriorityQueue<>(Comparator.comparingDouble(nx -> nx.f));
-      Map<class_2338, Pathfinder.Node> all = new HashMap<>();
-      Set<class_2338> closed = new HashSet<>();
+      Map<BlockPos, Pathfinder.Node> all = new HashMap<>();
+      Set<BlockPos> closed = new HashSet<>();
       Pathfinder.Node s = new Pathfinder.Node(start);
       s.g = 0.0;
       s.h = heuristic(start, goal);
@@ -335,12 +335,12 @@ public class Pathfinder {
          }
 
          closed.add(cur.pos);
-         class_1923 curChunk = new class_1923(cur.pos);
+         ChunkPos curChunk = new ChunkPos(cur.pos);
          if (!cfg.dynamicChunkLoading || cache.isLoaded(curChunk) || cfg.allowUnloadedTraversal) {
             for (int[] dir : DIRS) {
-               class_2338 nb = cur.pos.method_10069(dir[0], dir[1], dir[2]);
+               BlockPos nb = cur.pos.add(dir[0], dir[1], dir[2]);
                if (!closed.contains(nb)) {
-                  class_1923 nbChunk = new class_1923(nb);
+                  ChunkPos nbChunk = new ChunkPos(nb);
                   if (!cfg.dynamicChunkLoading || cache.isLoaded(nbChunk) || cfg.allowUnloadedTraversal) {
                      Pathfinder.MovementType mt = getMovementType(world, cur.pos, nb, cfg, cache);
                      if (mt != Pathfinder.MovementType.INVALID && checkDiagonal(world, cur.pos, dir, cfg, cache)) {
@@ -385,22 +385,22 @@ public class Pathfinder {
       return new Pathfinder.PathResult(reconstruct(best), false, best.pos, iter);
    }
 
-   private static double getChunkDist(class_1923 a, class_1923 b) {
-      int dx = a.field_9181 - b.field_9181;
-      int dz = a.field_9180 - b.field_9180;
+   private static double getChunkDist(ChunkPos a, ChunkPos b) {
+      int dx = a.x - b.x;
+      int dz = a.z - b.z;
       return Math.sqrt(dx * dx + dz * dz);
    }
 
-   private static class_2338 findNearestReachable(class_1937 world, class_2338 goal, Pathfinder.PathfinderConfig cfg, Pathfinder.ChunkCache cache, int radius) {
-      Queue<class_2338> q = new ArrayDeque<>();
-      Set<class_2338> seen = new HashSet<>();
+   private static BlockPos findNearestReachable(World world, BlockPos goal, Pathfinder.PathfinderConfig cfg, Pathfinder.ChunkCache cache, int radius) {
+      Queue<BlockPos> q = new ArrayDeque<>();
+      Set<BlockPos> seen = new HashSet<>();
       q.add(goal);
       seen.add(goal);
       int steps = 0;
 
       while (!q.isEmpty() && steps++ < radius * radius * 20) {
-         class_2338 p = q.poll();
-         if ((!cfg.dynamicChunkLoading || cache.isLoaded(new class_1923(p)) || cfg.allowUnloadedTraversal)
+         BlockPos p = q.poll();
+         if ((!cfg.dynamicChunkLoading || cache.isLoaded(new ChunkPos(p)) || cfg.allowUnloadedTraversal)
             && hasSpaceForEntity(world, p, cfg)
             && canStandOn(world, p)
             && (!cfg.avoidDanger || !isDangerousBlock(world, p))) {
@@ -411,7 +411,7 @@ public class Pathfinder {
             for (int dy = -1; dy <= 1; dy++) {
                for (int dz = -1; dz <= 1; dz++) {
                   if (dx != 0 || dy != 0 || dz != 0) {
-                     class_2338 np = p.method_10069(dx, dy, dz);
+                     BlockPos np = p.add(dx, dy, dz);
                      if (seen.add(np)) {
                         q.add(np);
                      }
@@ -424,12 +424,12 @@ public class Pathfinder {
       return goal;
    }
 
-   public static List<class_2338> findPath(class_1937 world, class_2338 start, class_2338 goal, Pathfinder.PathfinderConfig cfg) {
+   public static List<BlockPos> findPath(World world, BlockPos start, BlockPos goal, Pathfinder.PathfinderConfig cfg) {
       Pathfinder.PathResult r = findPathInternal(world, start, goal, cfg);
       return r.path;
    }
 
-   private static Pathfinder.PathResult findPathInternal(class_1937 world, class_2338 start, class_2338 goal, Pathfinder.PathfinderConfig cfg) {
+   private static Pathfinder.PathResult findPathInternal(World world, BlockPos start, BlockPos goal, Pathfinder.PathfinderConfig cfg) {
       if (cfg == null) {
          cfg = new Pathfinder.PathfinderConfig();
       }
@@ -438,7 +438,7 @@ public class Pathfinder {
       AtomicBoolean cancelFlag = new AtomicBoolean(false);
       Pathfinder.PathResult result = aStar(world, start, goal, cfg, cache, cancelFlag);
       if (!result.complete) {
-         class_2338 near = findNearestReachable(world, goal, cfg, cache, Math.max(6, cfg.chunkSearchRadius));
+         BlockPos near = findNearestReachable(world, goal, cfg, cache, Math.max(6, cfg.chunkSearchRadius));
          if (!near.equals(goal)) {
             Pathfinder.PathResult alt = aStar(world, start, near, cfg, cache, cancelFlag);
             if (!alt.path.isEmpty()) {
@@ -460,7 +460,7 @@ public class Pathfinder {
       private final AtomicBoolean cancelled = new AtomicBoolean(false);
       private Pathfinder.PathResult result;
 
-      public void findPathAsync(class_1937 world, class_2338 start, class_2338 goal, Pathfinder.PathfinderConfig cfg, Pathfinder.PathCallback cb) {
+      public void findPathAsync(World world, BlockPos start, BlockPos goal, Pathfinder.PathfinderConfig cfg, Pathfinder.PathCallback cb) {
          this.cancelled.set(false);
          this.future = this.exec.submit(() -> {
             try {
@@ -469,7 +469,7 @@ public class Pathfinder {
                AtomicBoolean cancelFlag = this.cancelled;
                Pathfinder.PathResult r = Pathfinder.aStar(world, start, goal, finalCfg, cache, cancelFlag);
                if (!r.complete) {
-                  class_2338 near = Pathfinder.findNearestReachable(world, goal, finalCfg, cache, Math.max(6, finalCfg.chunkSearchRadius));
+                  BlockPos near = Pathfinder.findNearestReachable(world, goal, finalCfg, cache, Math.max(6, finalCfg.chunkSearchRadius));
                   if (!near.equals(goal)) {
                      Pathfinder.PathResult alt = Pathfinder.aStar(world, start, near, finalCfg, cache, cancelFlag);
                      if (!alt.path.isEmpty()) {
@@ -511,16 +511,16 @@ public class Pathfinder {
    }
 
    private static class ChunkCache {
-      private final class_1937 world;
-      private final Map<class_1923, Boolean> cached = new ConcurrentHashMap<>();
+      private final World world;
+      private final Map<ChunkPos, Boolean> cached = new ConcurrentHashMap<>();
 
-      public ChunkCache(class_1937 w) {
+      public ChunkCache(World w) {
          this.world = w;
       }
 
-      public boolean isLoaded(class_1923 p) {
+      public boolean isLoaded(ChunkPos p) {
          return this.cached.computeIfAbsent(p, cp -> {
-            class_2791 c = this.world.method_8402(cp.field_9181, cp.field_9180, class_2806.field_12803, false);
+            Chunk c = this.world.getChunk(cp.x, cp.z, ChunkStatus.FULL, false);
             return c != null;
          });
       }
@@ -536,13 +536,13 @@ public class Pathfinder {
    }
 
    private static class Node {
-      class_2338 pos;
+      BlockPos pos;
       Pathfinder.Node parent;
       double g = Double.MAX_VALUE;
       double h;
       double f;
 
-      Node(class_2338 pos) {
+      Node(BlockPos pos) {
          this.pos = pos;
       }
    }
@@ -554,12 +554,12 @@ public class Pathfinder {
    }
 
    public static class PathResult {
-      public final List<class_2338> path;
+      public final List<BlockPos> path;
       public final boolean complete;
-      public final class_2338 reached;
+      public final BlockPos reached;
       public final int nodesExplored;
 
-      public PathResult(List<class_2338> path, boolean complete, class_2338 reached, int nodesExplored) {
+      public PathResult(List<BlockPos> path, boolean complete, BlockPos reached, int nodesExplored) {
          this.path = path;
          this.complete = complete;
          this.reached = reached;

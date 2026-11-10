@@ -19,15 +19,15 @@ import javax.imageio.ImageReader;
 import javax.imageio.metadata.IIOMetadata;
 import javax.imageio.metadata.IIOMetadataNode;
 import javax.imageio.stream.ImageInputStream;
-import net.minecraft.class_1011;
-import net.minecraft.class_1043;
-import net.minecraft.class_2960;
-import net.minecraft.class_310;
+import net.minecraft.client.texture.NativeImage;
+import net.minecraft.client.texture.NativeImageBackedTexture;
+import net.minecraft.util.Identifier;
+import net.minecraft.client.MinecraftClient;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 public class StickerManager {
-   private static final class_310 mc = class_310.method_1551();
+   private static final MinecraftClient mc = MinecraftClient.getInstance();
    private static final int BASE_SIZE = 64;
    private static final String[] DEFAULT_STICKERS = new String[]{"sh1t.gif", "button.gif", "hot.gif", "pig.gif", "sweat.gif"};
    private final File stickersDir;
@@ -88,18 +88,18 @@ public class StickerManager {
    }
 
    private void loadPng(String name, File file) throws IOException {
-      class_2960 id = class_2960.method_60655("southside", "sticker/" + this.sanitize(name));
+      Identifier id = Identifier.of("southside", "sticker/" + this.sanitize(name));
 
       try (InputStream is = new FileInputStream(file)) {
-         class_1011 image = class_1011.method_4309(is);
-         class_1043 texture = new class_1043(image);
-         mc.execute(() -> mc.method_1531().method_4616(id, texture));
+         NativeImage image = NativeImage.read(is);
+         NativeImageBackedTexture texture = new NativeImageBackedTexture(image);
+         mc.execute(() -> mc.getTextureManager().registerTexture(id, texture));
          StickerManager.StickerData data = new StickerManager.StickerData();
          data.frames = new StickerManager.FrameData[]{new StickerManager.FrameData(id, 0)};
          data.totalDuration = 0L;
          data.isAnimated = false;
-         data.width = image.method_4307();
-         data.height = image.method_4323();
+         data.width = image.getWidth();
+         data.height = image.getHeight();
          this.loadedStickers.put(name, data);
       }
    }
@@ -172,10 +172,10 @@ public class StickerManager {
                delay = 100;
             }
 
-            class_2960 frameId = class_2960.method_60655("southside", "sticker/" + this.sanitize(name) + "_f" + i);
-            class_1011 nativeImage = this.bufferedToNative(canvas);
-            class_1043 texture = new class_1043(nativeImage);
-            mc.execute(() -> mc.method_1531().method_4616(frameId, texture));
+            Identifier frameId = Identifier.of("southside", "sticker/" + this.sanitize(name) + "_f" + i);
+            NativeImage nativeImage = this.bufferedToNative(canvas);
+            NativeImageBackedTexture texture = new NativeImageBackedTexture(nativeImage);
+            mc.execute(() -> mc.getTextureManager().registerTexture(frameId, texture));
             frames.add(new StickerManager.FrameData(frameId, delay));
             totalDuration += delay;
             if (disposal == 2) {
@@ -209,15 +209,15 @@ public class StickerManager {
       return copy;
    }
 
-   private class_1011 bufferedToNative(BufferedImage src) {
+   private NativeImage bufferedToNative(BufferedImage src) {
       int w = src.getWidth();
       int h = src.getHeight();
-      class_1011 image = new class_1011(w, h, false);
+      NativeImage image = new NativeImage(w, h, false);
 
       for (int y = 0; y < h; y++) {
          for (int x = 0; x < w; x++) {
             int argb = src.getRGB(x, y);
-            image.method_61941(x, y, argb);
+            image.setColorArgb(x, y, argb);
          }
       }
 
@@ -267,7 +267,7 @@ public class StickerManager {
 
    private void destroySticker(StickerManager.StickerData data) {
       for (StickerManager.FrameData frame : data.frames) {
-         mc.execute(() -> mc.method_1531().method_4615(frame.identifier));
+         mc.execute(() -> mc.getTextureManager().destroyTexture(frame.identifier));
       }
    }
 
@@ -299,7 +299,7 @@ public class StickerManager {
       } else {
          StickerManager.StickerData data = this.loadedStickers.get(this.activeStickerName);
          if (data != null && data.frames.length != 0) {
-            class_2960 textureId;
+            Identifier textureId;
             if (data.isAnimated && data.frames.length > 1) {
                long time = System.currentTimeMillis() % data.totalDuration;
                long acc = 0L;
@@ -335,7 +335,7 @@ public class StickerManager {
       }
    }
 
-   private record FrameData(class_2960 identifier, int delayMs) {
+   private record FrameData(Identifier identifier, int delayMs) {
    }
 
    private static class StickerData {
@@ -346,6 +346,6 @@ public class StickerManager {
       int height;
    }
 
-   public record StickerRenderInfo(class_2960 textureId, int drawWidth, int drawHeight) {
+   public record StickerRenderInfo(Identifier textureId, int drawWidth, int drawHeight) {
    }
 }

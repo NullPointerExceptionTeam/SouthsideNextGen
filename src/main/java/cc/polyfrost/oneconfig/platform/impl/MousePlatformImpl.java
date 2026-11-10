@@ -22,7 +22,7 @@ public class MousePlatformImpl implements MousePlatform {
 
    @Override
    public double getDWheel() {
-      double scrollDelta = ((IScroller)((IMouse)UMinecraft.getMinecraft().field_1729).getScroller()).getCumulVertical();
+      double scrollDelta = ((IScroller)((IMouse)UMinecraft.getMinecraft().mouse).getScroller()).getCumulVertical();
       double amount = scrollDelta - this.prevScroll;
       this.prevScroll = scrollDelta;
       return amount;
@@ -30,12 +30,12 @@ public class MousePlatformImpl implements MousePlatform {
 
    @Override
    public double getMouseDX() {
-      return ((IMouse)UMinecraft.getMinecraft().field_1729).getCursorDeltaX();
+      return ((IMouse)UMinecraft.getMinecraft().mouse).getCursorDeltaX();
    }
 
    @Override
    public double getMouseDY() {
-      return ((IMouse)UMinecraft.getMinecraft().field_1729).getCursorDeltaY();
+      return ((IMouse)UMinecraft.getMinecraft().mouse).getCursorDeltaY();
    }
 
    @Override

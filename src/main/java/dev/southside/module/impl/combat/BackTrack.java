@@ -10,7 +10,7 @@ import dev.southside.module.Category;
 import dev.southside.module.Module;
 import dev.southside.orbit.EventHandler;
 import java.awt.Color;
-import net.minecraft.class_745;
+import net.minecraft.client.network.OtherClientPlayerEntity;
 
 public class BackTrack extends Module {
    private boolean lastTracking = false;
@@ -21,9 +21,9 @@ public class BackTrack extends Module {
 
    @EventHandler
    public void onRotation(RotationAppliedEvent event) {
-      if (KillAura.target instanceof class_745 player
-         && mc.field_1724 != null
-         && mc.field_1724.method_19538().method_1022(player.method_19538()) <= 6.0
+      if (KillAura.target instanceof OtherClientPlayerEntity player
+         && mc.player != null
+         && mc.player.getPos().distanceTo(player.getPos()) <= 6.0
          && Southside.INSTANCE.getModuleManager().get(KillAura.class).inRaycast(KillAura.target)) {
          if (!this.lastTracking) {
             ServerPacketManager.setup();
@@ -44,8 +44,8 @@ public class BackTrack extends Module {
          instance.setupAndDraw(true, vg -> {
             String text = "Tracking Ticks: " + ServerPacketManager.deSyncTick;
             float textWidth = instance.getTextWidth(vg, text, 8.0F, Fonts.REGULAR);
-            float x = (mc.method_22683().method_4486() - textWidth) / 2.0F;
-            float y = mc.method_22683().method_4502() / 2.0F + 50.0F;
+            float x = (mc.getWindow().getScaledWidth() - textWidth) / 2.0F;
+            float y = mc.getWindow().getScaledHeight() / 2.0F + 50.0F;
             instance.drawTextWithFormatting(vg, text, x, y, Color.YELLOW.getRGB(), 8.0F, Fonts.REGULAR);
          });
       }

@@ -31,13 +31,13 @@ public class Notification extends Module {
    }
 
    public static void addNotification(String message, String title, Notification.NotificationType type) {
-      if (mc.field_1687 != null || mc.field_1755 instanceof OneUIScreen) {
+      if (mc.world != null || mc.currentScreen instanceof OneUIScreen) {
          addNotificationKeepTime(message, title, type, INSTANCE.keepTimeValue.getValue().doubleValue());
       }
    }
 
    public static void addNotificationKeepTime(String message, String title, Notification.NotificationType type, double keepTime) {
-      if (mc.field_1687 != null || mc.field_1755 instanceof OneUIScreen) {
+      if (mc.world != null || mc.currentScreen instanceof OneUIScreen) {
          long time = System.currentTimeMillis();
          Animation animation = new EaseInOutQuad((int)(keepTime * 1000.0), 0.0F, 1.0F, false);
          Notifications.INSTANCE.send(title, message, getIcon(type), (float)(keepTime * 1000.0), () -> animation.get(GuiUtils.getDeltaTime()));

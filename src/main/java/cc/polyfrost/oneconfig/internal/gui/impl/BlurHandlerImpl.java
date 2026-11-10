@@ -9,14 +9,14 @@ import dev.southside.event.events.GameRendererDrawEvent;
 import dev.southside.event.events.SetScreenEvent;
 import dev.southside.mixin.accessors.IGameRenderer;
 import dev.southside.orbit.EventHandler;
-import net.minecraft.class_279;
-import net.minecraft.class_2960;
-import net.minecraft.class_9960;
+import net.minecraft.client.gl.PostEffectProcessor;
+import net.minecraft.util.Identifier;
+import net.minecraft.client.render.DefaultFramebufferSet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class BlurHandlerImpl implements BlurHandler {
-   private static final class_2960 BLUR_SHADER = class_2960.method_60654("southside:blur");
+   private static final Identifier BLUR_SHADER = Identifier.of("southside:blur");
    private static final float FADE_SPEED_BASE_FPS = 60.0F;
    private static final float MAX_ANIMATION_DELTA_SECONDS = 0.25F;
    private static final float MIN_RADIUS_THRESHOLD = 0.01F;
@@ -31,7 +31,7 @@ public class BlurHandlerImpl implements BlurHandler {
    private float animatedRadius;
    private float lastAppliedEffectiveRadius = -1.0F;
    private float lastAppliedSampleRate = -1.0F;
-   private class_279 cachedProcessor;
+   private PostEffectProcessor cachedProcessor;
    private long lastAnimationStepNanos = Long.MIN_VALUE;
    private long nextErrorLogAt;
 
@@ -80,7 +80,7 @@ public class BlurHandlerImpl implements BlurHandler {
                   }
                } else if (!this.isAnyShaderActive()) {
                   try {
-                     ((IGameRenderer)UMinecraft.getMinecraft().field_1773).invokeLoadPostProcessor(BLUR_SHADER);
+                     ((IGameRenderer)UMinecraft.getMinecraft().gameRenderer).invokeLoadPostProcessor(BLUR_SHADER);
                      this.cachedProcessor = null;
                      this.lastAppliedEffectiveRadius = -1.0F;
                      this.lastAppliedSampleRate = -1.0F;
@@ -113,7 +113,7 @@ public class BlurHandlerImpl implements BlurHandler {
             if (!this.isAnyShaderActive()) {
                try {
                   this.logger.info("Attempting to load blur shader: {}", BLUR_SHADER);
-                  ((IGameRenderer)UMinecraft.getMinecraft().field_1773).invokeLoadPostProcessor(BLUR_SHADER);
+                  ((IGameRenderer)UMinecraft.getMinecraft().gameRenderer).invokeLoadPostProcessor(BLUR_SHADER);
                   this.cachedProcessor = null;
                   this.lastAppliedEffectiveRadius = -1.0F;
                   this.lastAppliedSampleRate = -1.0F;
@@ -137,18 +137,18 @@ public class BlurHandlerImpl implements BlurHandler {
    }
 
    private boolean isAnyShaderActive() {
-      return UMinecraft.getMinecraft().field_1773.method_62906() != null;
+      return UMinecraft.getMinecraft().gameRenderer.getPostProcessorId() != null;
    }
 
    private boolean isOwnBlurShaderActive() {
-      class_2960 active = UMinecraft.getMinecraft().field_1773.method_62906();
+      Identifier active = UMinecraft.getMinecraft().gameRenderer.getPostProcessorId();
       return active != null && active.equals(BLUR_SHADER);
    }
 
    private void disableBlurShader(String reason) {
       if (this.isOwnBlurShaderActive()) {
          try {
-            ((IGameRenderer)UMinecraft.getMinecraft().field_1773).invokeClearPostProcessor();
+            ((IGameRenderer)UMinecraft.getMinecraft().gameRenderer).invokeClearPostProcessor();
             this.cachedProcessor = null;
             this.lastAppliedEffectiveRadius = -1.0F;
             this.lastAppliedSampleRate = -1.0F;
@@ -182,16 +182,16 @@ public class BlurHandlerImpl implements BlurHandler {
    private void updateBlurUniforms(float radius, float sampleRate) {
       if (this.isOwnBlurShaderActive()) {
          try {
-            class_279 processor = this.cachedProcessor;
+            PostEffectProcessor processor = this.cachedProcessor;
             if (processor == null) {
-               processor = UMinecraft.getMinecraft().method_62887().method_62941(BLUR_SHADER, class_9960.field_53902);
+               processor = UMinecraft.getMinecraft().getShaderLoader().loadPostEffect(BLUR_SHADER, DefaultFramebufferSet.MAIN_ONLY);
                this.cachedProcessor = processor;
             }
 
             if (processor != null) {
-               processor.method_57799("Radius", radius);
-               processor.method_57799("SampleRate", sampleRate);
-               processor.method_57799("DualSampleEnabled", 0.0F);
+               processor.setUniforms("Radius", radius);
+               processor.setUniforms("SampleRate", sampleRate);
+               processor.setUniforms("DualSampleEnabled", 0.0F);
                this.lastAppliedEffectiveRadius = radius;
                this.lastAppliedSampleRate = sampleRate;
             }

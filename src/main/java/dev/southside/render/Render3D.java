@@ -3,12 +3,12 @@ package dev.southside.render;
 import dev.southside.render.pipeline.Mesh;
 import dev.southside.render.pipeline.Pipelines;
 import java.awt.Color;
-import net.minecraft.class_2338;
-import net.minecraft.class_238;
-import net.minecraft.class_4587;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
+import net.minecraft.client.util.math.MatrixStack;
 
 public class Render3D {
-   public static void begin(class_4587 mat) {
+   public static void begin(MatrixStack mat) {
       triangles().enable3d();
       lines().enable3d();
       triangles().mat(mat);
@@ -93,8 +93,8 @@ public class Render3D {
       boxLines(x, y, z, x + 1, y + 1, z + 1, color);
    }
 
-   public static void blockLines(class_2338 pos, Color color) {
-      blockLines(pos.method_10263(), pos.method_10264(), pos.method_10260(), color);
+   public static void blockLines(BlockPos pos, Color color) {
+      blockLines(pos.getX(), pos.getY(), pos.getZ(), color);
    }
 
    public static void boxSides(double x1, double y1, double z1, double x2, double y2, double z2, Color color) {
@@ -118,16 +118,16 @@ public class Render3D {
       boxSides(x, y, z, x + 1, y + 1, z + 1, color);
    }
 
-   public static void blockSides(class_2338 pos, Color color) {
-      blockSides(pos.method_10263(), pos.method_10264(), pos.method_10260(), color);
+   public static void blockSides(BlockPos pos, Color color) {
+      blockSides(pos.getX(), pos.getY(), pos.getZ(), color);
    }
 
-   public static void boxSides(class_238 box, Color color) {
-      boxSides(box.field_1323, box.field_1322, box.field_1321, box.field_1320, box.field_1325, box.field_1324, color);
+   public static void boxSides(Box box, Color color) {
+      boxSides(box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ, color);
    }
 
-   public static void boxLines(class_238 box, Color color) {
-      boxLines(box.field_1323, box.field_1322, box.field_1321, box.field_1320, box.field_1325, box.field_1324, color);
+   public static void boxLines(Box box, Color color) {
+      boxLines(box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ, color);
    }
 
    public static void sideLines(

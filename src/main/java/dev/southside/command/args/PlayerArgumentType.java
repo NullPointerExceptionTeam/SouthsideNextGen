@@ -11,13 +11,13 @@ import dev.southside.MinecraftAccessor;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import net.minecraft.class_1657;
-import net.minecraft.class_2172;
-import net.minecraft.class_2561;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.command.CommandSource;
+import net.minecraft.text.Text;
 
-public class PlayerArgumentType implements ArgumentType<class_1657> {
+public class PlayerArgumentType implements ArgumentType<PlayerEntity> {
    private static final DynamicCommandExceptionType NO_SUCH_PLAYER = new DynamicCommandExceptionType(
-      name -> class_2561.method_43470("Player with name " + name + " doesn't exist.")
+      name -> Text.literal("Player with name " + name + " doesn't exist.")
    );
    private static final Collection<String> EXAMPLES = List.of("cao_jia_hao");
 
@@ -25,16 +25,16 @@ public class PlayerArgumentType implements ArgumentType<class_1657> {
       return new PlayerArgumentType();
    }
 
-   public static class_1657 get(CommandContext<?> context) {
-      return (class_1657)context.getArgument("player", class_1657.class);
+   public static PlayerEntity get(CommandContext<?> context) {
+      return (PlayerEntity)context.getArgument("player", PlayerEntity.class);
    }
 
-   public class_1657 parse(StringReader reader) throws CommandSyntaxException {
+   public PlayerEntity parse(StringReader reader) throws CommandSyntaxException {
       String argument = reader.readString();
-      class_1657 playerEntity = null;
+      PlayerEntity playerEntity = null;
 
-      for (class_1657 p : MinecraftAccessor.mc.field_1687.method_18456()) {
-         if (p.method_5477().getString().equalsIgnoreCase(argument)) {
+      for (PlayerEntity p : MinecraftAccessor.mc.world.getPlayers()) {
+         if (p.getName().getString().equalsIgnoreCase(argument)) {
             playerEntity = p;
             break;
          }
@@ -48,7 +48,7 @@ public class PlayerArgumentType implements ArgumentType<class_1657> {
    }
 
    public <S> CompletableFuture<Suggestions> listSuggestions(CommandContext<S> context, SuggestionsBuilder builder) {
-      return class_2172.method_9264(MinecraftAccessor.mc.field_1687.method_18456().stream().map(p -> p.method_5477().getString()), builder);
+      return CommandSource.suggestMatching(MinecraftAccessor.mc.world.getPlayers().stream().map(p -> p.getName().getString()), builder);
    }
 
    public Collection<String> getExamples() {

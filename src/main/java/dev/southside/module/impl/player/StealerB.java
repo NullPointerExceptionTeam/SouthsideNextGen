@@ -23,27 +23,27 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.Generated;
-import net.minecraft.class_1703;
-import net.minecraft.class_1707;
-import net.minecraft.class_1713;
-import net.minecraft.class_1735;
-import net.minecraft.class_1738;
-import net.minecraft.class_1743;
-import net.minecraft.class_1747;
-import net.minecraft.class_1753;
-import net.minecraft.class_1764;
-import net.minecraft.class_1766;
-import net.minecraft.class_1787;
-import net.minecraft.class_1792;
-import net.minecraft.class_1799;
-import net.minecraft.class_1802;
-import net.minecraft.class_1810;
-import net.minecraft.class_1821;
-import net.minecraft.class_1829;
-import net.minecraft.class_2561;
-import net.minecraft.class_437;
-import net.minecraft.class_476;
-import net.minecraft.class_9463;
+import net.minecraft.screen.ScreenHandler;
+import net.minecraft.screen.GenericContainerScreenHandler;
+import net.minecraft.screen.slot.SlotActionType;
+import net.minecraft.screen.slot.Slot;
+import net.minecraft.item.ArmorItem;
+import net.minecraft.item.AxeItem;
+import net.minecraft.item.BlockItem;
+import net.minecraft.item.BowItem;
+import net.minecraft.item.CrossbowItem;
+import net.minecraft.item.MiningToolItem;
+import net.minecraft.item.FishingRodItem;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.item.PickaxeItem;
+import net.minecraft.item.ShovelItem;
+import net.minecraft.item.SwordItem;
+import net.minecraft.text.Text;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screen.ingame.GenericContainerScreen;
+import net.minecraft.item.ProjectileItem;
 import org.jetbrains.annotations.NotNull;
 
 public class StealerB extends Module {
@@ -57,7 +57,7 @@ public class StealerB extends Module {
    private final MSTimer timer3 = new MSTimer();
    private final MSTimer timer = new MSTimer();
    private long nextDelay = 0L;
-   private class_437 lastTickScreen;
+   private Screen lastTickScreen;
    private static final float WEIGHT_TOOL = 0.1F;
    private static final float WEIGHT_PROJECTILE = 0.2F;
    private static final float WEIGHT_BLOCK = 0.3F;
@@ -106,17 +106,17 @@ public class StealerB extends Module {
    public void onMotion(MotionEvent e) {
       if (e.getState() == Stage.PRE && !this.autoDisableCheck()) {
          ChestManager manager = Southside.get().getChestManager();
-         class_437 currentScreen = mc.field_1755;
-         if (currentScreen instanceof class_476 container) {
-            class_1707 menu = (class_1707)container.method_17577();
+         Screen currentScreen = mc.currentScreen;
+         if (currentScreen instanceof GenericContainerScreen container) {
+            GenericContainerScreenHandler menu = (GenericContainerScreenHandler)container.getScreenHandler();
             if (currentScreen != this.lastTickScreen) {
                this.timer.reset();
                this.nextDelay = (long)this.startDelay.getValue().floatValue();
             } else {
-               String chestTitle = container.method_25440().getString();
-               String chest = class_2561.method_43471("container.chest").getString();
-               String largeChest = class_2561.method_43471("container.chestDouble").getString();
-               String enderChest = class_2561.method_43471("container.enderchest").getString();
+               String chestTitle = container.getTitle().getString();
+               String chest = Text.translatable("container.chest").getString();
+               String largeChest = Text.translatable("container.chestDouble").getString();
+               String enderChest = Text.translatable("container.enderchest").getString();
                if ((
                      chestTitle.equals(chest)
                         || chestTitle.equals(largeChest)
@@ -124,9 +124,9 @@ public class StealerB extends Module {
                         || this.pickEnderChest.getValue() && chestTitle.equals(enderChest)
                   )
                   && this.timer.hasPassed(this.nextDelay)) {
-                  StealerB.PageView<class_1707> view = StealerB.PageView.from(menu);
+                  StealerB.PageView<GenericContainerScreenHandler> view = StealerB.PageView.from(menu);
                   view.buildView();
-                  StealerB.StealView<class_1707> stealView = view.toStealerView();
+                  StealerB.StealView<GenericContainerScreenHandler> stealView = view.toStealerView();
                   List<StealerB.SlotMove> sort = stealView.solveAction();
                   if (!sort.isEmpty()) {
                      for (StealerB.SlotMove slotMove : sort) {
@@ -134,7 +134,7 @@ public class StealerB extends Module {
                      }
                   } else if (this.timer3.hasPassed(this.closeDelay.getValue().intValue())) {
                      manager.stolenAll();
-                     mc.field_1724.method_7346();
+                     mc.player.closeHandledScreen();
                      this.timer3.reset();
                   }
 
@@ -173,13 +173,13 @@ public class StealerB extends Module {
    }
 
    private boolean autoDisableCheck() {
-      if (this.autoDisable.getValue() && mc.field_1687 != null) {
-         if (!mc.field_1724.method_5805()) {
+      if (this.autoDisable.getValue() && mc.world != null) {
+         if (!mc.player.isAlive()) {
             this.setEnable(false);
             return true;
          }
 
-         if (mc.field_1724.field_6012 <= 1) {
+         if (mc.player.age <= 1) {
             this.setEnable(false);
          }
       }
@@ -187,25 +187,25 @@ public class StealerB extends Module {
       return false;
    }
 
-   public record ItemStackKey(class_1799 stack) {
+   public record ItemStackKey(ItemStack stack) {
       @Override
       public boolean equals(Object o) {
          if (this == o) {
             return true;
          } else {
-            return o instanceof StealerB.ItemStackKey other ? class_1799.method_31577(this.stack, other.stack) : false;
+            return o instanceof StealerB.ItemStackKey other ? ItemStack.areItemsAndComponentsEqual(this.stack, other.stack) : false;
          }
       }
 
       @Override
       public int hashCode() {
-         return Objects.hash(this.stack.method_7909(), this.stack.method_57353());
+         return Objects.hash(this.stack.getItem(), this.stack.getComponents());
       }
    }
 
-   public record Node(int pos, int slot, class_1799 stack, List<StealerB.Node> sameStacks) {
+   public record Node(int pos, int slot, ItemStack stack, List<StealerB.Node> sameStacks) {
       public boolean isFull() {
-         if (this.stack.method_7947() >= this.stack.method_7914()) {
+         if (this.stack.getCount() >= this.stack.getMaxCount()) {
             return true;
          } else if (this.sameStacks.isEmpty()) {
             return true;
@@ -214,8 +214,8 @@ public class StealerB extends Module {
 
             for (StealerB.Node sameStack : this.sameStacks) {
                if (!sameStack.equals(this)) {
-                  class_1799 st = sameStack.stack;
-                  if (st.method_7947() < st.method_7914()) {
+                  ItemStack st = sameStack.stack;
+                  if (st.getCount() < st.getMaxCount()) {
                      non++;
                   }
                }
@@ -226,7 +226,7 @@ public class StealerB extends Module {
       }
 
       public boolean isEmpty() {
-         return this.stack == null || this.stack.method_7960();
+         return this.stack == null || this.stack.isEmpty();
       }
 
       @NotNull
@@ -251,20 +251,20 @@ public class StealerB extends Module {
       }
    }
 
-   public static class PageView<T extends class_1703> {
+   public static class PageView<T extends ScreenHandler> {
       public final Map<Integer, StealerB.Node> nodes = new LinkedHashMap<>();
       public final int columns;
       public final int rows;
       public final T handler;
 
-      public static StealerB.PageView<class_1707> from(class_1707 container) {
-         return new StealerB.PageView<>(9, container.method_17388(), container);
+      public static StealerB.PageView<GenericContainerScreenHandler> from(GenericContainerScreenHandler container) {
+         return new StealerB.PageView<>(9, container.getRows(), container);
       }
 
       public void buildView() {
-         for (class_1735 slot : this.handler.field_7761) {
-            if (!slot.field_7871.equals(StealerB.mc.field_1724.method_31548())) {
-               StealerB.Node node = new StealerB.Node(slot.method_34266(), slot.field_7874, slot.method_7677(), new LinkedList<>());
+         for (Slot slot : this.handler.slots) {
+            if (!slot.inventory.equals(StealerB.mc.player.getInventory())) {
+               StealerB.Node node = new StealerB.Node(slot.getIndex(), slot.id, slot.getStack(), new LinkedList<>());
                this.nodes.put(node.pos, node);
             }
          }
@@ -297,7 +297,7 @@ public class StealerB extends Module {
       }
    }
 
-   public record SlotMove(int a, int b, int srcA, int srcB, int type, int action, class_1799 stack) {
+   public record SlotMove(int a, int b, int srcA, int srcB, int type, int action, ItemStack stack) {
       public int aToChest() {
          return switch (this.srcA) {
             case 0 -> this.invToChestPos(this.a);
@@ -313,46 +313,46 @@ public class StealerB extends Module {
       }
 
       private int invToChestPos(int slot) {
-         int handlerSlots = StealerB.mc.field_1724.field_7512.field_7761.size();
+         int handlerSlots = StealerB.mc.player.currentScreenHandler.slots.size();
          return slot < 9 ? handlerSlots - 9 + slot : handlerSlots - 45 + slot;
       }
 
       public void apply() {
-         int syncId = StealerB.mc.field_1724.field_7512.field_7763;
+         int syncId = StealerB.mc.player.currentScreenHandler.syncId;
          switch (this.action) {
             case 0:
-               StealerB.mc.field_1761.method_2906(syncId, this.a, 0, class_1713.field_7795, StealerB.mc.field_1724);
+               StealerB.mc.interactionManager.clickSlot(syncId, this.a, 0, SlotActionType.THROW, StealerB.mc.player);
                break;
             case 1:
-               StealerB.mc.field_1761.method_2906(syncId, this.b, 8, class_1713.field_7791, StealerB.mc.field_1724);
-               StealerB.mc.field_1761.method_2906(syncId, this.a, 8, class_1713.field_7791, StealerB.mc.field_1724);
+               StealerB.mc.interactionManager.clickSlot(syncId, this.b, 8, SlotActionType.SWAP, StealerB.mc.player);
+               StealerB.mc.interactionManager.clickSlot(syncId, this.a, 8, SlotActionType.SWAP, StealerB.mc.player);
                break;
             case 2:
-               StealerB.mc.field_1761.method_2906(syncId, this.a, 40, class_1713.field_7791, StealerB.mc.field_1724);
+               StealerB.mc.interactionManager.clickSlot(syncId, this.a, 40, SlotActionType.SWAP, StealerB.mc.player);
                break;
             case 3:
-               StealerB.mc.field_1761.method_2906(syncId, this.b, 40, class_1713.field_7791, StealerB.mc.field_1724);
+               StealerB.mc.interactionManager.clickSlot(syncId, this.b, 40, SlotActionType.SWAP, StealerB.mc.player);
                break;
             case 4:
-               StealerB.mc.field_1761.method_2906(syncId, this.a, 0, class_1713.field_7794, StealerB.mc.field_1724);
+               StealerB.mc.interactionManager.clickSlot(syncId, this.a, 0, SlotActionType.QUICK_MOVE, StealerB.mc.player);
                break;
             case 5:
-               StealerB.mc.field_1761.method_2906(syncId, this.a, this.b, class_1713.field_7791, StealerB.mc.field_1724);
+               StealerB.mc.interactionManager.clickSlot(syncId, this.a, this.b, SlotActionType.SWAP, StealerB.mc.player);
                break;
             case 6:
-               StealerB.mc.field_1761.method_2906(StealerB.mc.field_1724.field_7512.field_7763, this.a, 0, class_1713.field_7790, StealerB.mc.field_1724);
-               StealerB.mc.field_1761.method_2906(StealerB.mc.field_1724.field_7512.field_7763, this.a, 0, class_1713.field_7793, StealerB.mc.field_1724);
+               StealerB.mc.interactionManager.clickSlot(StealerB.mc.player.currentScreenHandler.syncId, this.a, 0, SlotActionType.PICKUP, StealerB.mc.player);
+               StealerB.mc.interactionManager.clickSlot(StealerB.mc.player.currentScreenHandler.syncId, this.a, 0, SlotActionType.PICKUP_ALL, StealerB.mc.player);
                break;
             case 7:
-               StealerB.mc.field_1761.method_2906(StealerB.mc.field_1724.field_7512.field_7763, this.a, 0, class_1713.field_7790, StealerB.mc.field_1724);
-               StealerB.mc.field_1761.method_2906(StealerB.mc.field_1724.field_7512.field_7763, this.a, 0, class_1713.field_7793, StealerB.mc.field_1724);
-               StealerB.mc.field_1761.method_2906(StealerB.mc.field_1724.field_7512.field_7763, this.a, 0, class_1713.field_7790, StealerB.mc.field_1724);
+               StealerB.mc.interactionManager.clickSlot(StealerB.mc.player.currentScreenHandler.syncId, this.a, 0, SlotActionType.PICKUP, StealerB.mc.player);
+               StealerB.mc.interactionManager.clickSlot(StealerB.mc.player.currentScreenHandler.syncId, this.a, 0, SlotActionType.PICKUP_ALL, StealerB.mc.player);
+               StealerB.mc.interactionManager.clickSlot(StealerB.mc.player.currentScreenHandler.syncId, this.a, 0, SlotActionType.PICKUP, StealerB.mc.player);
                break;
             case 8:
-               StealerB.mc.field_1761.method_2906(StealerB.mc.field_1724.field_7512.field_7763, this.b, 0, class_1713.field_7790, StealerB.mc.field_1724);
+               StealerB.mc.interactionManager.clickSlot(StealerB.mc.player.currentScreenHandler.syncId, this.b, 0, SlotActionType.PICKUP, StealerB.mc.player);
                break;
             case 9:
-               StealerB.mc.field_1761.method_2906(StealerB.mc.field_1724.field_7512.field_7763, this.a, 0, class_1713.field_7790, StealerB.mc.field_1724);
+               StealerB.mc.interactionManager.clickSlot(StealerB.mc.player.currentScreenHandler.syncId, this.a, 0, SlotActionType.PICKUP, StealerB.mc.player);
          }
       }
    }
@@ -364,7 +364,7 @@ public class StealerB extends Module {
       private int sourceB;
       private int type;
       private int action;
-      private class_1799 stack;
+      private ItemStack stack;
 
       public StealerB.SlotMoveBuilder a(int a) {
          this.a = a;
@@ -396,7 +396,7 @@ public class StealerB extends Module {
          return this;
       }
 
-      public StealerB.SlotMoveBuilder stack(class_1799 stack) {
+      public StealerB.SlotMoveBuilder stack(ItemStack stack) {
          this.stack = stack;
          return this;
       }
@@ -406,7 +406,7 @@ public class StealerB extends Module {
       }
    }
 
-   public static class StealView<T extends class_1703> {
+   public static class StealView<T extends ScreenHandler> {
       private final StealerB.PageView<T> page;
 
       public List<StealerB.SlotMove> solveAction() {
@@ -419,36 +419,36 @@ public class StealerB extends Module {
                source -= 100.0F;
             }
 
-            class_1799 stack = node.stack;
-            class_1792 item = stack.method_7909();
-            if (item instanceof class_1829) {
+            ItemStack stack = node.stack;
+            Item item = stack.getItem();
+            if (item instanceof SwordItem) {
                source += 2.5F;
-            } else if (item instanceof class_1766) {
+            } else if (item instanceof MiningToolItem) {
                source += 0.5F;
                if (InventoryUtils.isGodAxe(stack)) {
                   source += 27.5F;
                }
-            } else if (item.equals(class_1802.field_8705)) {
+            } else if (item.equals(Items.WATER_BUCKET)) {
                source++;
-            } else if (item.equals(class_1802.field_8463)) {
+            } else if (item.equals(Items.GOLDEN_APPLE)) {
                source += 2.0F;
-               if (StealerB.mc.field_1724.method_6032() < 10.0F) {
+               if (StealerB.mc.player.getHealth() < 10.0F) {
                   source++;
                }
-            } else if (item.equals(class_1802.field_8367)) {
+            } else if (item.equals(Items.ENCHANTED_GOLDEN_APPLE)) {
                source += 21.75F;
-            } else if (item.equals(class_1802.field_8301)) {
+            } else if (item.equals(Items.END_CRYSTAL)) {
                source += 11.75F;
-            } else if (item instanceof class_1738) {
+            } else if (item instanceof ArmorItem) {
                source += 3.5F;
-            } else if (item instanceof class_1747) {
+            } else if (item instanceof BlockItem) {
                source++;
                if (node.isFull()) {
                   source += 0.99F;
                }
-            } else if (item instanceof class_9463) {
+            } else if (item instanceof ProjectileItem) {
                source++;
-            } else if (item.equals(class_1802.field_8288)) {
+            } else if (item.equals(Items.TOTEM_OF_UNDYING)) {
                source += 277.5F;
             }
 
@@ -480,9 +480,9 @@ public class StealerB extends Module {
       }
 
       public int getFirstEmptySlot() {
-         for (class_1735 slot : this.page.handler.field_7761) {
-            if (slot.field_7871.equals(StealerB.mc.field_1724.method_31548()) && slot.method_7677().method_7960()) {
-               return slot.field_7874;
+         for (Slot slot : this.page.handler.slots) {
+            if (slot.inventory.equals(StealerB.mc.player.getInventory()) && slot.getStack().isEmpty()) {
+               return slot.id;
             }
          }
 
@@ -490,12 +490,12 @@ public class StealerB extends Module {
       }
 
       private boolean isBestNode(StealerB.Node node) {
-         class_1799 stack = node.stack;
+         ItemStack stack = node.stack;
          if (!InventoryUtils.isGodItem(stack) && !InventoryUtils.isSharpnessAxe(stack)) {
             for (StealerB.Node otherNode : this.page.nodes.values()) {
                if (!otherNode.equals(node)) {
-                  class_1799 checkStack = otherNode.stack;
-                  if (stack.method_7909() instanceof class_1738 && checkStack.method_7909() instanceof class_1738) {
+                  ItemStack checkStack = otherNode.stack;
+                  if (stack.getItem() instanceof ArmorItem && checkStack.getItem() instanceof ArmorItem) {
                      float protection = InventoryUtils.getProtection(stack);
                      if (InventoryUtils.getCurrentArmorScore(ItemUtils.getEquippableSlotType(stack)) >= protection) {
                         return false;
@@ -505,20 +505,20 @@ public class StealerB extends Module {
                      return !(protection < bestArmor);
                   }
 
-                  if (stack.method_7909() instanceof class_1829 && checkStack.method_7909() instanceof class_1829) {
+                  if (stack.getItem() instanceof SwordItem && checkStack.getItem() instanceof SwordItem) {
                      if (InventoryUtils.getSwordDamage(checkStack) > InventoryUtils.getSwordDamage(stack)) {
                         return false;
                      }
-                  } else if (stack.method_7909() instanceof class_1810 && checkStack.method_7909() instanceof class_1810) {
+                  } else if (stack.getItem() instanceof PickaxeItem && checkStack.getItem() instanceof PickaxeItem) {
                      if (InventoryUtils.getToolScore(checkStack) > InventoryUtils.getToolScore(stack)) {
                         return false;
                      }
-                  } else if (stack.method_7909() instanceof class_1743 && checkStack.method_7909() instanceof class_1743) {
+                  } else if (stack.getItem() instanceof AxeItem && checkStack.getItem() instanceof AxeItem) {
                      if (InventoryUtils.getToolScore(checkStack) > InventoryUtils.getToolScore(stack)) {
                         return false;
                      }
-                  } else if (stack.method_7909() instanceof class_1821
-                     && checkStack.method_7909() instanceof class_1821
+                  } else if (stack.getItem() instanceof ShovelItem
+                     && checkStack.getItem() instanceof ShovelItem
                      && InventoryUtils.getToolScore(checkStack) > InventoryUtils.getToolScore(stack)) {
                      return false;
                   }
@@ -532,67 +532,67 @@ public class StealerB extends Module {
       }
 
       public boolean isNodeUseful(StealerB.Node node) {
-         class_1799 stack = node.stack;
-         if (stack.method_7960()) {
+         ItemStack stack = node.stack;
+         if (stack.isEmpty()) {
             return false;
-         } else if (stack.method_7909().equals(class_1802.field_8529)
-            || stack.method_7909().equals(class_1802.field_8536)
-            || stack.method_7909().equals(class_1802.field_8674)) {
+         } else if (stack.getItem().equals(Items.BOOK)
+            || stack.getItem().equals(Items.BOOKSHELF)
+            || stack.getItem().equals(Items.WRITABLE_BOOK)) {
             return false;
          } else if (InventoryUtils.isGodItem(stack) || InventoryUtils.isSharpnessAxe(stack)) {
             return true;
-         } else if (stack.method_7909() instanceof class_1738) {
-            class_1738 item = (class_1738)stack.method_7909();
+         } else if (stack.getItem() instanceof ArmorItem) {
+            ArmorItem item = (ArmorItem)stack.getItem();
             float protection = InventoryUtils.getProtection(stack);
             float bestArmor = InventoryUtils.getBestArmorScore(ItemUtils.getEquippableSlotType(stack));
             return !(protection <= bestArmor);
-         } else if (stack.method_7909() instanceof class_1829) {
+         } else if (stack.getItem() instanceof SwordItem) {
             float damage = InventoryUtils.getSwordDamage(stack);
             float bestDamage = InventoryUtils.getBestSwordDamage();
             return !(damage <= bestDamage);
-         } else if (stack.method_7909() instanceof class_1810) {
+         } else if (stack.getItem() instanceof PickaxeItem) {
             float score = InventoryUtils.getToolScore(stack);
             float bestScore = InventoryUtils.getBestPickaxeScore();
             return !(score <= bestScore);
-         } else if (stack.method_7909() instanceof class_1743) {
+         } else if (stack.getItem() instanceof AxeItem) {
             float score = InventoryUtils.getToolScore(stack);
             float bestScore = InventoryUtils.getBestAxeScore();
             return !(score <= bestScore);
-         } else if (stack.method_7909() instanceof class_1821) {
+         } else if (stack.getItem() instanceof ShovelItem) {
             float score = InventoryUtils.getToolScore(stack);
             float bestScore = InventoryUtils.getBestShovelScore();
             return !(score <= bestScore);
-         } else if (stack.method_7909() instanceof class_1764) {
+         } else if (stack.getItem() instanceof CrossbowItem) {
             float score = InventoryUtils.getCrossbowScore(stack);
             float bestScore = InventoryUtils.getBestCrossbowScore();
             return !(score <= bestScore);
-         } else if (stack.method_7909() instanceof class_1753 && InventoryUtils.isPunchBow(stack)) {
+         } else if (stack.getItem() instanceof BowItem && InventoryUtils.isPunchBow(stack)) {
             float score = InventoryUtils.getPunchBowScore(stack);
             float bestScore = InventoryUtils.getBestPunchBowScore();
             return !(score <= bestScore);
-         } else if (stack.method_7909() instanceof class_1753 && InventoryUtils.isPowerBow(stack)) {
+         } else if (stack.getItem() instanceof BowItem && InventoryUtils.isPowerBow(stack)) {
             float score = InventoryUtils.getPowerBowScore(stack);
             float bestScore = InventoryUtils.getBestPowerBowScore();
             return !(score <= bestScore);
-         } else if (stack.method_7909() == class_1802.field_8251) {
-            return !InventoryUtils.hasItem(stack.method_7909());
-         } else if (stack.method_7909() == class_1802.field_8705 && InventoryUtils.getItemCount(class_1802.field_8705) >= InvManagerN.getWaterBucketCount()) {
+         } else if (stack.getItem() == Items.COMPASS) {
+            return !InventoryUtils.hasItem(stack.getItem());
+         } else if (stack.getItem() == Items.WATER_BUCKET && InventoryUtils.getItemCount(Items.WATER_BUCKET) >= InvManagerN.getWaterBucketCount()) {
             return false;
-         } else if (stack.method_7909() == class_1802.field_8187 && InventoryUtils.getItemCount(class_1802.field_8187) >= InvManagerN.getLavaBucketCount()) {
+         } else if (stack.getItem() == Items.LAVA_BUCKET && InventoryUtils.getItemCount(Items.LAVA_BUCKET) >= InvManagerN.getLavaBucketCount()) {
             return false;
-         } else if (stack.method_7909() instanceof class_1747
+         } else if (stack.getItem() instanceof BlockItem
             && !InventoryUtils.isInvalidBlock(stack)
-            && InventoryUtils.getBlockCountInInventory() + stack.method_7947() >= InvManagerN.getMaxBlockSize()) {
+            && InventoryUtils.getBlockCountInInventory() + stack.getCount() >= InvManagerN.getMaxBlockSize()) {
             return false;
-         } else if (stack.method_7909() == class_1802.field_8107
-            && InventoryUtils.getItemCount(class_1802.field_8107) + stack.method_7947() >= InvManagerN.getMaxArrowSize()) {
+         } else if (stack.getItem() == Items.ARROW
+            && InventoryUtils.getItemCount(Items.ARROW) + stack.getCount() >= InvManagerN.getMaxArrowSize()) {
             return false;
-         } else if (stack.method_7909() instanceof class_1787 && InventoryUtils.getItemCount(class_1802.field_8378) >= 1) {
+         } else if (stack.getItem() instanceof FishingRodItem && InventoryUtils.getItemCount(Items.FISHING_ROD) >= 1) {
             return false;
          } else {
-            return (stack.method_7909() == class_1802.field_8543 || stack.method_7909() == class_1802.field_8803)
+            return (stack.getItem() == Items.SNOWBALL || stack.getItem() == Items.EGG)
                   && (
-                     InventoryUtils.getItemCount(class_1802.field_8543) + InventoryUtils.getItemCount(class_1802.field_8803) + stack.method_7947()
+                     InventoryUtils.getItemCount(Items.SNOWBALL) + InventoryUtils.getItemCount(Items.EGG) + stack.getCount()
                            >= InvManagerN.getMaxProjectileSize()
                         || !InvManagerN.shouldKeepProjectile()
                   )

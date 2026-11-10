@@ -12,10 +12,10 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import lombok.Generated;
-import net.minecraft.class_1011;
-import net.minecraft.class_1043;
-import net.minecraft.class_2960;
-import net.minecraft.class_310;
+import net.minecraft.client.texture.NativeImage;
+import net.minecraft.client.texture.NativeImageBackedTexture;
+import net.minecraft.util.Identifier;
+import net.minecraft.client.MinecraftClient;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.util.tinyfd.TinyFileDialogs;
@@ -26,8 +26,8 @@ public class PlayerAppearance extends Module {
    public Switch setWings = new Switch("Dragon Wings", true);
    public Button setCapeButton = new Button("Set Cape", "File Selector", "cnm", 1, this.setCapeFile());
    public Button setSkinButton = new Button("Set Skin", "File Selector", "cnm", 1, this.setSkinFile());
-   private class_2960 customCapeTexture;
-   private class_2960 customSkinTexture;
+   private Identifier customCapeTexture;
+   private Identifier customSkinTexture;
 
    private String openPngDialog(String title) {
       MemoryStack stack = MemoryStack.stackPush();
@@ -72,7 +72,7 @@ public class PlayerAppearance extends Module {
                try {
                   Files.copy(src.toPath(), dst.toPath(), StandardCopyOption.REPLACE_EXISTING);
                   if (this.customSkinTexture != null) {
-                     class_310.method_1551().method_1531().method_4615(this.customSkinTexture);
+                     MinecraftClient.getInstance().getTextureManager().destroyTexture(this.customSkinTexture);
                   }
 
                   this.customSkinTexture = this.loadTextureFromDisk("skin", "custom_skin", dst.getAbsolutePath());
@@ -99,7 +99,7 @@ public class PlayerAppearance extends Module {
                try {
                   Files.copy(src.toPath(), dst.toPath(), StandardCopyOption.REPLACE_EXISTING);
                   if (this.customCapeTexture != null) {
-                     class_310.method_1551().method_1531().method_4615(this.customCapeTexture);
+                     MinecraftClient.getInstance().getTextureManager().destroyTexture(this.customCapeTexture);
                   }
 
                   this.customCapeTexture = this.loadTextureFromDisk("cape", "custom_cape", dst.getAbsolutePath());
@@ -131,11 +131,11 @@ public class PlayerAppearance extends Module {
       }
 
       if (this.customSkinTexture == null) {
-         this.customSkinTexture = class_2960.method_60655(Southside.CLIENT_NAME.toLowerCase(), "textures/skin/skin.png");
+         this.customSkinTexture = Identifier.of(Southside.CLIENT_NAME.toLowerCase(), "textures/skin/skin.png");
       }
 
       if (this.customCapeTexture == null) {
-         this.customCapeTexture = class_2960.method_60655(Southside.CLIENT_NAME.toLowerCase(), "textures/cape/peiban.png");
+         this.customCapeTexture = Identifier.of(Southside.CLIENT_NAME.toLowerCase(), "textures/cape/peiban.png");
       }
 
       super.onEnable();
@@ -149,9 +149,9 @@ public class PlayerAppearance extends Module {
             for (File file : list) {
                String fileName = file.getName().toLowerCase();
                if (fileName.equals("cape.png")) {
-                  class_310.method_1551().method_1531().method_4615(this.customCapeTexture);
+                  MinecraftClient.getInstance().getTextureManager().destroyTexture(this.customCapeTexture);
                } else if (fileName.equals("skin.png")) {
-                  class_310.method_1551().method_1531().method_4615(this.customSkinTexture);
+                  MinecraftClient.getInstance().getTextureManager().destroyTexture(this.customSkinTexture);
                }
             }
          }
@@ -162,11 +162,11 @@ public class PlayerAppearance extends Module {
       super.onDisable();
    }
 
-   private class_2960 loadTextureFromDisk(String textureType, String textureName, String filePath) {
+   private Identifier loadTextureFromDisk(String textureType, String textureName, String filePath) {
       try {
          String namespace = Southside.CLIENT_NAME.toLowerCase();
          String path = "textures/" + textureType + "/" + textureName;
-         class_2960 identifier = class_2960.method_60655(namespace, path);
+         Identifier identifier = Identifier.of(namespace, path);
          this.loadAndRegisterTexture(identifier, new File(filePath));
          return identifier;
       } catch (Exception var7) {
@@ -176,12 +176,12 @@ public class PlayerAppearance extends Module {
       }
    }
 
-   private void loadAndRegisterTexture(class_2960 identifier, File textureFile) {
-      class_310.method_1551().execute(() -> {
+   private void loadAndRegisterTexture(Identifier identifier, File textureFile) {
+      MinecraftClient.getInstance().execute(() -> {
          try (InputStream stream = new FileInputStream(textureFile)) {
-            class_1011 image = class_1011.method_4309(stream);
-            class_1043 texture = new class_1043(image);
-            class_310.method_1551().method_1531().method_4616(identifier, texture);
+            NativeImage image = NativeImage.read(stream);
+            NativeImageBackedTexture texture = new NativeImageBackedTexture(image);
+            MinecraftClient.getInstance().getTextureManager().registerTexture(identifier, texture);
             System.out.println("Successfully loaded custom texture: " + identifier);
          } catch (IOException var7) {
             System.err.println("Failed to load texture: " + textureFile.getAbsolutePath());
@@ -191,12 +191,12 @@ public class PlayerAppearance extends Module {
    }
 
    @Generated
-   public class_2960 getCustomCapeTexture() {
+   public Identifier getCustomCapeTexture() {
       return this.customCapeTexture;
    }
 
    @Generated
-   public class_2960 getCustomSkinTexture() {
+   public Identifier getCustomSkinTexture() {
       return this.customSkinTexture;
    }
 }

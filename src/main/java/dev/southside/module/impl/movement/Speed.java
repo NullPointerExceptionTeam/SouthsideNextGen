@@ -18,11 +18,11 @@ public class Speed extends Module {
 
    @EventHandler
    public void onStrafe(StrafeEvent event) {
-      if (mc.field_1724.method_24828()) {
-         mc.field_1724.method_6043();
+      if (mc.player.isOnGround()) {
+         mc.player.jump();
       }
 
-      mc.field_1690.field_1832.method_23481(PlayerUtils.offGroundTicks >= 2 && PlayerUtils.offGroundTicks % 2 == 0 && !mc.field_1724.method_24828());
+      mc.options.sneakKey.setPressed(PlayerUtils.offGroundTicks >= 2 && PlayerUtils.offGroundTicks % 2 == 0 && !mc.player.isOnGround());
    }
 
    @Override

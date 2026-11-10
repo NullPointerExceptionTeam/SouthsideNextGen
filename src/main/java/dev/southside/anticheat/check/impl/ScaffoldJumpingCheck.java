@@ -2,8 +2,8 @@ package dev.southside.anticheat.check.impl;
 
 import dev.southside.anticheat.check.NormalCheck;
 import dev.southside.anticheat.player.PlayerData;
-import net.minecraft.class_1657;
-import net.minecraft.class_243;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.math.Vec3d;
 
 public class ScaffoldJumpingCheck implements NormalCheck {
    private static final int STAIR_BYPASS_TICKS = 50;
@@ -14,21 +14,21 @@ public class ScaffoldJumpingCheck implements NormalCheck {
 
    @Override
    public void onUpdate(PlayerData playerData) {
-      class_1657 player = playerData.getPlayer();
-      int tick = player.field_6012;
+      PlayerEntity player = playerData.getPlayer();
+      int tick = player.age;
       if (playerData.getScaffoldLastPlacedBlock() != null) {
          if (!playerData.getScaffoldPlaceTimes().isEmpty()) {
             if (playerData.getScaffoldLastPlacedY() != -1) {
-               int currentPlaceY = playerData.getScaffoldLastPlacedBlock().method_10264();
+               int currentPlaceY = playerData.getScaffoldLastPlacedBlock().getY();
                if (currentPlaceY > playerData.getScaffoldLastPlacedY()) {
                   playerData.setScaffoldLastStairTick(tick);
                }
             }
 
-            class_243 velocity = player.method_18798();
-            double xzSpeed = Math.sqrt(velocity.field_1352 * velocity.field_1352 + velocity.field_1350 * velocity.field_1350);
+            Vec3d velocity = player.getVelocity();
+            double xzSpeed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
             boolean movingHorizontally = xzSpeed > 0.05;
-            boolean jumping = !player.method_24828() && velocity.field_1351 > 0.2;
+            boolean jumping = !player.isOnGround() && velocity.y > 0.2;
             boolean notStair = tick - playerData.getScaffoldLastStairTick() > 50;
             if (movingHorizontally && jumping && notStair) {
                int fails = playerData.getScaffoldJumpFails() + 1;

@@ -19,7 +19,7 @@ public class CriticalParticle extends Module {
    @EventHandler
    public void onAttack(AttackEvent event) {
       if (event.stage == Stage.POST) {
-         if (mc.field_1724 != null && mc.field_1687 != null) {
+         if (mc.player != null && mc.world != null) {
             if (event.target != null) {
                int count = this.multiplier.getValue().intValue();
                int modeValue = this.mode.getValue();
@@ -28,11 +28,11 @@ public class CriticalParticle extends Module {
 
                for (int i = 0; i < count; i++) {
                   if (showCrit) {
-                     mc.field_1724.method_7277(event.target);
+                     mc.player.addCritParticles(event.target);
                   }
 
                   if (showEnchant) {
-                     mc.field_1724.method_7304(event.target);
+                     mc.player.addEnchantedHitParticles(event.target);
                   }
                }
             }

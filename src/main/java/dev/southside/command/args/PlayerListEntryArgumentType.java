@@ -11,13 +11,13 @@ import dev.southside.MinecraftAccessor;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import net.minecraft.class_2172;
-import net.minecraft.class_2561;
-import net.minecraft.class_640;
+import net.minecraft.command.CommandSource;
+import net.minecraft.text.Text;
+import net.minecraft.client.network.PlayerListEntry;
 
-public class PlayerListEntryArgumentType implements ArgumentType<class_640> {
+public class PlayerListEntryArgumentType implements ArgumentType<PlayerListEntry> {
    private static final DynamicCommandExceptionType NO_SUCH_PLAYER = new DynamicCommandExceptionType(
-      name -> class_2561.method_43470("Player list entry with name " + name + " doesn't exist.")
+      name -> Text.literal("Player list entry with name " + name + " doesn't exist.")
    );
    private static final Collection<String> EXAMPLES = List.of("cao_jia_hao");
 
@@ -25,16 +25,16 @@ public class PlayerListEntryArgumentType implements ArgumentType<class_640> {
       return new PlayerListEntryArgumentType();
    }
 
-   public static class_640 get(CommandContext<?> context) {
-      return (class_640)context.getArgument("player", class_640.class);
+   public static PlayerListEntry get(CommandContext<?> context) {
+      return (PlayerListEntry)context.getArgument("player", PlayerListEntry.class);
    }
 
-   public class_640 parse(StringReader reader) throws CommandSyntaxException {
+   public PlayerListEntry parse(StringReader reader) throws CommandSyntaxException {
       String argument = reader.readString();
-      class_640 playerListEntry = null;
+      PlayerListEntry playerListEntry = null;
 
-      for (class_640 p : MinecraftAccessor.mc.method_1562().method_2880()) {
-         if (p.method_2966().getName().equalsIgnoreCase(argument)) {
+      for (PlayerListEntry p : MinecraftAccessor.mc.getNetworkHandler().getPlayerList()) {
+         if (p.getProfile().getName().equalsIgnoreCase(argument)) {
             playerListEntry = p;
             break;
          }
@@ -48,8 +48,8 @@ public class PlayerListEntryArgumentType implements ArgumentType<class_640> {
    }
 
    public <S> CompletableFuture<Suggestions> listSuggestions(CommandContext<S> context, SuggestionsBuilder builder) {
-      return class_2172.method_9264(
-         MinecraftAccessor.mc.method_1562().method_2880().stream().map(playerListEntry -> playerListEntry.method_2966().getName()), builder
+      return CommandSource.suggestMatching(
+         MinecraftAccessor.mc.getNetworkHandler().getPlayerList().stream().map(playerListEntry -> playerListEntry.getProfile().getName()), builder
       );
    }
 

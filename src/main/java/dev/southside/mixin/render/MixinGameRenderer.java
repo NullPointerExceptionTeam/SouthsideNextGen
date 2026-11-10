@@ -13,19 +13,19 @@ import dev.southside.render.Render3D;
 import dev.southside.utils.raytrace.RayCastUtils;
 import dev.southside.utils.rotation.RotationUtils;
 import dev.southside.utils.types.Rotation;
-import net.minecraft.class_1297;
-import net.minecraft.class_239;
-import net.minecraft.class_310;
-import net.minecraft.class_332;
-import net.minecraft.class_3532;
-import net.minecraft.class_4184;
-import net.minecraft.class_4587;
-import net.minecraft.class_4599;
-import net.minecraft.class_757;
-import net.minecraft.class_761;
-import net.minecraft.class_7833;
-import net.minecraft.class_9779;
-import net.minecraft.class_9922;
+import net.minecraft.entity.Entity;
+import net.minecraft.util.hit.HitResult;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.client.render.Camera;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.render.BufferBuilderStorage;
+import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.render.WorldRenderer;
+import net.minecraft.util.math.RotationAxis;
+import net.minecraft.client.render.RenderTickCounter;
+import net.minecraft.client.util.ObjectAllocator;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.spongepowered.asm.mixin.Final;
@@ -39,128 +39,128 @@ import org.spongepowered.asm.mixin.injection.At.Shift;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(
-   value = {class_757.class},
+   value = {GameRenderer.class},
    priority = 4514
 )
 public abstract class MixinGameRenderer {
    @Shadow
    @Final
-   class_310 field_4015;
+   MinecraftClient client;
    @Shadow
-   private long field_3998;
+   private long lastWindowFocusedTime;
    @Shadow
-   private boolean field_4013;
-   @Shadow
-   @Final
-   private class_4599 field_20948;
+   private boolean postProcessorEnabled;
    @Shadow
    @Final
-   private class_4184 field_18765;
+   private BufferBuilderStorage buffers;
+   @Shadow
+   @Final
+   private Camera camera;
    @Unique
    private Matrix4f ss$pos_matrix;
 
    @Shadow
-   public abstract void method_3182();
+   public abstract void tick();
 
    @Shadow
-   protected abstract void method_3198(class_4587 var1, float var2);
+   protected abstract void tiltViewWhenHurt(MatrixStack var1, float var2);
 
    @Shadow
-   protected abstract void method_3186(class_4587 var1, float var2);
+   protected abstract void bobView(MatrixStack var1, float var2);
 
    @Redirect(
-      method = {"method_56153(Lnet/minecraft/class_1297;DDF)Lnet/minecraft/class_239;"},
+      method = {"findCrosshairTarget(Lnet/minecraft/entity/Entity;DDF)Lnet/minecraft/util/hit/HitResult;"},
       at = @At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_1297;method_5745(DFZ)Lnet/minecraft/class_239;"
+         target = "Lnet/minecraft/entity/Entity;raycast(DFZ)Lnet/minecraft/util/hit/HitResult;"
       )
    )
-   private class_239 hookRaycast(class_1297 instance, double maxDistance, float tickDelta, boolean includeFluids) {
-      if (instance != this.field_4015.field_1724) {
-         return instance.method_5745(maxDistance, tickDelta, includeFluids);
+   private HitResult hookRaycast(Entity instance, double maxDistance, float tickDelta, boolean includeFluids) {
+      if (instance != this.client.player) {
+         return instance.raycast(maxDistance, tickDelta, includeFluids);
       } else {
          Rotation rotation = RotationUtils.getRotation() != null
             ? RotationUtils.getRotation()
-            : new Rotation(instance.method_5705(tickDelta), instance.method_5695(tickDelta));
+            : new Rotation(instance.getYaw(tickDelta), instance.getPitch(tickDelta));
          return RayCastUtils.raycast(maxDistance, rotation, includeFluids, tickDelta);
       }
    }
 
    @Redirect(
-      method = {"method_3188(Lnet/minecraft/class_9779;)V"},
+      method = {"renderWorld(Lnet/minecraft/client/render/RenderTickCounter;)V"},
       at = @At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_761;method_22710(Lnet/minecraft/class_9922;Lnet/minecraft/class_9779;ZLnet/minecraft/class_4184;Lnet/minecraft/class_757;Lorg/joml/Matrix4f;Lorg/joml/Matrix4f;)V"
+         target = "Lnet/minecraft/client/render/WorldRenderer;render(Lnet/minecraft/client/util/ObjectAllocator;Lnet/minecraft/client/render/RenderTickCounter;ZLnet/minecraft/client/render/Camera;Lnet/minecraft/client/render/GameRenderer;Lorg/joml/Matrix4f;Lorg/joml/Matrix4f;)V"
       )
    )
    private void onHookMatrix(
-      class_761 instance,
-      class_9922 allocator,
-      class_9779 tickCounter,
+      WorldRenderer instance,
+      ObjectAllocator allocator,
+      RenderTickCounter tickCounter,
       boolean renderBlockOutline,
-      class_4184 camera,
-      class_757 gameRenderer,
+      Camera camera,
+      GameRenderer gameRenderer,
       Matrix4f positionMatrix,
       Matrix4f projectionMatrix
    ) {
       this.ss$pos_matrix = positionMatrix;
-      instance.method_22710(allocator, tickCounter, renderBlockOutline, camera, gameRenderer, positionMatrix, projectionMatrix);
+      instance.render(allocator, tickCounter, renderBlockOutline, camera, gameRenderer, positionMatrix, projectionMatrix);
    }
 
    @Inject(
       at = {@At(
          value = "FIELD",
-         target = "Lnet/minecraft/class_757;field_3992:Z",
+         target = "Lnet/minecraft/client/render/GameRenderer;renderHand:Z",
          opcode = 180,
          ordinal = 0
       )},
-      method = {"method_3188(Lnet/minecraft/class_9779;)V"}
+      method = {"renderWorld(Lnet/minecraft/client/render/RenderTickCounter;)V"}
    )
-   void render3dHook(class_9779 renderTickCounter, CallbackInfo ci) {
+   void render3dHook(RenderTickCounter renderTickCounter, CallbackInfo ci) {
       ProjectionUtil.updateProjection(this.ss$pos_matrix, RenderSystem.getModelViewMatrix(), RenderSystem.getProjectionMatrix());
    }
 
    @Inject(
-      method = {"method_3188(Lnet/minecraft/class_9779;)V"},
+      method = {"renderWorld(Lnet/minecraft/client/render/RenderTickCounter;)V"},
       at = {@At(
          value = "INVOKE_STRING",
-         target = "Lnet/minecraft/class_3695;method_15405(Ljava/lang/String;)V",
+         target = "Lnet/minecraft/util/profiler/Profiler;swap(Ljava/lang/String;)V",
          args = {"ldc=hand"}
       )}
    )
-   private void onRenderWorld(class_9779 renderTickCounter, CallbackInfo ci) {
+   private void onRenderWorld(RenderTickCounter renderTickCounter, CallbackInfo ci) {
       GL.saveRootState();
-      class_4587 mat = new class_4587();
+      MatrixStack mat = new MatrixStack();
       MSAA.use(() -> {
-         mat.method_22903();
+         mat.push();
          Render3D.begin(mat);
-         Render3DEvent render3DEvent = new Render3DEvent(this.field_18765, mat, renderTickCounter.method_60637(false));
+         Render3DEvent render3DEvent = new Render3DEvent(this.camera, mat, renderTickCounter.getTickDelta(false));
          Southside.INSTANCE.getEventBus().call(render3DEvent);
          Render3D.end();
-         mat.method_22909();
+         mat.pop();
       });
       GL.restoreRootState();
    }
 
    @Redirect(
-      method = {"method_3188(Lnet/minecraft/class_9779;)V"},
+      method = {"renderWorld(Lnet/minecraft/client/render/RenderTickCounter;)V"},
       at = @At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_3532;method_16439(FFF)F"
+         target = "Lnet/minecraft/util/math/MathHelper;lerp(FFF)F"
       )
    )
    private float renderWorldHook(float delta, float first, float second) {
       return Southside.get().getModuleManager().get(NoRender.class).isEnabled() && Southside.get().getModuleManager().get(NoRender.class).nausea.getValue()
          ? 0.0F
-         : class_3532.method_16439(delta, first, second);
+         : MathHelper.lerp(delta, first, second);
    }
 
    @Inject(
-      method = {"method_3198(Lnet/minecraft/class_4587;F)V"},
+      method = {"tiltViewWhenHurt(Lnet/minecraft/client/util/math/MatrixStack;F)V"},
       at = {@At("HEAD")},
       cancellable = true
    )
-   private void camHurt(class_4587 matrices, float tickDelta, CallbackInfo ci) {
+   private void camHurt(MatrixStack matrices, float tickDelta, CallbackInfo ci) {
       if (Southside.get() == null || Southside.get().getModuleManager() == null) {
          return;
       }
@@ -178,13 +178,13 @@ public abstract class MixinGameRenderer {
    }
 
    @Redirect(
-      method = {"method_3198(Lnet/minecraft/class_4587;F)V"},
+      method = {"tiltViewWhenHurt(Lnet/minecraft/client/util/math/MatrixStack;F)V"},
       at = @At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_7833;rotationDegrees(F)Lorg/joml/Quaternionf;"
+         target = "Lnet/minecraft/util/math/RotationAxis;rotationDegrees(F)Lorg/joml/Quaternionf;"
       )
    )
-   private Quaternionf hookHurtTiltStrength(class_7833 axis, float degrees) {
+   private Quaternionf hookHurtTiltStrength(RotationAxis axis, float degrees) {
       if (Southside.get() != null && Southside.get().getModuleManager() != null) {
          NoHurtCam noHurtCam = Southside.get().getModuleManager().get(NoHurtCam.class);
          if (noHurtCam != null && noHurtCam.shouldScaleTilt()) {
@@ -196,11 +196,11 @@ public abstract class MixinGameRenderer {
    }
 
    @Inject(
-      method = {"method_3186(Lnet/minecraft/class_4587;F)V"},
+      method = {"bobView(Lnet/minecraft/client/util/math/MatrixStack;F)V"},
       at = {@At("HEAD")},
       cancellable = true
    )
-   private void hookBobView(class_4587 matrices, float tickDelta, CallbackInfo ci) {
+   private void hookBobView(MatrixStack matrices, float tickDelta, CallbackInfo ci) {
       if (Southside.get() != null && Southside.get().getModuleManager() != null) {
          NoHurtCam noHurtCam = Southside.get().getModuleManager().get(NoHurtCam.class);
          if (noHurtCam != null && noHurtCam.isEnabled() && noHurtCam.noBob.getValue()) {
@@ -210,7 +210,7 @@ public abstract class MixinGameRenderer {
    }
 
    @Inject(
-      method = {"method_3192(Lnet/minecraft/class_9779;Z)V"},
+      method = {"render(Lnet/minecraft/client/render/RenderTickCounter;Z)V"},
       at = {@At(
          value = "INVOKE",
          target = "Lcom/mojang/blaze3d/systems/RenderSystem;clear(I)V",
@@ -218,10 +218,10 @@ public abstract class MixinGameRenderer {
          ordinal = 1
       )}
    )
-   public void render(class_9779 tickCounter, boolean tick, CallbackInfo ci) {
-      class_332 drawContext = new class_332(this.field_4015, this.field_20948.method_23000());
-      Render2DEvent event = new Render2DEvent(drawContext, tickCounter.method_60637(false));
+   public void render(RenderTickCounter tickCounter, boolean tick, CallbackInfo ci) {
+      DrawContext drawContext = new DrawContext(this.client, this.buffers.getEntityVertexConsumers());
+      Render2DEvent event = new Render2DEvent(drawContext, tickCounter.getTickDelta(false));
       Southside.INSTANCE.getEventBus().call(event);
-      drawContext.method_51452();
+      drawContext.draw();
    }
 }

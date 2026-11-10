@@ -13,20 +13,20 @@ import dev.southside.module.Module;
 import dev.southside.orbit.EventHandler;
 import dev.southside.utils.network.PacketUtils;
 import dev.southside.utils.player.InventoryUtils;
-import net.minecraft.class_1268;
-import net.minecraft.class_1297;
-import net.minecraft.class_1657;
-import net.minecraft.class_1743;
-import net.minecraft.class_1799;
-import net.minecraft.class_1819;
-import net.minecraft.class_1829;
-import net.minecraft.class_2338;
-import net.minecraft.class_239;
-import net.minecraft.class_2596;
-import net.minecraft.class_2824;
-import net.minecraft.class_3965;
-import net.minecraft.class_746;
-import net.minecraft.class_9362;
+import net.minecraft.util.Hand;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.AxeItem;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.ShieldItem;
+import net.minecraft.item.SwordItem;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.hit.HitResult;
+import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.item.MaceItem;
 
 public class AutoTool
 extends Module {
@@ -64,54 +64,54 @@ extends Module {
             this.ss$finishSneak();
             return;
         }
-        if (AutoTool.mc.field_1724 == null || AutoTool.mc.field_1687 == null) {
+        if (AutoTool.mc.player == null || AutoTool.mc.world == null) {
             return;
         }
-        if (AutoTool.mc.field_1724.method_24828()) {
+        if (AutoTool.mc.player.isOnGround()) {
             if (this.peakFallDistance > 0.0f) {
                 ++this.groundTicks;
                 if (this.groundTicks >= 2) {
                     int bestSlot;
                     this.peakFallDistance = 0.0f;
-                    if (((Boolean)this.maceFalling.getValue()).booleanValue() && AutoTool.mc.field_1724.method_31548().field_7545 == this.getMaceSlot() && (bestSlot = this.getBestWeaponSlot()) != -1 && AutoTool.mc.field_1724.method_31548().field_7545 != bestSlot) {
-                        AutoTool.mc.field_1724.method_31548().field_7545 = bestSlot;
+                    if (((Boolean)this.maceFalling.getValue()).booleanValue() && AutoTool.mc.player.getInventory().selectedSlot == this.getMaceSlot() && (bestSlot = this.getBestWeaponSlot()) != -1 && AutoTool.mc.player.getInventory().selectedSlot != bestSlot) {
+                        AutoTool.mc.player.getInventory().selectedSlot = bestSlot;
                     }
                 }
             }
         } else {
             this.groundTicks = 0;
-            this.peakFallDistance = Math.max(this.peakFallDistance, AutoTool.mc.field_1724.field_6017);
+            this.peakFallDistance = Math.max(this.peakFallDistance, AutoTool.mc.player.fallDistance);
         }
         if (((Boolean)this.shieldBreak.getValue()).booleanValue() && this.hasSwitched && this.hasAttacked) {
             if (this.originalSlot != -1) {
-                AutoTool.mc.field_1724.method_31548().field_7545 = this.originalSlot;
+                AutoTool.mc.player.getInventory().selectedSlot = this.originalSlot;
                 this.originalSlot = -1;
             }
             this.hasAttacked = false;
             this.hasSwitched = false;
         }
-        if (AutoTool.mc.field_1761 != null && AutoTool.mc.field_1761.method_2923()) {
+        if (AutoTool.mc.interactionManager != null && AutoTool.mc.interactionManager.isBreakingBlock()) {
             int bestToolSlot;
-            class_2338 blockPos = this.getTargetedBlock();
+            BlockPos blockPos = this.getTargetedBlock();
             if (blockPos == null) {
                 return;
             }
             if (!this.work) {
-                this.originalSlot = AutoTool.mc.field_1724.method_31548().field_7545;
+                this.originalSlot = AutoTool.mc.player.getInventory().selectedSlot;
                 this.work = true;
                 this.revertTicks = 0;
             }
             if ((bestToolSlot = this.getBestToolSlot(blockPos)) != -1 && bestToolSlot != this.currentBestSlot) {
                 this.currentBestSlot = bestToolSlot;
-                if (AutoTool.mc.field_1724.method_31548().field_7545 != bestToolSlot) {
-                    AutoTool.mc.field_1724.method_31548().field_7545 = bestToolSlot;
+                if (AutoTool.mc.player.getInventory().selectedSlot != bestToolSlot) {
+                    AutoTool.mc.player.getInventory().selectedSlot = bestToolSlot;
                 }
             }
         } else if (this.work) {
             ++this.revertTicks;
             if (this.revertTicks >= ((Number)this.returnDelay.getValue()).intValue()) {
-                if (this.originalSlot != -1 && AutoTool.mc.field_1724.method_31548().field_7545 != this.originalSlot) {
-                    AutoTool.mc.field_1724.method_31548().field_7545 = this.originalSlot;
+                if (this.originalSlot != -1 && AutoTool.mc.player.getInventory().selectedSlot != this.originalSlot) {
+                    AutoTool.mc.player.getInventory().selectedSlot = this.originalSlot;
                 }
                 this.resetState();
             }
@@ -123,13 +123,13 @@ extends Module {
         if (!this.ss$sneakAllowed()) {
             return;
         }
-        if (AutoTool.mc.field_1724 == null) {
+        if (AutoTool.mc.player == null) {
             return;
         }
-        class_2596 class_25962 = event.getPacket();
-        if (class_25962 instanceof class_2824) {
-            class_2824 packet = (class_2824)class_25962;
-            if (packet.field_12871.method_34211() == class_2824.class_5907.field_29172 && AutoTool.mc.field_1724.method_6047() == this.getBestAxe() && ((Boolean)this.shieldBreak.getValue()).booleanValue()) {
+        Packet rawPacket = event.getPacket();
+        if (rawPacket instanceof PlayerInteractEntityC2SPacket) {
+            PlayerInteractEntityC2SPacket packet = (PlayerInteractEntityC2SPacket)rawPacket;
+            if (packet.type.getType() == PlayerInteractEntityC2SPacket.InteractType.ATTACK && AutoTool.mc.player.getMainHandStack() == this.getBestAxe() && ((Boolean)this.shieldBreak.getValue()).booleanValue()) {
                 this.hasAttacked = true;
             }
         }
@@ -137,11 +137,11 @@ extends Module {
 
     @EventHandler
     public void onHeldItem(UpdateHeldItemEvent event) {
-        class_1799 originalItem;
+        ItemStack originalItem;
         if (!this.ss$sneakAllowed()) {
             return;
         }
-        if (((Boolean)this.spoofItem.getValue()).booleanValue() && event.getHand() == class_1268.field_5808 && this.work && this.originalSlot != -1 && !(originalItem = AutoTool.mc.field_1724.method_31548().method_5438(this.originalSlot)).method_7960()) {
+        if (((Boolean)this.spoofItem.getValue()).booleanValue() && event.getHand() == Hand.MAIN_HAND && this.work && this.originalSlot != -1 && !(originalItem = AutoTool.mc.player.getInventory().getStack(this.originalSlot)).isEmpty()) {
             event.setItem(originalItem);
         }
     }
@@ -151,41 +151,41 @@ extends Module {
         if (!this.ss$sneakAllowed()) {
             return;
         }
-        if (AutoTool.mc.field_1724 == null || AutoTool.mc.field_1761 == null) {
+        if (AutoTool.mc.player == null || AutoTool.mc.interactionManager == null) {
             return;
         }
         if (event.stage == Stage.PRE) {
-            class_1657 cnm;
-            class_1297 class_12972;
-            if (((Boolean)this.shieldBreak.getValue()).booleanValue() && (class_12972 = event.target) instanceof class_1657 && this.isBlockingWithShield(cnm = (class_1657)class_12972) && this.getBestAxeSlot() != -1) {
+            PlayerEntity cnm;
+            Entity targetEntity;
+            if (((Boolean)this.shieldBreak.getValue()).booleanValue() && (targetEntity = event.target) instanceof PlayerEntity && this.isBlockingWithShield(cnm = (PlayerEntity)targetEntity) && this.getBestAxeSlot() != -1) {
                 this.currentBestSlot = this.getBestAxeSlot();
             }
             if (((Boolean)this.shieldBreak.getValue()).booleanValue() && this.currentBestSlot == this.getBestAxeSlot() && this.currentBestSlot != -1) {
-                this.originalSlot = AutoTool.mc.field_1724.method_31548().field_7545;
-                AutoTool.mc.field_1724.method_31548().field_7545 = this.currentBestSlot;
+                this.originalSlot = AutoTool.mc.player.getInventory().selectedSlot;
+                AutoTool.mc.player.getInventory().selectedSlot = this.currentBestSlot;
             }
-            if (((Boolean)this.shieldBreak.getValue()).booleanValue() && AutoTool.mc.field_1724.method_6047() == this.getBestAxe() && this.getBestAxeSlot() != -1) {
+            if (((Boolean)this.shieldBreak.getValue()).booleanValue() && AutoTool.mc.player.getMainHandStack() == this.getBestAxe() && this.getBestAxeSlot() != -1) {
                 event.setCancelled(true);
                 for (int i = 0; i < 2; ++i) {
-                    if (AutoTool.mc.field_1771 > 0) {
+                    if (AutoTool.mc.attackCooldown > 0) {
                         return;
                     }
-                    if (AutoTool.mc.field_1765 == null) {
-                        if (AutoTool.mc.field_1761.method_2924()) {
-                            AutoTool.mc.field_1771 = 10;
+                    if (AutoTool.mc.crosshairTarget == null) {
+                        if (AutoTool.mc.interactionManager.hasLimitedAttackSpeed()) {
+                            AutoTool.mc.attackCooldown = 10;
                         }
                         return;
                     }
-                    AutoTool.mc.field_1761.method_2911();
-                    PacketUtils.sendPacket((class_2596)class_2824.method_34206((class_1297)event.target, (boolean)AutoTool.mc.field_1724.method_5715()));
-                    AutoTool.mc.field_1724.method_7324(event.target);
-                    AutoTool.mc.field_1724.method_7350();
-                    AutoTool.mc.field_1724.method_6104(class_1268.field_5808);
+                    AutoTool.mc.interactionManager.syncSelectedSlot();
+                    PacketUtils.sendPacket((Packet)PlayerInteractEntityC2SPacket.attack((Entity)event.target, (boolean)AutoTool.mc.player.isSneaking()));
+                    AutoTool.mc.player.attack(event.target);
+                    AutoTool.mc.player.resetLastAttackedTicks();
+                    AutoTool.mc.player.swingHand(Hand.MAIN_HAND);
                     CPSManager.INSTANCE.click();
                     this.hasSwitched = true;
                 }
             }
-            if (event.target instanceof class_1657) {
+            if (event.target instanceof PlayerEntity) {
                 this.equipBestWeapon();
             }
         }
@@ -196,22 +196,22 @@ extends Module {
         if (!this.ss$sneakAllowed()) {
             return;
         }
-        if (!((Boolean)this.autoWeapon.getValue()).booleanValue() || AutoTool.mc.field_1724 == null) {
+        if (!((Boolean)this.autoWeapon.getValue()).booleanValue() || AutoTool.mc.player == null) {
             return;
         }
-        class_1799 heldItem = AutoTool.mc.field_1724.method_6047();
+        ItemStack heldItem = AutoTool.mc.player.getMainHandStack();
         if (this.isHeldGodItem(heldItem)) {
             return;
         }
         if (((Boolean)this.maceFalling.getValue()).booleanValue() && this.peakFallDistance > ((Number)this.maceFallDistance.getValue()).floatValue() && (maceSlot = this.getMaceSlot()) != -1) {
-            if (AutoTool.mc.field_1724.method_31548().field_7545 != maceSlot) {
-                AutoTool.mc.field_1724.method_31548().field_7545 = maceSlot;
+            if (AutoTool.mc.player.getInventory().selectedSlot != maceSlot) {
+                AutoTool.mc.player.getInventory().selectedSlot = maceSlot;
             }
             return;
         }
         int bestSlot = this.getBestWeaponSlot();
-        if (bestSlot != -1 && AutoTool.mc.field_1724.method_31548().field_7545 != bestSlot) {
-            AutoTool.mc.field_1724.method_31548().field_7545 = bestSlot;
+        if (bestSlot != -1 && AutoTool.mc.player.getInventory().selectedSlot != bestSlot) {
+            AutoTool.mc.player.getInventory().selectedSlot = bestSlot;
         }
     }
 
@@ -222,23 +222,23 @@ extends Module {
         this.work = false;
     }
 
-    private class_2338 getTargetedBlock() {
-        class_239 class_2392 = AutoTool.mc.field_1765;
-        if (class_2392 instanceof class_3965) {
-            class_3965 blockHitResult = (class_3965)class_2392;
-            return blockHitResult.method_17777();
+    private BlockPos getTargetedBlock() {
+        HitResult ItemStackParticleEffect = AutoTool.mc.crosshairTarget;
+        if (ItemStackParticleEffect instanceof BlockHitResult) {
+            BlockHitResult blockHitResult = (BlockHitResult)ItemStackParticleEffect;
+            return blockHitResult.getBlockPos();
         }
         return null;
     }
 
-    private int getBestToolSlot(class_2338 pos) {
-        class_746 player = AutoTool.mc.field_1724;
+    private int getBestToolSlot(BlockPos pos) {
+        ClientPlayerEntity player = AutoTool.mc.player;
         float bestSpeed = 0.0f;
         int bestSlot = -1;
         for (int i = 0; i < 9; ++i) {
             float speed;
-            class_1799 stack = player.method_31548().method_5438(i);
-            if (stack.method_7960() || ((Boolean)this.godAxe.getValue()).booleanValue() && InventoryUtils.isGodAxe((class_1799)stack) || !((speed = stack.method_7924(AutoTool.mc.field_1687.method_8320(pos))) > bestSpeed)) continue;
+            ItemStack stack = player.getInventory().getStack(i);
+            if (stack.isEmpty() || ((Boolean)this.godAxe.getValue()).booleanValue() && InventoryUtils.isGodAxe((ItemStack)stack) || !((speed = stack.getMiningSpeedMultiplier(AutoTool.mc.world.getBlockState(pos))) > bestSpeed)) continue;
             bestSpeed = speed;
             bestSlot = i;
         }
@@ -246,18 +246,18 @@ extends Module {
     }
 
     private int getBestWeaponSlot() {
-        class_746 player = AutoTool.mc.field_1724;
+        ClientPlayerEntity player = AutoTool.mc.player;
         int bestSlot = -1;
         float bestDamage = -1.0f;
         for (int i = 0; i < 9; ++i) {
-            class_1799 stack = player.method_31548().method_5438(i);
-            if (stack.method_7960()) continue;
+            ItemStack stack = player.getInventory().getStack(i);
+            if (stack.isEmpty()) continue;
             float damage = 0.0f;
-            if (stack.method_7909() instanceof class_1829) {
-                damage = InventoryUtils.getSwordDamage((class_1799)stack);
+            if (stack.getItem() instanceof SwordItem) {
+                damage = InventoryUtils.getSwordDamage((ItemStack)stack);
             } else {
-                if (!(stack.method_7909() instanceof class_1743) || InventoryUtils.isGodAxe((class_1799)stack) || !InventoryUtils.isSharpnessAxe((class_1799)stack)) continue;
-                damage = InventoryUtils.getAxeDamage((class_1799)stack);
+                if (!(stack.getItem() instanceof AxeItem) || InventoryUtils.isGodAxe((ItemStack)stack) || !InventoryUtils.isSharpnessAxe((ItemStack)stack)) continue;
+                damage = InventoryUtils.getAxeDamage((ItemStack)stack);
             }
             if (!(damage > bestDamage)) continue;
             bestDamage = damage;
@@ -268,70 +268,70 @@ extends Module {
 
     private int getMaceSlot() {
         for (int i = 0; i < 9; ++i) {
-            class_1799 stack = AutoTool.mc.field_1724.method_31548().method_5438(i);
-            if (stack.method_7960() || !(stack.method_7909() instanceof class_9362)) continue;
+            ItemStack stack = AutoTool.mc.player.getInventory().getStack(i);
+            if (stack.isEmpty() || !(stack.getItem() instanceof MaceItem)) continue;
             return i;
         }
         return -1;
     }
 
     public int getBestAxeSlot() {
-        if (AutoTool.mc.field_1724 == null) {
+        if (AutoTool.mc.player == null) {
             return -1;
         }
-        class_1799 bestItem = this.getBestAxe();
+        ItemStack bestItem = this.getBestAxe();
         if (bestItem == null) {
             return -1;
         }
         for (int i = 0; i <= 9; ++i) {
-            class_1799 stack = AutoTool.mc.field_1724.method_31548().method_5438(i);
+            ItemStack stack = AutoTool.mc.player.getInventory().getStack(i);
             if (stack != bestItem) continue;
             return i;
         }
         return -1;
     }
 
-    public class_1799 getBestAxe() {
-        if (AutoTool.mc.field_1724 == null) {
+    public ItemStack getBestAxe() {
+        if (AutoTool.mc.player == null) {
             return null;
         }
-        class_1799 itemStack = null;
+        ItemStack itemStack = null;
         for (int i = 0; i <= 9; ++i) {
-            class_1799 stack = AutoTool.mc.field_1724.method_31548().method_5438(i);
-            if (!(stack.method_7909() instanceof class_1743)) continue;
-            itemStack = InventoryUtils.getAxeDamage(itemStack) > InventoryUtils.getAxeDamage((class_1799)stack) ? itemStack : stack;
+            ItemStack stack = AutoTool.mc.player.getInventory().getStack(i);
+            if (!(stack.getItem() instanceof AxeItem)) continue;
+            itemStack = InventoryUtils.getAxeDamage(itemStack) > InventoryUtils.getAxeDamage((ItemStack)stack) ? itemStack : stack;
         }
         return itemStack;
     }
 
-    public boolean isBlockingWithShield(class_1657 player) {
-        return player.method_6039() && this.isHoldingShield(player);
+    public boolean isBlockingWithShield(PlayerEntity player) {
+        return player.isBlocking() && this.isHoldingShield(player);
     }
 
-    public boolean isHoldingShield(class_1657 player) {
-        return player.method_6047().method_7909() instanceof class_1819 || player.method_6079().method_7909() instanceof class_1819;
+    public boolean isHoldingShield(PlayerEntity player) {
+        return player.getMainHandStack().getItem() instanceof ShieldItem || player.getOffHandStack().getItem() instanceof ShieldItem;
     }
 
-    private boolean isHeldGodItem(class_1799 stack) {
-        if (stack.method_7960()) {
+    private boolean isHeldGodItem(ItemStack stack) {
+        if (stack.isEmpty()) {
             return false;
         }
-        return InventoryUtils.isEndCrystal((class_1799)stack) || InventoryUtils.isEnchantedGApple((class_1799)stack) || InventoryUtils.isGodAxe((class_1799)stack) || InventoryUtils.isKBBall((class_1799)stack);
+        return InventoryUtils.isEndCrystal((ItemStack)stack) || InventoryUtils.isEnchantedGApple((ItemStack)stack) || InventoryUtils.isGodAxe((ItemStack)stack) || InventoryUtils.isKBBall((ItemStack)stack);
     }
 
     private boolean ss$sneakAllowed() {
         if (!((Boolean)this.sneakOnly.getValue()).booleanValue()) {
             return true;
         }
-        if (AutoTool.mc.field_1724 != null) {
-            return AutoTool.mc.field_1724.method_5715();
+        if (AutoTool.mc.player != null) {
+            return AutoTool.mc.player.isSneaking();
         }
         return false;
     }
 
     private void ss$finishSneak() {
-        if (AutoTool.mc.field_1724 != null && this.originalSlot >= 0) {
-            AutoTool.mc.field_1724.method_31548().field_7545 = this.originalSlot;
+        if (AutoTool.mc.player != null && this.originalSlot >= 0) {
+            AutoTool.mc.player.getInventory().selectedSlot = this.originalSlot;
         }
         this.resetState();
         this.hasSwitched = false;

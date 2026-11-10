@@ -2,7 +2,7 @@ package dev.southside.utils.player;
 
 import dev.southside.event.events.MovementInputEvent;
 import lombok.Generated;
-import net.minecraft.class_744;
+import net.minecraft.client.input.Input;
 
 public class DirectionalInput {
    private boolean forward;
@@ -16,14 +16,14 @@ public class DirectionalInput {
       return new DirectionalInput(e.isForward(), e.isBack(), e.isLeft(), e.isRight(), e.isSneak(), e.isJump());
    }
 
-   public static DirectionalInput from(class_744 i) {
+   public static DirectionalInput from(Input i) {
       return new DirectionalInput(
-         i.field_54155.comp_3159(),
-         i.field_54155.comp_3160(),
-         i.field_54155.comp_3161(),
-         i.field_54155.comp_3162(),
-         i.field_54155.comp_3164(),
-         i.field_54155.comp_3163()
+         i.playerInput.forward(),
+         i.playerInput.backward(),
+         i.playerInput.left(),
+         i.playerInput.right(),
+         i.playerInput.sneak(),
+         i.playerInput.jump()
       );
    }
 

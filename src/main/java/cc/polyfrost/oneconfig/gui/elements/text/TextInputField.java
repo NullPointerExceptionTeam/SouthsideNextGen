@@ -18,8 +18,8 @@ import dev.southside.event.events.GameRendererDrawEvent;
 import dev.southside.orbit.EventHandler;
 import java.util.ArrayList;
 import java.util.Objects;
-import net.minecraft.class_310;
-import net.minecraft.class_437;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.Screen;
 import org.jetbrains.annotations.NotNull;
 
 public class TextInputField extends BasicElement {
@@ -400,17 +400,17 @@ public class TextInputField extends BasicElement {
    public void keyTyped(int key, int scanCode, int modifiers) {
       try {
          if (this.toggled) {
-            if (class_437.method_25438(key)) {
+            if (Screen.isCopy(key)) {
                if (this.selectedText != null && this.start != 0.0F && this.end != 0.0F) {
-                  class_310.method_1551().field_1774.method_1455(this.selectedText);
+                  MinecraftClient.getInstance().keyboard.setClipboard(this.selectedText);
                }
 
                return;
             }
 
-            if (class_437.method_25437(key)) {
+            if (Screen.isPaste(key)) {
                try {
-                  String clip = class_310.method_1551().field_1774.method_1460();
+                  String clip = MinecraftClient.getInstance().keyboard.getClipboard();
                   this.input = this.input.substring(0, this.caretPos) + clip + this.input.substring(this.caretPos);
                   this.caretPos = this.caretPos + Objects.requireNonNull(clip).length();
                   return;
@@ -436,7 +436,7 @@ public class TextInputField extends BasicElement {
                   return;
                }
 
-               if (class_437.method_25439(key)) {
+               if (Screen.isSelectAll(key)) {
                   this.prevCaret = 0;
                   this.caretPos = this.input.length();
                   this.start = !this.centered ? this.x + 12.0F : this.x + this.width / 2.0F - this.getTextWidth(this.vg, this.input) / 2.0F;
@@ -455,12 +455,12 @@ public class TextInputField extends BasicElement {
                   return;
                }
 
-               if (class_437.method_25436(key)) {
+               if (Screen.isCut(key)) {
                   if (this.selectedText == null || this.start == 0.0F || this.end == 0.0F) {
                      return;
                   }
 
-                  class_310.method_1551().field_1774.method_1455(this.selectedText);
+                  MinecraftClient.getInstance().keyboard.setClipboard(this.selectedText);
                   key = 259;
                }
 

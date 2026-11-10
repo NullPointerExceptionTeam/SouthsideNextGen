@@ -7,16 +7,16 @@ import dev.southside.orbit.EventHandler;
 import io.netty.buffer.Unpooled;
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.class_2540;
-import net.minecraft.class_2817;
-import net.minecraft.class_2960;
-import net.minecraft.class_8710;
-import net.minecraft.class_9139;
-import net.minecraft.class_8710.class_9154;
+import net.minecraft.network.PacketByteBuf;
+import net.minecraft.network.packet.c2s.common.CustomPayloadC2SPacket;
+import net.minecraft.util.Identifier;
+import net.minecraft.network.packet.CustomPayload;
+import net.minecraft.network.codec.PacketCodec;
+import net.minecraft.network.packet.CustomPayload.Id;
 
 public class NetPayload implements MinecraftAccessor {
    public static final List<Runnable> preTasks = new ArrayList<>();
-   public static final List<class_2960> REGISTERED_CHANNELS = new ArrayList<>();
+   public static final List<Identifier> REGISTERED_CHANNELS = new ArrayList<>();
 
    public static void pre(Runnable task) {
       preTasks.add(task);
@@ -26,7 +26,7 @@ public class NetPayload implements MinecraftAccessor {
       priority = 11451
    )
    private static void onTick(TickEvent event) {
-      if (event.state == Stage.PRE && canUpdate() && mc.method_1562() != null) {
+      if (event.state == Stage.PRE && canUpdate() && mc.getNetworkHandler() != null) {
          for (Runnable task : preTasks) {
             task.run();
          }
@@ -35,31 +35,31 @@ public class NetPayload implements MinecraftAccessor {
       }
    }
 
-   public static void register(class_2960 channel) {
+   public static void register(Identifier channel) {
       if (!REGISTERED_CHANNELS.contains(channel)) {
          REGISTERED_CHANNELS.add(channel);
       }
    }
 
-   public static void send(class_2960 channel, class_2540 buf) {
-      if (mc.method_1562() != null) {
-         mc.method_1562().method_52787(new class_2817(new NetPayload.PayloadPacket(channel, buf)));
+   public static void send(Identifier channel, PacketByteBuf buf) {
+      if (mc.getNetworkHandler() != null) {
+         mc.getNetworkHandler().sendPacket(new CustomPayloadC2SPacket(new NetPayload.PayloadPacket(channel, buf)));
       }
    }
 
-   public static void write(class_2540 byteBuf, class_2540 data) {
-      byteBuf.method_52975(data.copy());
+   public static void write(PacketByteBuf byteBuf, PacketByteBuf data) {
+      byteBuf.writeBytes(data.copy());
    }
 
-   public static class_2540 read(class_2540 byteBuf, int maxSize) {
+   public static PacketByteBuf read(PacketByteBuf byteBuf, int maxSize) {
       assertSize(byteBuf, maxSize);
-      class_2540 newBuf = new class_2540(Unpooled.buffer());
-      newBuf.method_52975(byteBuf.copy());
-      byteBuf.method_52994(byteBuf.readableBytes());
+      PacketByteBuf newBuf = new PacketByteBuf(Unpooled.buffer());
+      newBuf.writeBytes(byteBuf.copy());
+      byteBuf.skipBytes(byteBuf.readableBytes());
       return newBuf;
    }
 
-   private static void assertSize(class_2540 buf, int maxSize) {
+   private static void assertSize(PacketByteBuf buf, int maxSize) {
       int size = buf.readableBytes();
       if (size < 0 || size > maxSize) {
          throw new IllegalArgumentException("Payload may not be larger than " + maxSize + " bytes");
@@ -67,28 +67,28 @@ public class NetPayload implements MinecraftAccessor {
    }
 
    public static boolean canUpdate() {
-      return mc != null && mc.field_1724 != null && mc.field_1687 != null;
+      return mc != null && mc.player != null && mc.world != null;
    }
 
-   public static class PayloadPacket implements class_8710 {
-      public class_2960 channel;
-      public class_2540 buf;
+   public static class PayloadPacket implements CustomPayload {
+      public Identifier channel;
+      public PacketByteBuf buf;
 
-      public static <T extends class_2540> class_9139<T, NetPayload.PayloadPacket> createCodec(class_2960 id) {
-         return class_8710.method_56484(NetPayload.PayloadPacket::write, buf -> new NetPayload.PayloadPacket(id, NetPayload.read(buf, 1145140)));
+      public static <T extends PacketByteBuf> PacketCodec<T, NetPayload.PayloadPacket> createCodec(Identifier id) {
+         return CustomPayload.codecOf(NetPayload.PayloadPacket::write, buf -> new NetPayload.PayloadPacket(id, NetPayload.read(buf, 1145140)));
       }
 
-      public PayloadPacket(class_2960 channel, class_2540 buf) {
+      public PayloadPacket(Identifier channel, PacketByteBuf buf) {
          this.channel = channel;
          this.buf = buf;
       }
 
-      public void write(class_2540 buf) {
+      public void write(PacketByteBuf buf) {
          NetPayload.write(buf, this.buf);
       }
 
-      public class_9154<? extends class_8710> method_56479() {
-         return new class_9154(this.channel);
+      public Id<? extends CustomPayload> getId() {
+         return new Id(this.channel);
       }
    }
 }

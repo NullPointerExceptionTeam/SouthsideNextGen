@@ -21,21 +21,21 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import net.minecraft.class_124;
-import net.minecraft.class_1291;
-import net.minecraft.class_1293;
-import net.minecraft.class_1294;
-import net.minecraft.class_1304;
-import net.minecraft.class_1657;
-import net.minecraft.class_1799;
-import net.minecraft.class_1893;
-import net.minecraft.class_241;
-import net.minecraft.class_243;
-import net.minecraft.class_3532;
-import net.minecraft.class_6880;
+import net.minecraft.util.Formatting;
+import net.minecraft.entity.effect.StatusEffect;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.ItemStack;
+import net.minecraft.enchantment.Enchantments;
+import net.minecraft.util.math.Vec2f;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.registry.entry.RegistryEntry;
 
 public class Detector extends Module {
-   private static final class_1304[] ARMOR_SLOTS = new class_1304[]{class_1304.field_6169, class_1304.field_6174, class_1304.field_6172, class_1304.field_6166};
+   private static final EquipmentSlot[] ARMOR_SLOTS = new EquipmentSlot[]{EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
    private static final Font FONT = Fonts.REGULAR;
    private final Switch distanceScale = new Switch("Distance Scale", false);
    private final Switch customScale = new Switch("Custom Scale", false);
@@ -46,26 +46,26 @@ public class Detector extends Module {
    private final Switch showPotions = new Switch("Show Potions", true);
    private final Slider renderRange = new Slider("Range", 40.0, 5.0, 120.0, 1.0);
    private final Slider offsetY = new Slider("Offset Y", 0.0, -60.0, 120.0, 1.0);
-   private static final Map<class_6880<class_1291>, String> EFFECT_SHORT_NAMES = Map.of(
-      class_1294.field_5904,
+   private static final Map<RegistryEntry<StatusEffect>, String> EFFECT_SHORT_NAMES = Map.of(
+      StatusEffects.SPEED,
       "Spd",
-      class_1294.field_5910,
+      StatusEffects.STRENGTH,
       "Str",
-      class_1294.field_5907,
+      StatusEffects.RESISTANCE,
       "Res",
-      class_1294.field_5924,
+      StatusEffects.REGENERATION,
       "Reg",
-      class_1294.field_5918,
+      StatusEffects.FIRE_RESISTANCE,
       "FRes",
-      class_1294.field_5898,
+      StatusEffects.ABSORPTION,
       "Abs",
-      class_1294.field_5905,
+      StatusEffects.INVISIBILITY,
       "Inv",
-      class_1294.field_5913,
+      StatusEffects.JUMP_BOOST,
       "Jump",
-      class_1294.field_5909,
+      StatusEffects.SLOWNESS,
       "Slow",
-      class_1294.field_5911,
+      StatusEffects.WEAKNESS,
       "Weak"
    );
 
@@ -82,14 +82,14 @@ public class Detector extends Module {
 
    @EventHandler
    private void onRender2D(Render2DEvent event) {
-      if (mc.field_1724 != null && mc.field_1687 != null) {
+      if (mc.player != null && mc.world != null) {
          NanoVGHelper helper = NanoVGHelper.INSTANCE;
          helper.setupAndDraw(
             true,
             vg -> {
-               for (class_1657 target : mc.field_1687.method_18456()) {
-                  if (this.shouldRender(target) && !(mc.field_1724.method_5739(target) > this.renderRange.getValue().floatValue())) {
-                     class_241 anchor = this.getFeetScreenPos(target, event.getRenderTick());
+               for (PlayerEntity target : mc.world.getPlayers()) {
+                  if (this.shouldRender(target) && !(mc.player.distanceTo(target) > this.renderRange.getValue().floatValue())) {
+                     Vec2f anchor = this.getFeetScreenPos(target, event.getRenderTick());
                      if (anchor != null) {
                         List<String> lines = this.buildLines(target);
                         if (!lines.isEmpty()) {
@@ -100,14 +100,14 @@ public class Detector extends Module {
                            float boxWidth = textWidth + 18.0F;
                            float boxHeight = lineHeight * lines.size() + 12.0F;
                            float offsetYValue = this.offsetY.getValue().floatValue();
-                           float baseX = anchor.field_1343 - boxWidth / 2.0F;
-                           float baseY = anchor.field_1342 + offsetYValue - boxHeight;
+                           float baseX = anchor.x - boxWidth / 2.0F;
+                           float baseY = anchor.y + offsetYValue - boxHeight;
                            float scaleFactor = (float)(
                               this.customScale.getValue()
                                  ? this.scale.getDouble()
                                  : (this.distanceScale.getValue() ? this.distanceScale(target, event.getRenderTick()) : 1.0)
                            );
-                           NanoUtil.scaleStart(anchor.field_1343, anchor.field_1342, scaleFactor);
+                           NanoUtil.scaleStart(anchor.x, anchor.y, scaleFactor);
                            this.drawBackground(helper, vg, baseX, baseY, boxWidth, boxHeight);
                            float textY = baseY + 8.0F;
 
@@ -131,20 +131,20 @@ public class Detector extends Module {
       helper.drawRoundedRect(vg, x, y, width, height, new Color(0, 0, 0, bgAlpha).getRGB(), 7.5F);
    }
 
-   private boolean shouldRender(class_1657 player) {
-      if (player == null || player == mc.field_1724) {
+   private boolean shouldRender(PlayerEntity player) {
+      if (player == null || player == mc.player) {
          return false;
       } else {
-         return player.method_5805() && !player.method_7325() ? !this.respectTargets.getValue() || Targets.check(player) : false;
+         return player.isAlive() && !player.isSpectator() ? !this.respectTargets.getValue() || Targets.check(player) : false;
       }
    }
 
-   private class_241 getFeetScreenPos(class_1657 entity, float partialTicks) {
-      class_243 pos = entity.method_30950(partialTicks).method_1031(0.0, 0.05, 0.0);
+   private Vec2f getFeetScreenPos(PlayerEntity entity, float partialTicks) {
+      Vec3d pos = entity.getLerpedPos(partialTicks).add(0.0, 0.05, 0.0);
       return ProjectionUtil.worldScreenPos(pos);
    }
 
-   private List<String> buildLines(class_1657 player) {
+   private List<String> buildLines(PlayerEntity player) {
       List<String> info = new ArrayList<>();
       List<String> godTags = this.buildGodItemTags(player);
       if (!godTags.isEmpty()) {
@@ -152,7 +152,7 @@ public class Detector extends Module {
       }
 
       if (this.showDistance.getValue()) {
-         info.add(class_124.field_1080 + "Dist " + class_124.field_1068 + String.format("%.1fm", mc.field_1724.method_5739(player)));
+         info.add(Formatting.GRAY + "Dist " + Formatting.WHITE + String.format("%.1fm", mc.player.distanceTo(player)));
       }
 
       if (this.showProtection.getValue()) {
@@ -176,45 +176,45 @@ public class Detector extends Module {
       return info;
    }
 
-   private List<String> buildGodItemTags(class_1657 player) {
+   private List<String> buildGodItemTags(PlayerEntity player) {
       List<String> tags = new ArrayList<>();
       HackerDetector hackerDetector = Southside.get().getModuleManager().get(HackerDetector.class);
       if (hackerDetector.isEnabled() && hackerDetector.isHacker(player)) {
-         tags.add(class_124.field_1079 + "[Hacker]" + class_124.field_1070);
+         tags.add(Formatting.DARK_RED + "[Hacker]" + Formatting.RESET);
       }
 
       if (!GodItemDetector.shouldShowTag(GodItemDetector.TagTarget.DETECTOR)) {
          return tags;
       } else {
          if (GodItemDetector.isGodAxe(player)) {
-            tags.add(class_124.field_1065 + "[GodAxe]" + class_124.field_1070);
+            tags.add(Formatting.GOLD + "[GodAxe]" + Formatting.RESET);
          }
 
          if (GodItemDetector.isMace(player)) {
-            tags.add(class_124.field_1054 + "[Mace]" + class_124.field_1070);
+            tags.add(Formatting.YELLOW + "[Mace]" + Formatting.RESET);
          }
 
          if (GodItemDetector.isEndCrystal(player)) {
-            tags.add(class_124.field_1064 + "[Crystal]" + class_124.field_1070);
+            tags.add(Formatting.DARK_PURPLE + "[Crystal]" + Formatting.RESET);
          }
 
          if (GodItemDetector.isEGapple(player)) {
-            tags.add(class_124.field_1076 + "[GApple]" + class_124.field_1070);
+            tags.add(Formatting.LIGHT_PURPLE + "[GApple]" + Formatting.RESET);
          }
 
          return tags;
       }
    }
 
-   private String formatProtection(class_1657 player) {
+   private String formatProtection(PlayerEntity player) {
       int maxProt = 0;
       boolean hasArmor = false;
 
-      for (class_1304 slot : ARMOR_SLOTS) {
-         class_1799 stack = player.method_6118(slot);
-         if (!stack.method_7960()) {
+      for (EquipmentSlot slot : ARMOR_SLOTS) {
+         ItemStack stack = player.getEquippedStack(slot);
+         if (!stack.isEmpty()) {
             hasArmor = true;
-            int level = EnchantmentUtils.getLevel(class_1893.field_9111, stack);
+            int level = EnchantmentUtils.getLevel(Enchantments.PROTECTION, stack);
             if (level > maxProt) {
                maxProt = level;
             }
@@ -222,48 +222,48 @@ public class Detector extends Module {
       }
 
       if (!hasArmor) {
-         return class_124.field_1080 + "Prot " + class_124.field_1061 + "None";
+         return Formatting.GRAY + "Prot " + Formatting.RED + "None";
       } else {
-         class_124 color = maxProt >= 4 ? class_124.field_1061 : (maxProt >= 2 ? class_124.field_1054 : class_124.field_1060);
-         return class_124.field_1080 + "Prot " + color + maxProt;
+         Formatting color = maxProt >= 4 ? Formatting.RED : (maxProt >= 2 ? Formatting.YELLOW : Formatting.GREEN);
+         return Formatting.GRAY + "Prot " + color + maxProt;
       }
    }
 
-   private String formatSharpness(class_1657 player) {
-      class_1799 mainHand = player.method_6047();
-      if (mainHand.method_7960()) {
+   private String formatSharpness(PlayerEntity player) {
+      ItemStack mainHand = player.getMainHandStack();
+      if (mainHand.isEmpty()) {
          return null;
       } else {
-         int level = EnchantmentUtils.getLevel(class_1893.field_9118, mainHand);
+         int level = EnchantmentUtils.getLevel(Enchantments.SHARPNESS, mainHand);
          if (level <= 0) {
             return null;
          } else {
-            class_124 color = level >= 5 ? class_124.field_1061 : (level >= 3 ? class_124.field_1054 : class_124.field_1068);
-            return class_124.field_1080 + "Sharp " + color + level;
+            Formatting color = level >= 5 ? Formatting.RED : (level >= 3 ? Formatting.YELLOW : Formatting.WHITE);
+            return Formatting.GRAY + "Sharp " + color + level;
          }
       }
    }
 
-   private String formatPotions(class_1657 player) {
-      Collection<class_1293> effects = player.method_6026();
+   private String formatPotions(PlayerEntity player) {
+      Collection<StatusEffectInstance> effects = player.getStatusEffects();
       if (effects.isEmpty()) {
          return null;
       } else {
          List<String> parts = new ArrayList<>();
 
-         for (class_1293 effect : effects) {
-            String shortName = EFFECT_SHORT_NAMES.getOrDefault(effect.method_5579(), null);
+         for (StatusEffectInstance effect : effects) {
+            String shortName = EFFECT_SHORT_NAMES.getOrDefault(effect.getEffectType(), null);
             if (shortName == null) {
-               String full = ((class_1291)effect.method_5579().comp_349()).method_5560().getString();
+               String full = ((StatusEffect)effect.getEffectType().value()).getName().getString();
                shortName = full.length() > 4 ? full.substring(0, 3) : full;
             }
 
-            int amp = effect.method_5578() + 1;
+            int amp = effect.getAmplifier() + 1;
             String tag = amp > 1 ? shortName + amp : shortName;
             parts.add(tag);
          }
 
-         return class_124.field_1075 + String.join(" ", parts);
+         return Formatting.AQUA + String.join(" ", parts);
       }
    }
 
@@ -277,17 +277,17 @@ public class Detector extends Module {
       return width;
    }
 
-   private double distanceScale(class_1657 entity, float partialTicks) {
-      double dist = mc.field_1773.method_19418().method_19326().method_1022(entity.method_30950(partialTicks));
-      return class_3532.method_15350(1.0 - dist * 0.01, 0.5, 2.147483647E9);
+   private double distanceScale(PlayerEntity entity, float partialTicks) {
+      double dist = mc.gameRenderer.getCamera().getPos().distanceTo(entity.getLerpedPos(partialTicks));
+      return MathHelper.clamp(1.0 - dist * 0.01, 0.5, 2.147483647E9);
    }
 
-   private String slotLetter(class_1304 slot) {
+   private String slotLetter(EquipmentSlot slot) {
       return switch (slot) {
-         case field_6169 -> "H";
-         case field_6174 -> "C";
-         case field_6172 -> "L";
-         case field_6166 -> "B";
+         case HEAD -> "H";
+         case CHEST -> "C";
+         case LEGS -> "L";
+         case FEET -> "B";
          default -> "?";
       };
    }

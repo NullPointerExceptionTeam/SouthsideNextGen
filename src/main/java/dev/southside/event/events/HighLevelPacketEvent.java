@@ -3,18 +3,18 @@ package dev.southside.event.events;
 import dev.southside.event.CancellableEvent;
 import dev.southside.event.TransferOrigin;
 import lombok.Generated;
-import net.minecraft.class_2535;
-import net.minecraft.class_2547;
-import net.minecraft.class_2596;
+import net.minecraft.network.ClientConnection;
+import net.minecraft.network.listener.PacketListener;
+import net.minecraft.network.packet.Packet;
 
 public class HighLevelPacketEvent extends CancellableEvent {
-   public final class_2535 connection;
-   public final class_2547 listener;
-   public final class_2596<?> packet;
+   public final ClientConnection connection;
+   public final PacketListener listener;
+   public final Packet<?> packet;
    public final TransferOrigin origin;
 
    @Generated
-   public HighLevelPacketEvent(class_2535 connection, class_2547 listener, class_2596<?> packet, TransferOrigin origin) {
+   public HighLevelPacketEvent(ClientConnection connection, PacketListener listener, Packet<?> packet, TransferOrigin origin) {
       this.connection = connection;
       this.listener = listener;
       this.packet = packet;

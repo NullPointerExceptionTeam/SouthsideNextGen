@@ -10,12 +10,12 @@ import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
-import net.minecraft.class_2172;
-import net.minecraft.class_2561;
+import net.minecraft.command.CommandSource;
+import net.minecraft.text.Text;
 
 public class EnumArgumentType<T extends Enum<?>> implements ArgumentType<T> {
    private static final DynamicCommandExceptionType NO_SUCH_TYPE = new DynamicCommandExceptionType(
-      o -> class_2561.method_43470(o + " is not a valid argument.")
+      o -> Text.literal(o + " is not a valid argument.")
    );
    private T[] values;
 
@@ -48,6 +48,6 @@ public class EnumArgumentType<T extends Enum<?>> implements ArgumentType<T> {
    }
 
    public <S> CompletableFuture<Suggestions> listSuggestions(CommandContext<S> context, SuggestionsBuilder builder) {
-      return class_2172.method_9264(Arrays.<Enum>stream(this.values).map(Enum::toString), builder);
+      return CommandSource.suggestMatching(Arrays.<Enum>stream(this.values).map(Enum::toString), builder);
    }
 }

@@ -7,15 +7,15 @@ import cc.polyfrost.oneconfig.renderer.scissor.ScissorHelper;
 import cc.polyfrost.oneconfig.utils.color.ColorPalette;
 import java.awt.Color;
 import java.util.function.Supplier;
-import net.minecraft.class_2561;
-import net.minecraft.class_332;
-import net.minecraft.class_4264;
-import net.minecraft.class_5250;
-import net.minecraft.class_6382;
-import net.minecraft.class_7919;
+import net.minecraft.text.Text;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.widget.PressableWidget;
+import net.minecraft.text.MutableText;
+import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
+import net.minecraft.client.gui.tooltip.Tooltip;
 import org.jetbrains.annotations.Nullable;
 
-public final class MenuButtonWidget extends class_4264 {
+public final class MenuButtonWidget extends PressableWidget {
    private final ColorAnimation backgroundColor = new ColorAnimation(
       new ColorPalette(new Color(32, 32, 32, 150).getRGB(), new Color(255, 255, 255, 100).getRGB(), new Color(21, 21, 21, 205).getRGB()), 200
    );
@@ -24,7 +24,7 @@ public final class MenuButtonWidget extends class_4264 {
    private final MenuButtonWidget.NarrationSupplier narrationSupplier;
    private final MenuButtonWidget.Position position;
 
-   public static MenuButtonWidget.Builder builder(class_2561 message, MenuButtonWidget.PressAction onPress, MenuButtonWidget.Position position) {
+   public static MenuButtonWidget.Builder builder(Text message, MenuButtonWidget.PressAction onPress, MenuButtonWidget.Position position) {
       return new MenuButtonWidget.Builder(message, onPress, position);
    }
 
@@ -34,7 +34,7 @@ public final class MenuButtonWidget extends class_4264 {
       int width,
       int height,
       MenuButtonWidget.Position position,
-      class_2561 message,
+      Text message,
       MenuButtonWidget.PressAction onPress,
       MenuButtonWidget.NarrationSupplier narrationSupplier
    ) {
@@ -44,56 +44,56 @@ public final class MenuButtonWidget extends class_4264 {
       this.position = position;
    }
 
-   public void method_25306() {
+   public void onPress() {
       this.onPress.onPress(this);
    }
 
-   protected class_5250 method_25360() {
-      return this.narrationSupplier.createNarrationMessage(() -> super.method_25360());
+   protected MutableText getNarrationMessage() {
+      return this.narrationSupplier.createNarrationMessage(() -> super.getNarrationMessage());
    }
 
-   protected void method_48579(class_332 context, int mouseX, int mouseY, float delta) {
-      if (this.field_22764) {
+   protected void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
+      if (this.visible) {
          NanoVGHelper nanovg = NanoVGHelper.INSTANCE;
          ScissorHelper scissorHelper = ScissorHelper.INSTANCE;
-         int fontSize = Math.max(10, Math.round(this.field_22759 * 0.4F));
-         float corner = this.field_22759 * 0.22F;
-         int sideClip = Math.max(6, Math.round(this.field_22759 * 0.3F));
-         boolean hovered = withinBox(this.method_46426(), this.method_46427(), this.field_22758, this.field_22759, mouseX, mouseY);
-         int baseColor = this.backgroundColor.getColor(hovered, this.method_25370());
-         if (!this.field_22763) {
+         int fontSize = Math.max(10, Math.round(this.height * 0.4F));
+         float corner = this.height * 0.22F;
+         int sideClip = Math.max(6, Math.round(this.height * 0.3F));
+         boolean hovered = withinBox(this.getX(), this.getY(), this.width, this.height, mouseX, mouseY);
+         int baseColor = this.backgroundColor.getColor(hovered, this.isFocused());
+         if (!this.active) {
             Color c = new Color(baseColor, true);
             baseColor = new Color(c.getRed(), c.getGreen(), c.getBlue(), Math.min(120, c.getAlpha() / 2)).getRGB();
          }
 
-         int textColor = this.field_22763 ? new Color(255, 255, 255, 190).getRGB() : new Color(255, 255, 255, 90).getRGB();
+         int textColor = this.active ? new Color(255, 255, 255, 190).getRGB() : new Color(255, 255, 255, 90).getRGB();
          int finalBaseColor = baseColor;
          nanovg.setupAndDraw(
             true,
             vg -> {
-               float textWidth = nanovg.getTextWidth(vg, this.method_25369().getString(), fontSize, Fonts.REGULAR);
-               nanovg.drawRoundedRect(vg, this.method_46426(), this.method_46427(), this.field_22758, this.field_22759, finalBaseColor, corner);
+               float textWidth = nanovg.getTextWidth(vg, this.getMessage().getString(), fontSize, Fonts.REGULAR);
+               nanovg.drawRoundedRect(vg, this.getX(), this.getY(), this.width, this.height, finalBaseColor, corner);
                switch (this.position) {
                   case LEFT:
                      nanovg.drawText(
                         vg,
-                        this.method_25369().getString(),
-                        this.method_46426() + this.field_22759 / 2.0F,
-                        this.method_46427() + this.field_22759 / 2.0F,
+                        this.getMessage().getString(),
+                        this.getX() + this.height / 2.0F,
+                        this.getY() + this.height / 2.0F,
                         textColor,
                         fontSize,
                         Fonts.REGULAR
                      );
-                     scissorHelper.scissor(vg, this.method_46426(), this.method_46427(), sideClip, this.field_22759);
-                     nanovg.drawRoundedRect(vg, this.method_46426(), this.method_46427(), this.field_22758, this.field_22759, finalBaseColor, corner);
+                     scissorHelper.scissor(vg, this.getX(), this.getY(), sideClip, this.height);
+                     nanovg.drawRoundedRect(vg, this.getX(), this.getY(), this.width, this.height, finalBaseColor, corner);
                      scissorHelper.clearScissors(vg);
                      break;
                   case CENTER:
                      nanovg.drawCenteredText(
                         vg,
-                        this.method_25369().getString(),
-                        this.method_46426() + this.field_22758 / 2.0F,
-                        this.method_46427() + this.field_22759 / 2.0F,
+                        this.getMessage().getString(),
+                        this.getX() + this.width / 2.0F,
+                        this.getY() + this.height / 2.0F,
                         textColor,
                         fontSize,
                         Fonts.REGULAR
@@ -102,15 +102,15 @@ public final class MenuButtonWidget extends class_4264 {
                   case RIGHT:
                      nanovg.drawText(
                         vg,
-                        this.method_25369().getString(),
-                        this.method_46426() + this.field_22758 - this.field_22759 / 2.0F - textWidth,
-                        this.method_46427() + this.field_22759 / 2.0F,
+                        this.getMessage().getString(),
+                        this.getX() + this.width - this.height / 2.0F - textWidth,
+                        this.getY() + this.height / 2.0F,
                         textColor,
                         fontSize,
                         Fonts.REGULAR
                      );
-                     scissorHelper.scissor(vg, this.method_46426() + this.field_22758 - sideClip, this.method_46427(), sideClip, this.field_22759);
-                     nanovg.drawRoundedRect(vg, this.method_46426(), this.method_46427(), this.field_22758, this.field_22759, finalBaseColor, corner);
+                     scissorHelper.scissor(vg, this.getX() + this.width - sideClip, this.getY(), sideClip, this.height);
+                     nanovg.drawRoundedRect(vg, this.getX(), this.getY(), this.width, this.height, finalBaseColor, corner);
                      scissorHelper.clearScissors(vg);
                }
             }
@@ -118,19 +118,19 @@ public final class MenuButtonWidget extends class_4264 {
       }
    }
 
-   public boolean method_25402(double mouseX, double mouseY, int button) {
-      if (this.field_22763
-         && this.field_22764
-         && withinBox(this.method_46426(), this.method_46427(), this.field_22758, this.field_22759, (int)mouseX, (int)mouseY)) {
-         this.method_25348(mouseX, mouseY);
+   public boolean mouseClicked(double mouseX, double mouseY, int button) {
+      if (this.active
+         && this.visible
+         && withinBox(this.getX(), this.getY(), this.width, this.height, (int)mouseX, (int)mouseY)) {
+         this.onClick(mouseX, mouseY);
          return true;
       } else {
          return false;
       }
    }
 
-   protected void method_47399(class_6382 builder) {
-      this.method_37021(builder);
+   protected void appendClickableNarrations(NarrationMessageBuilder builder) {
+      this.appendDefaultNarrations(builder);
    }
 
    public static boolean withinBox(int x, int y, int w, int h, int mouseX, int mouseY) {
@@ -138,10 +138,10 @@ public final class MenuButtonWidget extends class_4264 {
    }
 
    public static class Builder {
-      private final class_2561 message;
+      private final Text message;
       private final MenuButtonWidget.PressAction onPress;
       @Nullable
-      private class_7919 tooltip;
+      private Tooltip tooltip;
       private int x;
       private int y;
       private int width = 150;
@@ -149,7 +149,7 @@ public final class MenuButtonWidget extends class_4264 {
       private MenuButtonWidget.Position position;
       private MenuButtonWidget.NarrationSupplier narrationSupplier = MenuButtonWidget.DEFAULT_NARRATION_SUPPLIER;
 
-      public Builder(class_2561 message, MenuButtonWidget.PressAction onPress, MenuButtonWidget.Position position) {
+      public Builder(Text message, MenuButtonWidget.PressAction onPress, MenuButtonWidget.Position position) {
          this.message = message;
          this.onPress = onPress;
          this.position = position;
@@ -176,7 +176,7 @@ public final class MenuButtonWidget extends class_4264 {
          return this.position(x, y).size(width, height);
       }
 
-      public MenuButtonWidget.Builder tooltip(class_7919 tooltip) {
+      public MenuButtonWidget.Builder tooltip(Tooltip tooltip) {
          this.tooltip = tooltip;
          return this;
       }
@@ -195,13 +195,13 @@ public final class MenuButtonWidget extends class_4264 {
          MenuButtonWidget buttonWidget = new MenuButtonWidget(
             this.x, this.y, this.width, this.height, this.position, this.message, this.onPress, this.narrationSupplier
          );
-         buttonWidget.method_47400(this.tooltip);
+         buttonWidget.setTooltip(this.tooltip);
          return buttonWidget;
       }
    }
 
    public interface NarrationSupplier {
-      class_5250 createNarrationMessage(Supplier<class_5250> var1);
+      MutableText createNarrationMessage(Supplier<MutableText> var1);
    }
 
    public static enum Position {

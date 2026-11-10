@@ -21,23 +21,23 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
-import net.minecraft.class_10182;
-import net.minecraft.class_1713;
-import net.minecraft.class_243;
-import net.minecraft.class_2596;
-import net.minecraft.class_2708;
-import net.minecraft.class_2735;
-import net.minecraft.class_2813;
-import net.minecraft.class_2815;
-import net.minecraft.class_2824;
-import net.minecraft.class_2828;
-import net.minecraft.class_2848;
-import net.minecraft.class_2868;
-import net.minecraft.class_2885;
-import net.minecraft.class_418;
-import net.minecraft.class_434;
-import net.minecraft.class_8875;
-import net.minecraft.class_2848.class_2849;
+import net.minecraft.entity.player.PlayerPosition;
+import net.minecraft.screen.slot.SlotActionType;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
+import net.minecraft.network.packet.s2c.play.UpdateSelectedSlotS2CPacket;
+import net.minecraft.network.packet.c2s.play.ClickSlotC2SPacket;
+import net.minecraft.network.packet.c2s.play.CloseHandledScreenC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
+import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket;
+import net.minecraft.network.packet.c2s.play.UpdateSelectedSlotC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerInteractBlockC2SPacket;
+import net.minecraft.client.gui.screen.DeathScreen;
+import net.minecraft.client.gui.screen.DownloadingTerrainScreen;
+import net.minecraft.network.packet.c2s.play.SlotChangedStateC2SPacket;
+import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket.Mode;
 
 public class Disabler extends Module {
    public static boolean lastSprinting = false;
@@ -60,7 +60,7 @@ public class Disabler extends Module {
    public static final Switch grimPost = new Switch("GrimPost", true);
    public final Switch showLogMessage = new Switch("ShowLogging", true);
    public final Switch loggingLag = new Switch("LoggingLag", false);
-   private final ConcurrentLinkedQueue<class_2596<?>> packetTick = new ConcurrentLinkedQueue<>();
+   private final ConcurrentLinkedQueue<Packet<?>> packetTick = new ConcurrentLinkedQueue<>();
    private long time = 0L;
    private float lastYaw = 0.0F;
    private float lastPitch = 0.0F;
@@ -72,10 +72,10 @@ public class Disabler extends Module {
    private boolean lastOnGround = false;
    public static float prevYaw;
    private static boolean lastPostState = false;
-   public static List<class_2596> storedPackets = new CopyOnWriteArrayList<>();
+   public static List<Packet> storedPackets = new CopyOnWriteArrayList<>();
    public static boolean interacting = false;
    private boolean lagDisable = false;
-   public Queue<class_2849> badpacketXQueue = new LinkedBlockingQueue<>();
+   public Queue<Mode> badpacketXQueue = new LinkedBlockingQueue<>();
 
    public Disabler() {
       super(Category.Misc, "Disabler", "ABCDEFG");
@@ -98,35 +98,35 @@ public class Disabler extends Module {
 
    @EventHandler
    private void onPacket(PacketEvent event) {
-      if (mc.field_1724 != null) {
-         class_2596<?> packet = event.getPacket();
+      if (mc.player != null) {
+         Packet<?> packet = event.getPacket();
          if (event.getOrigin() != TransferOrigin.SEND) {
-            if (event.getPacket() instanceof class_2708 posLookPacket) {
+            if (event.getPacket() instanceof PlayerPositionLookS2CPacket posLookPacket) {
                this.lagDisable = true;
                if (this.loggingLag.getValue()) {
-                  class_10182 pos = posLookPacket.comp_3228();
-                  class_243 p = pos.comp_3148();
-                  class_243 d = pos.comp_3149();
+                  PlayerPosition pos = posLookPacket.change();
+                  Vec3d p = pos.position();
+                  Vec3d d = pos.deltaMovement();
                   ChatUtils.infof(
                      "§fPos §7%.1f %.1f %.1f §7| §fVel §7%.2f %.2f %.2f §7| §fYaw §7%.1f §fPitch §7%.1f",
-                     p.field_1352,
-                     p.field_1351,
-                     p.field_1350,
-                     d.field_1352,
-                     d.field_1351,
-                     d.field_1350,
-                     pos.comp_3150(),
-                     pos.comp_3151()
+                     p.x,
+                     p.y,
+                     p.z,
+                     d.x,
+                     d.y,
+                     d.z,
+                     pos.yaw(),
+                     pos.pitch()
                   );
                }
             }
          } else {
-            if (packet instanceof class_2828 wrapper && !interacting) {
-               if (!wrapper.method_36172()) {
+            if (packet instanceof PlayerMoveC2SPacket wrapper && !interacting) {
+               if (!wrapper.changesLook()) {
                   return;
                }
 
-               if (this.badD.getValue() && (wrapper.field_12885 > 90.0F || wrapper.field_12885 < -90.0F)) {
+               if (this.badD.getValue() && (wrapper.pitch > 90.0F || wrapper.pitch < -90.0F)) {
                   if (this.showLogMessage.getValue()) {
                      this.info("§7BadPacketD detected!", new Object[0]);
                   }
@@ -135,30 +135,30 @@ public class Disabler extends Module {
                }
 
                if (this.aimStep.getValue()) {
-                  double yawDelta = Aimstep.yawDelta(prevYaw, wrapper.field_12887);
-                  double pitchDelta = Aimstep.pitchDelta(this.lastPitch, wrapper.field_12885);
+                  double yawDelta = Aimstep.yawDelta(prevYaw, wrapper.yaw);
+                  double pitchDelta = Aimstep.pitchDelta(this.lastPitch, wrapper.pitch);
                   if (Aimstep.isAimStep(yawDelta, pitchDelta)) {
-                     wrapper.field_12887 += 1.0E-4F;
+                     wrapper.yaw += 1.0E-4F;
                      if (this.showLogMessage.getValue()) {
                         this.info("§7AimStep detected!", new Object[0]);
                      }
                   }
 
                   if (Aimstep.isAimStep(pitchDelta, yawDelta)) {
-                     if (wrapper.field_12885 == 90.0F) {
-                        wrapper.field_12885 -= 1.0E-4F;
+                     if (wrapper.pitch == 90.0F) {
+                        wrapper.pitch -= 1.0E-4F;
                      } else {
-                        wrapper.field_12885 += 1.0E-4F;
+                        wrapper.pitch += 1.0E-4F;
                      }
                   }
                }
 
-               if (this.equalRotation.getValue() && this.lastYaw - wrapper.field_12887 == 0.0F && this.lastPitch - wrapper.field_12885 == 0.0F) {
-                  wrapper.field_12887 += 0.001F;
-                  if (wrapper.field_12885 == 90.0F) {
-                     wrapper.field_12885 -= 1.0E-4F;
+               if (this.equalRotation.getValue() && this.lastYaw - wrapper.yaw == 0.0F && this.lastPitch - wrapper.pitch == 0.0F) {
+                  wrapper.yaw += 0.001F;
+                  if (wrapper.pitch == 90.0F) {
+                     wrapper.pitch -= 1.0E-4F;
                   } else {
-                     wrapper.field_12885 += 1.0E-4F;
+                     wrapper.pitch += 1.0E-4F;
                   }
 
                   if (this.showLogMessage.getValue()) {
@@ -167,56 +167,56 @@ public class Disabler extends Module {
                }
 
                if (this.aimDuplicateLook.getValue()
-                  && wrapper.field_12887 == this.lastYaw
-                  && wrapper.field_12885 == this.lastPitch
-                  && wrapper.field_12887 != 0.0F) {
-                  wrapper.field_12887 = wrapper.field_12887 + RandomUtils.generateRandomFloat(1.0E-4F, 0.001F);
+                  && wrapper.yaw == this.lastYaw
+                  && wrapper.pitch == this.lastPitch
+                  && wrapper.yaw != 0.0F) {
+                  wrapper.yaw = wrapper.yaw + RandomUtils.generateRandomFloat(1.0E-4F, 0.001F);
                }
 
                if (this.lagDisable) {
                   this.lagDisable = false;
                }
 
-               if (wrapper.field_12888) {
-                  this.lastPitch = wrapper.field_12885;
-                  prevYaw = wrapper.field_12887;
+               if (wrapper.changeLook) {
+                  this.lastPitch = wrapper.pitch;
+                  prevYaw = wrapper.yaw;
                }
 
-               this.lastYaw = wrapper.field_12887;
-               this.lastOnGround = wrapper.field_29179;
-            } else if (event.getPacket() instanceof class_2885 && this.rotated) {
+               this.lastYaw = wrapper.yaw;
+               this.lastOnGround = wrapper.onGround;
+            } else if (event.getPacket() instanceof PlayerInteractBlockC2SPacket && this.rotated) {
                this.lastPlacedDeltaYaw = this.deltaYaw;
                this.rotated = false;
             }
 
-            if (packet instanceof class_2813 wrapper && this.badP.getValue()) {
-               class_1713 clickType = wrapper.method_12195();
-               int button = wrapper.method_12193();
+            if (packet instanceof ClickSlotC2SPacket wrapper && this.badP.getValue()) {
+               SlotActionType clickType = wrapper.getActionType();
+               int button = wrapper.getButton();
 
                boolean flag = switch (clickType) {
-                  case field_7790, field_7794, field_7796 -> {
+                  case PICKUP, QUICK_MOVE, CLONE -> {
                      if (button <= 2 && button >= 0) {
                         yield false;
                      }
 
                      yield true;
                   }
-                  case field_7791 -> (button > 8 || button < 0) && button != 40;
-                  case field_7795 -> {
+                  case SWAP -> (button > 8 || button < 0) && button != 40;
+                  case THROW -> {
                      if (button != 0 && button != 1) {
                         yield true;
                      }
 
                      yield false;
                   }
-                  case field_7789 -> {
+                  case QUICK_CRAFT -> {
                      if (button != 3 && button != 7 && button <= 10 && button >= 0) {
                         yield false;
                      }
 
                      yield true;
                   }
-                  case field_7793 -> button != 0;
+                  case PICKUP_ALL -> button != 0;
                   default -> false;
                };
                if (flag) {
@@ -228,9 +228,9 @@ public class Disabler extends Module {
                }
             }
 
-            if (packet instanceof class_2824 wrapper) {
-               int id = wrapper.field_12870;
-               if (id == mc.field_1724.method_5628() && this.badB.getValue()) {
+            if (packet instanceof PlayerInteractEntityC2SPacket wrapper) {
+               int id = wrapper.entityId;
+               if (id == mc.player.getId() && this.badB.getValue()) {
                   if (this.showLogMessage.getValue()) {
                      this.warning("§7BadPacketB detected!", new Object[0]);
                   }
@@ -238,7 +238,7 @@ public class Disabler extends Module {
                   event.setCancelled(true);
                }
 
-               if (this.badW.getValue() && mc.field_1687 != null && mc.field_1687.method_8469(id) == null) {
+               if (this.badW.getValue() && mc.world != null && mc.world.getEntityById(id) == null) {
                   if (this.showLogMessage.getValue()) {
                      this.warning("§7BadPacketsW detected!", new Object[0]);
                   }
@@ -247,7 +247,7 @@ public class Disabler extends Module {
                }
             }
 
-            if (packet instanceof class_8875 wrapper && this.badY.getValue() && (wrapper.comp_1998() < 0 || wrapper.comp_1998() > 8)) {
+            if (packet instanceof SlotChangedStateC2SPacket wrapper && this.badY.getValue() && (wrapper.slotId() < 0 || wrapper.slotId() > 8)) {
                if (this.showLogMessage.getValue()) {
                   this.warning("§7BadPacketsY detected!", new Object[0]);
                }
@@ -255,20 +255,20 @@ public class Disabler extends Module {
                event.setCancelled(true);
             }
 
-            if (packet instanceof class_2868 wrapper && (this.badA.getValue() || this.fastSwitch.getValue())) {
-               if (this.lastSlot == wrapper.method_12442() && !this.fastSwitch.getValue()) {
+            if (packet instanceof UpdateSelectedSlotC2SPacket wrapper && (this.badA.getValue() || this.fastSwitch.getValue())) {
+               if (this.lastSlot == wrapper.getSelectedSlot() && !this.fastSwitch.getValue()) {
                   event.setCancelled(true);
                }
 
-               this.lastSlot = wrapper.method_12442();
+               this.lastSlot = wrapper.getSelectedSlot();
             }
 
-            if (packet instanceof class_2735 var13) {
-               class_2735 var30 = var13;
+            if (packet instanceof UpdateSelectedSlotS2CPacket var13) {
+               UpdateSelectedSlotS2CPacket var30 = var13;
 
                int var31;
                try {
-                  var31 = var30.comp_3325();
+                  var31 = var30.slot();
                } catch (Throwable var8) {
                   throw new MatchException(var8.toString(), var8);
                }
@@ -279,16 +279,16 @@ public class Disabler extends Module {
                }
             }
 
-            if (packet instanceof class_2868 wrapper && this.fastSwitch.getValue()) {
+            if (packet instanceof UpdateSelectedSlotC2SPacket wrapper && this.fastSwitch.getValue()) {
                this.lastSlot = this.nowSlot;
-               this.nowSlot = wrapper.method_12442();
+               this.nowSlot = wrapper.getSelectedSlot();
                if ((this.lastSlot != 0 || this.nowSlot != 8) && (this.lastSlot != 8 || this.nowSlot != 0)) {
                   int i = this.lastSlot;
                   if (this.lastSlot < this.nowSlot) {
                      event.cancel();
 
                      while (i != this.nowSlot - 1) {
-                        PacketUtils.sendPacketNoEvent(new class_2868(++i));
+                        PacketUtils.sendPacketNoEvent(new UpdateSelectedSlotC2SPacket(++i));
                      }
 
                      PacketUtils.sendPacketNoEvent(packet);
@@ -298,7 +298,7 @@ public class Disabler extends Module {
                      event.cancel();
 
                      while (i != this.nowSlot + 1) {
-                        PacketUtils.sendPacketNoEvent(new class_2868(--i));
+                        PacketUtils.sendPacketNoEvent(new UpdateSelectedSlotC2SPacket(--i));
                      }
 
                      PacketUtils.sendPacketNoEvent(packet);
@@ -308,22 +308,22 @@ public class Disabler extends Module {
 
             if (this.inv.getValue()
                && (
-                  packet instanceof class_2813 slot && slot.method_12194() == mc.field_1724.field_7498.field_7763
-                     || packet instanceof class_2815 close && close.method_36168() == mc.field_1724.field_7498.field_7763
+                  packet instanceof ClickSlotC2SPacket slot && slot.getSyncId() == mc.player.playerScreenHandler.syncId
+                     || packet instanceof CloseHandledScreenC2SPacket close && close.getSyncId() == mc.player.playerScreenHandler.syncId
                )) {
                event.setCancelled(true);
-               if (mc.field_1724.field_3919) {
-                  PacketUtils.sendPacket(new class_2848(mc.field_1724, class_2849.field_12985));
+               if (mc.player.lastSprinting) {
+                  PacketUtils.sendPacket(new ClientCommandC2SPacket(mc.player, Mode.STOP_SPRINTING));
                }
 
                PacketUtils.sendPacketNoEvent(packet);
-               if (mc.field_1724.field_3919 && mc.field_1724.method_5624()) {
-                  PacketUtils.sendPacket(new class_2848(mc.field_1724, class_2849.field_12981));
+               if (mc.player.lastSprinting && mc.player.isSprinting()) {
+                  PacketUtils.sendPacket(new ClientCommandC2SPacket(mc.player, Mode.START_SPRINTING));
                }
             }
 
-            if (packet instanceof class_2848 wrapperx) {
-               if (wrapperx.method_12365() == class_2849.field_12981) {
+            if (packet instanceof ClientCommandC2SPacket wrapperx) {
+               if (wrapperx.getMode() == Mode.START_SPRINTING) {
                   if (this.badF.getValue()) {
                      if (lastSprinting) {
                         event.setCancelled(true);
@@ -343,13 +343,13 @@ public class Disabler extends Module {
                            this.warning("§7BadPacketX detected!", new Object[0]);
                         }
 
-                        this.processBadpacketX(class_2849.field_12981);
+                        this.processBadpacketX(Mode.START_SPRINTING);
                         event.setCancelled(true);
                      }
 
                      this.sprint = true;
                   }
-               } else if (wrapperx.method_12365() == class_2849.field_12985) {
+               } else if (wrapperx.getMode() == Mode.STOP_SPRINTING) {
                   if (this.badF.getValue()) {
                      if (!lastSprinting) {
                         if (this.showLogMessage.getValue()) {
@@ -369,7 +369,7 @@ public class Disabler extends Module {
                            this.warning("§7BadPacketX detected!", new Object[0]);
                         }
 
-                        this.processBadpacketX(class_2849.field_12985);
+                        this.processBadpacketX(Mode.STOP_SPRINTING);
                         event.setCancelled(true);
                      }
 
@@ -380,17 +380,17 @@ public class Disabler extends Module {
 
             if (this.inv.getValue()
                && (
-                  packet instanceof class_2813 slot && slot.method_12194() == mc.field_1724.field_7498.field_7763
-                     || packet instanceof class_2815 close && close.method_36168() == mc.field_1724.field_7498.field_7763
+                  packet instanceof ClickSlotC2SPacket slot && slot.getSyncId() == mc.player.playerScreenHandler.syncId
+                     || packet instanceof CloseHandledScreenC2SPacket close && close.getSyncId() == mc.player.playerScreenHandler.syncId
                )) {
                event.setCancelled(true);
-               if (mc.field_1724.field_3919) {
-                  PacketUtils.sendPacket(new class_2848(mc.field_1724, class_2849.field_12985));
+               if (mc.player.lastSprinting) {
+                  PacketUtils.sendPacket(new ClientCommandC2SPacket(mc.player, Mode.STOP_SPRINTING));
                }
 
                PacketUtils.sendPacketNoEvent(packet);
-               if (mc.field_1724.field_3919 && mc.field_1724.method_5624()) {
-                  PacketUtils.sendPacket(new class_2848(mc.field_1724, class_2849.field_12981));
+               if (mc.player.lastSprinting && mc.player.isSprinting()) {
+                  PacketUtils.sendPacket(new ClientCommandC2SPacket(mc.player, Mode.START_SPRINTING));
                }
             }
          }
@@ -411,8 +411,8 @@ public class Disabler extends Module {
       return currentYaw;
    }
 
-   public static boolean postDelayPackets(class_2596 packet) {
-      return mc.field_1724 == null ? false : !(mc.field_1755 instanceof class_434) && !(mc.field_1755 instanceof class_418);
+   public static boolean postDelayPackets(Packet packet) {
+      return mc.player == null ? false : !(mc.currentScreen instanceof DownloadingTerrainScreen) && !(mc.currentScreen instanceof DeathScreen);
    }
 
    public static boolean postState() {
@@ -433,9 +433,9 @@ public class Disabler extends Module {
 
    public static void processPackets() {
       if (!storedPackets.isEmpty()) {
-         for (class_2596 packet : storedPackets) {
-            if (mc.method_1562() != null && !ServerPacketManager.onPacket(packet)) {
-               PacketEvent event = new PacketEvent(TransferOrigin.RECEIVE, packet, mc.method_1562().method_48296());
+         for (Packet packet : storedPackets) {
+            if (mc.getNetworkHandler() != null && !ServerPacketManager.onPacket(packet)) {
+               PacketEvent event = new PacketEvent(TransferOrigin.RECEIVE, packet, mc.getNetworkHandler().getConnection());
                Southside.INSTANCE.getEventBus().call(event);
                if (!event.isCancelled()) {
                   try {
@@ -451,7 +451,7 @@ public class Disabler extends Module {
       }
    }
 
-   public void processBadpacketX(class_2849 mode) {
+   public void processBadpacketX(Mode mode) {
       this.badpacketXQueue.add(mode);
    }
 }

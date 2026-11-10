@@ -4,25 +4,25 @@ import dev.southside.MinecraftAccessor;
 import dev.southside.mixin.accessors.ClientChunkManagerAccessor;
 import dev.southside.mixin.accessors.ClientChunkMapAccessor;
 import java.util.Iterator;
-import net.minecraft.class_2791;
+import net.minecraft.world.chunk.Chunk;
 
-public class ChunkIterator implements Iterator<class_2791> {
-   private final ClientChunkMapAccessor map = (ClientChunkMapAccessor)(Object)((ClientChunkManagerAccessor)MinecraftAccessor.mc.field_1687.method_2935()).getChunks();
+public class ChunkIterator implements Iterator<Chunk> {
+   private final ClientChunkMapAccessor map = (ClientChunkMapAccessor)(Object)((ClientChunkManagerAccessor)MinecraftAccessor.mc.world.getChunkManager()).getChunks();
    private final boolean onlyWithLoadedNeighbours;
    private int i = 0;
-   private class_2791 chunk;
+   private Chunk chunk;
 
    public ChunkIterator(boolean onlyWithLoadedNeighbours) {
       this.onlyWithLoadedNeighbours = onlyWithLoadedNeighbours;
       this.getNext();
    }
 
-   private class_2791 getNext() {
-      class_2791 prev = this.chunk;
+   private Chunk getNext() {
+      Chunk prev = this.chunk;
       this.chunk = null;
 
       while (this.i < this.map.getChunks().length()) {
-         this.chunk = (class_2791)this.map.getChunks().get(this.i++);
+         this.chunk = (Chunk)this.map.getChunks().get(this.i++);
          if (this.chunk != null && (!this.onlyWithLoadedNeighbours || this.isInRadius(this.chunk))) {
             break;
          }
@@ -31,13 +31,13 @@ public class ChunkIterator implements Iterator<class_2791> {
       return prev;
    }
 
-   private boolean isInRadius(class_2791 chunk) {
-      int x = chunk.method_12004().field_9181;
-      int z = chunk.method_12004().field_9180;
-      return MinecraftAccessor.mc.field_1687.method_2935().method_12123(x + 1, z)
-         && MinecraftAccessor.mc.field_1687.method_2935().method_12123(x - 1, z)
-         && MinecraftAccessor.mc.field_1687.method_2935().method_12123(x, z + 1)
-         && MinecraftAccessor.mc.field_1687.method_2935().method_12123(x, z - 1);
+   private boolean isInRadius(Chunk chunk) {
+      int x = chunk.getPos().x;
+      int z = chunk.getPos().z;
+      return MinecraftAccessor.mc.world.getChunkManager().isChunkLoaded(x + 1, z)
+         && MinecraftAccessor.mc.world.getChunkManager().isChunkLoaded(x - 1, z)
+         && MinecraftAccessor.mc.world.getChunkManager().isChunkLoaded(x, z + 1)
+         && MinecraftAccessor.mc.world.getChunkManager().isChunkLoaded(x, z - 1);
    }
 
    @Override
@@ -45,7 +45,7 @@ public class ChunkIterator implements Iterator<class_2791> {
       return this.chunk != null;
    }
 
-   public class_2791 next() {
+   public Chunk next() {
       return this.getNext();
    }
 }

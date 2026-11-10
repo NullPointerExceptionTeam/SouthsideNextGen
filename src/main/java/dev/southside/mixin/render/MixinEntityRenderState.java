@@ -1,23 +1,23 @@
 package dev.southside.mixin.render;
 
 import dev.southside.accessor.EntityRenderStateAccessor;
-import net.minecraft.class_10017;
-import net.minecraft.class_1297;
+import net.minecraft.client.render.entity.state.EntityRenderState;
+import net.minecraft.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 
-@Mixin({class_10017.class})
+@Mixin({EntityRenderState.class})
 public class MixinEntityRenderState implements EntityRenderStateAccessor {
    @Unique
-   private class_1297 southside$entity;
+   private Entity southside$entity;
 
    @Override
-   public class_1297 southside$getEntity() {
+   public Entity southside$getEntity() {
       return this.southside$entity;
    }
 
    @Override
-   public void southside$setEntity(class_1297 entity) {
+   public void southside$setEntity(Entity entity) {
       this.southside$entity = entity;
    }
 }

@@ -13,11 +13,11 @@ import dev.southside.module.impl.render.TargetHUD;
 import dev.southside.utils.misc.BezierUtil;
 import dev.southside.utils.render.animation.TimerUtil;
 import java.awt.Color;
-import net.minecraft.class_1044;
-import net.minecraft.class_2960;
-import net.minecraft.class_310;
-import net.minecraft.class_332;
-import net.minecraft.class_742;
+import net.minecraft.client.texture.AbstractTexture;
+import net.minecraft.util.Identifier;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.network.AbstractClientPlayerEntity;
 import org.lwjgl.nanovg.NVGPaint;
 import org.lwjgl.nanovg.NanoVG;
 import org.lwjgl.nanovg.NanoVGGL2;
@@ -31,7 +31,7 @@ public class TargetHud8 extends Hud {
    }
 
    @Override
-   protected void draw(class_332 context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
+   protected void draw(DrawContext context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
    }
 
    @Override
@@ -49,13 +49,13 @@ public class TargetHud8 extends Hud {
       public BezierUtil y = new BezierUtil(3.0F, 0.0F);
       private BezierUtil health = new BezierUtil(3.0F, 1.0F);
       private static final float height = 30.0F;
-      public class_742 entity;
+      public AbstractClientPlayerEntity entity;
       public BezierUtil color = new BezierUtil(10.0F, 0.0F);
       private int headImage = -1;
       private int headTextureId = -1;
       private int headImageSize = -1;
 
-      public TargetHUDComponent(class_742 entity) {
+      public TargetHUDComponent(AbstractClientPlayerEntity entity) {
          this.entity = entity;
       }
 
@@ -63,13 +63,13 @@ public class TargetHud8 extends Hud {
          if (!(this.y.get() < -30.0F * scale)) {
             float y = this.y.get() + yOffset;
             int alpha = 191;
-            String extraMessage = String.format("Health: %.1f /  %.1f", this.entity.method_6032(), this.entity.method_6063());
+            String extraMessage = String.format("Health: %.1f /  %.1f", this.entity.getHealth(), this.entity.getMaxHealth());
             NanoVGHelper nanoVGHelper = NanoVGHelper.INSTANCE;
             ScissorHelper scissorHelper = ScissorHelper.INSTANCE;
             float width = Math.max(
                Math.max(
                   nanoVGHelper.getTextWidth(vg, extraMessage, 14.0F * scale, Fonts.REGULAR) + 80.0F * scale,
-                  nanoVGHelper.getTextWidth(vg, this.entity.method_5476().getString(), 18.0F * scale, Fonts.SEMIBOLD) + 80.0F * scale
+                  nanoVGHelper.getTextWidth(vg, this.entity.getDisplayName().getString(), 18.0F * scale, Fonts.SEMIBOLD) + 80.0F * scale
                ),
                197.5F * scale
             );
@@ -86,14 +86,14 @@ public class TargetHud8 extends Hud {
                Scissor scissor = scissorHelper.scissor(vg, x + progressBarWidth, y, width - progressBarWidth, 62.5F * scale);
                nanoVGHelper.drawRoundedRect(vg, x, y, width, 62.5F * scale, new Color(34, 35, 38, alpha).getRGB(), rad);
                nanoVGHelper.drawTextWithFormatting(
-                  vg, this.entity.method_5476().getString(), (int)(x + 60.0F * scale), y + yy, fontColor, 18.0F * scale, Fonts.SEMIBOLD
+                  vg, this.entity.getDisplayName().getString(), (int)(x + 60.0F * scale), y + yy, fontColor, 18.0F * scale, Fonts.SEMIBOLD
                );
                nanoVGHelper.drawTextWithFormatting(vg, extraMessage, x + 60.0F * scale, y + yy + h1 + 7.5F * scale, fontColor, 14.0F * scale, Fonts.REGULAR);
                scissorHelper.resetScissor(vg, scissor);
                Scissor scissor1 = scissorHelper.scissor(vg, x, y, progressBarWidth, 62.5F * scale);
                nanoVGHelper.drawRoundedRect(vg, x, y, width, 62.5F * scale, new Color(255, 255, 255, 200).getRGB(), rad);
                nanoVGHelper.drawTextWithFormatting(
-                  vg, this.entity.method_5476().getString(), (int)(x + 60.0F * scale), y + yy, fontColorReverted, 18.0F * scale, Fonts.SEMIBOLD
+                  vg, this.entity.getDisplayName().getString(), (int)(x + 60.0F * scale), y + yy, fontColorReverted, 18.0F * scale, Fonts.SEMIBOLD
                );
                nanoVGHelper.drawTextWithFormatting(
                   vg, extraMessage, x + 60.0F * scale, y + yy + h1 + 7.5F * scale, fontColorReverted, 14.0F * scale, Fonts.REGULAR
@@ -104,7 +104,7 @@ public class TargetHud8 extends Hud {
                Scissor scissor = scissorHelper.scissor(vg, x + progressBarWidth, y, width - progressBarWidth, 62.5F * scale);
                nanoVGHelper.drawRoundedRect(vg, x, y, width, 62.5F * scale, new Color(34, 35, 38, alpha).getRGB(), rad);
                nanoVGHelper.drawTextWithFormatting(
-                  vg, this.entity.method_5476().getString(), (int)(x + 60.0F * scale), y + yy, fontColor, 18.0F * scale, Fonts.SEMIBOLD
+                  vg, this.entity.getDisplayName().getString(), (int)(x + 60.0F * scale), y + yy, fontColor, 18.0F * scale, Fonts.SEMIBOLD
                );
                nanoVGHelper.drawTextWithFormatting(vg, extraMessage, x + 60.0F * scale, y + yy + h1 + 7.5F * scale, fontColor, 14.0F * scale, Fonts.REGULAR);
                scissorHelper.resetScissor(vg, scissor);
@@ -113,7 +113,7 @@ public class TargetHud8 extends Hud {
                   vg, x, y, width, 62.5F * scale, new Color(255, 255, 255, (int)ColorUtil.interpolateFloat(140.0F, 200.0F, this.color.get())).getRGB(), rad
                );
                nanoVGHelper.drawTextWithFormatting(
-                  vg, this.entity.method_5476().getString(), (int)(x + 60.0F * scale), y + yy, fontColorReverted, 18.0F * scale, Fonts.SEMIBOLD
+                  vg, this.entity.getDisplayName().getString(), (int)(x + 60.0F * scale), y + yy, fontColorReverted, 18.0F * scale, Fonts.SEMIBOLD
                );
                nanoVGHelper.drawTextWithFormatting(
                   vg, extraMessage, x + 60.0F * scale, y + yy + h1 + 7.5F * scale, fontColorReverted, 14.0F * scale, Fonts.REGULAR
@@ -121,12 +121,12 @@ public class TargetHud8 extends Hud {
                scissorHelper.resetScissor(vg, scissor1);
             }
 
-            float rate = this.entity.method_6032() / this.entity.method_6063();
+            float rate = this.entity.getHealth() / this.entity.getMaxHealth();
             this.health.update(rate);
          }
       }
 
-      public void drawBigHead(class_332 context, float scale, float x, float y) {
+      public void drawBigHead(DrawContext context, float scale, float x, float y) {
          float size = 40.0F * scale;
          float headX = x + 12.0F * scale;
          float headY = y + this.y.get() + (61.25F * scale - size) / 2.0F;
@@ -140,12 +140,12 @@ public class TargetHud8 extends Hud {
       }
 
       private void drawRoundedHead(long vg, float x, float y, float size, float radius) {
-         class_2960 skin = this.entity.method_52814().comp_1626();
+         Identifier skin = this.entity.getSkinTextures().texture();
          if (skin != null) {
-            class_310 mc = class_310.method_1551();
-            class_1044 texture = mc.method_1531().method_4619(skin);
+            MinecraftClient mc = MinecraftClient.getInstance();
+            AbstractTexture texture = mc.getTextureManager().getTexture(skin);
             if (texture != null) {
-               int textureId = texture.method_4624();
+               int textureId = texture.getGlId();
                int imageSize = Math.max(1, Math.round(size));
                if (this.headImage == -1 || this.headTextureId != textureId || this.headImageSize != imageSize) {
                   this.headImage = NanoVGGL2.nvglCreateImageFromHandle(vg, textureId, imageSize, -imageSize, 0);

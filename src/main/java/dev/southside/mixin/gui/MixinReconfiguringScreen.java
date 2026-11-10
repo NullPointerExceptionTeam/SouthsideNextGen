@@ -1,35 +1,35 @@
 package dev.southside.mixin.gui;
 
-import net.minecraft.class_4185;
-import net.minecraft.class_8671;
+import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.gui.screen.ReconfiguringScreen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin({class_8671.class})
+@Mixin({ReconfiguringScreen.class})
 public class MixinReconfiguringScreen {
    @Shadow
-   private class_4185 field_45510;
+   private ButtonWidget disconnectButton;
 
    @Inject(
-      method = {"method_25426()V"},
+      method = {"init()V"},
       at = {@At("TAIL")}
    )
    private void forceEnableDisconnectOnInit(CallbackInfo ci) {
-      if (this.field_45510 != null) {
-         this.field_45510.field_22763 = true;
+      if (this.disconnectButton != null) {
+         this.disconnectButton.active = true;
       }
    }
 
    @Inject(
-      method = {"method_25393()V"},
+      method = {"tick()V"},
       at = {@At("TAIL")}
    )
    private void keepDisconnectEnabled(CallbackInfo ci) {
-      if (this.field_45510 != null && !this.field_45510.field_22763) {
-         this.field_45510.field_22763 = true;
+      if (this.disconnectButton != null && !this.disconnectButton.active) {
+         this.disconnectButton.active = true;
       }
    }
 }

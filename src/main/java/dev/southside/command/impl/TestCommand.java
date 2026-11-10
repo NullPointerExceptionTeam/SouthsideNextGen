@@ -8,7 +8,7 @@ import dev.southside.Southside;
 import dev.southside.command.Command;
 import dev.southside.render.ProgressBarOverlay;
 import java.util.concurrent.CompletableFuture;
-import net.minecraft.class_2172;
+import net.minecraft.command.CommandSource;
 import org.jetbrains.annotations.Nullable;
 
 public class TestCommand extends Command {
@@ -17,7 +17,7 @@ public class TestCommand extends Command {
    }
 
    @Override
-   public void build(LiteralArgumentBuilder<class_2172> builder) {
+   public void build(LiteralArgumentBuilder<CommandSource> builder) {
       builder.then(
          ((LiteralArgumentBuilder)literal("progressbar").executes(context -> this.startDemo(20, "Demo Task")))
             .then(

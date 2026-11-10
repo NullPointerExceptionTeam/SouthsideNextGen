@@ -2,18 +2,18 @@ package dev.southside.utils.player;
 
 import dev.southside.MinecraftAccessor;
 import dev.southside.utils.misc.ClientUtils;
-import net.minecraft.class_1268;
-import net.minecraft.class_2338;
-import net.minecraft.class_2350;
-import net.minecraft.class_2680;
-import net.minecraft.class_2846;
-import net.minecraft.class_746;
-import net.minecraft.class_2846.class_2847;
+import net.minecraft.util.Hand;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.block.BlockState;
+import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
+import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket.Action;
 import org.jetbrains.annotations.Nullable;
 
 public final class BlockBreakHelper implements MinecraftAccessor {
-   private class_2338 currentPos;
-   private class_2350 currentFace = class_2350.field_11036;
+   private BlockPos currentPos;
+   private Direction currentFace = Direction.UP;
    private float destroyProgress;
    private boolean breaking;
    private long extraDelayMs;
@@ -24,19 +24,19 @@ public final class BlockBreakHelper implements MinecraftAccessor {
 
    public void tick() {
       if (this.breaking && !ClientUtils.nullCheck() && this.currentPos != null && this.currentFace != null) {
-         class_2680 state = mc.field_1687.method_8320(this.currentPos);
-         class_746 player = mc.field_1724;
-         if (player == null || mc.field_1761 == null) {
+         BlockState state = mc.world.getBlockState(this.currentPos);
+         ClientPlayerEntity player = mc.player;
+         if (player == null || mc.interactionManager == null) {
             this.cancel();
-         } else if (state.method_26215()) {
+         } else if (state.isAir()) {
             this.cancel();
          } else {
-            float delta = state.method_26165(player, player.field_17892, this.currentPos);
+            float delta = state.calcBlockBreakingDelta(player, player.clientWorld, this.currentPos);
             if (!(delta <= 0.0F)) {
-               player.method_6104(class_1268.field_5808);
+               player.swingHand(Hand.MAIN_HAND);
                this.swungThisBreak = true;
                this.destroyProgress += delta;
-               mc.field_1687.method_8517(player.method_5628(), this.currentPos, (int)(this.destroyProgress * 10.0F) - 1);
+               mc.world.setBlockBreakingInfo(player.getId(), this.currentPos, (int)(this.destroyProgress * 10.0F) - 1);
                if (this.destroyProgress >= 1.0F) {
                   this.finish(state);
                }
@@ -45,17 +45,17 @@ public final class BlockBreakHelper implements MinecraftAccessor {
       }
    }
 
-   public boolean begin(class_2338 pos, class_2350 face, long additionalDelayMs, @Nullable BlockBreakHelper.Callback callback) {
-      if (!ClientUtils.nullCheck() && mc.field_1761 != null && pos != null && face != null) {
+   public boolean begin(BlockPos pos, Direction face, long additionalDelayMs, @Nullable BlockBreakHelper.Callback callback) {
+      if (!ClientUtils.nullCheck() && mc.interactionManager != null && pos != null && face != null) {
          if (System.currentTimeMillis() < this.nextAllowedStart) {
             return false;
          } else {
-            class_746 player = mc.field_1724;
+            ClientPlayerEntity player = mc.player;
             if (player == null) {
                return false;
             } else {
-               class_2680 state = mc.field_1687.method_8320(pos);
-               if (state.method_26215()) {
+               BlockState state = mc.world.getBlockState(pos);
+               if (state.isAir()) {
                   return false;
                } else if (this.breaking && pos.equals(this.currentPos) && face == this.currentFace) {
                   return true;
@@ -64,7 +64,7 @@ public final class BlockBreakHelper implements MinecraftAccessor {
                      this.cancel();
                   }
 
-                  this.currentPos = pos.method_10062();
+                  this.currentPos = pos.toImmutable();
                   this.currentFace = face;
                   this.destroyProgress = 0.0F;
                   this.breaking = true;
@@ -72,10 +72,10 @@ public final class BlockBreakHelper implements MinecraftAccessor {
                   this.callback = callback;
                   this.predictedCooldownMs = this.computeCooldownMs(player);
                   this.swungThisBreak = false;
-                  this.sendPacket(class_2847.field_12968, this.currentPos, this.currentFace);
-                  float delta = state.method_26165(player, player.field_17892, this.currentPos);
-                  if (player.method_31549().field_7477 || delta >= 1.0F) {
-                     player.method_6104(class_1268.field_5808);
+                  this.sendPacket(Action.START_DESTROY_BLOCK, this.currentPos, this.currentFace);
+                  float delta = state.calcBlockBreakingDelta(player, player.clientWorld, this.currentPos);
+                  if (player.getAbilities().creativeMode || delta >= 1.0F) {
+                     player.swingHand(Hand.MAIN_HAND);
                      this.swungThisBreak = true;
                      this.destroyProgress = 1.0F;
                      this.finish(state);
@@ -91,13 +91,13 @@ public final class BlockBreakHelper implements MinecraftAccessor {
    }
 
    public void cancel() {
-      if (this.breaking && this.currentPos != null && this.currentFace != null && mc.field_1724 != null) {
-         if (!this.swungThisBreak && mc.field_1724 != null) {
-            mc.field_1724.method_6104(class_1268.field_5808);
+      if (this.breaking && this.currentPos != null && this.currentFace != null && mc.player != null) {
+         if (!this.swungThisBreak && mc.player != null) {
+            mc.player.swingHand(Hand.MAIN_HAND);
          }
 
-         this.sendPacket(class_2847.field_12971, this.currentPos, this.currentFace);
-         mc.field_1687.method_8517(mc.field_1724.method_5628(), this.currentPos, -1);
+         this.sendPacket(Action.ABORT_DESTROY_BLOCK, this.currentPos, this.currentFace);
+         mc.world.setBlockBreakingInfo(mc.player.getId(), this.currentPos, -1);
          this.markCooldown();
          this.resetState();
       } else {
@@ -109,24 +109,24 @@ public final class BlockBreakHelper implements MinecraftAccessor {
       return this.breaking;
    }
 
-   public boolean isBreaking(class_2338 pos) {
+   public boolean isBreaking(BlockPos pos) {
       return this.breaking && this.currentPos != null && this.currentPos.equals(pos);
    }
 
-   public class_2338 getCurrentPos() {
+   public BlockPos getCurrentPos() {
       return this.currentPos;
    }
 
-   private void finish(class_2680 state) {
-      if (mc.field_1724 != null && mc.field_1761 != null && this.currentPos != null && this.currentFace != null) {
-         if (!this.swungThisBreak && mc.field_1724 != null) {
-            mc.field_1724.method_6104(class_1268.field_5808);
+   private void finish(BlockState state) {
+      if (mc.player != null && mc.interactionManager != null && this.currentPos != null && this.currentFace != null) {
+         if (!this.swungThisBreak && mc.player != null) {
+            mc.player.swingHand(Hand.MAIN_HAND);
             this.swungThisBreak = true;
          }
 
-         this.sendPacket(class_2847.field_12973, this.currentPos, this.currentFace);
-         mc.field_1761.method_2899(this.currentPos);
-         mc.field_1687.method_8517(mc.field_1724.method_5628(), this.currentPos, -1);
+         this.sendPacket(Action.STOP_DESTROY_BLOCK, this.currentPos, this.currentFace);
+         mc.interactionManager.breakBlock(this.currentPos);
+         mc.world.setBlockBreakingInfo(mc.player.getId(), this.currentPos, -1);
          this.markCooldown();
          if (this.callback != null) {
             this.callback.onBlockBroken(this.currentPos, state);
@@ -147,23 +147,23 @@ public final class BlockBreakHelper implements MinecraftAccessor {
       this.breaking = false;
       this.destroyProgress = 0.0F;
       this.currentPos = null;
-      this.currentFace = class_2350.field_11036;
+      this.currentFace = Direction.UP;
       this.callback = null;
       this.predictedCooldownMs = 0L;
       this.swungThisBreak = false;
    }
 
-   private void sendPacket(class_2847 action, class_2338 pos, class_2350 face) {
-      if (mc.field_1724 != null && mc.field_1761 != null && mc.field_1687 != null) {
-         mc.field_1761.method_41931(mc.field_1687, seq -> new class_2846(action, pos, face, seq));
+   private void sendPacket(Action action, BlockPos pos, Direction face) {
+      if (mc.player != null && mc.interactionManager != null && mc.world != null) {
+         mc.interactionManager.sendSequencedPacket(mc.world, seq -> new PlayerActionC2SPacket(action, pos, face, seq));
       }
    }
 
-   private long computeCooldownMs(class_746 player) {
-      return player.method_31549().field_7477 ? 50L : 250L;
+   private long computeCooldownMs(ClientPlayerEntity player) {
+      return player.getAbilities().creativeMode ? 50L : 250L;
    }
 
    public interface Callback {
-      void onBlockBroken(class_2338 var1, class_2680 var2);
+      void onBlockBroken(BlockPos var1, BlockState var2);
    }
 }

@@ -25,10 +25,10 @@ import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import lombok.Generated;
-import net.minecraft.class_412;
-import net.minecraft.class_639;
-import net.minecraft.class_642;
-import net.minecraft.class_642.class_8678;
+import net.minecraft.client.gui.screen.multiplayer.ConnectScreen;
+import net.minecraft.client.network.ServerAddress;
+import net.minecraft.client.network.ServerInfo;
+import net.minecraft.client.network.ServerInfo.ServerType;
 import org.jetbrains.annotations.NotNull;
 
 public class AccountDetailsPage extends AbsPage {
@@ -73,11 +73,11 @@ public class AccountDetailsPage extends AbsPage {
                                        .execute(
                                           () -> {
                                              Notification.addNotification("Joining: '" + addr + "'", "Join", Notification.NotificationType.DISABLED);
-                                             class_412.method_36877(
-                                                MinecraftAccessor.mc.field_1755,
+                                             ConnectScreen.connect(
+                                                MinecraftAccessor.mc.currentScreen,
                                                 MinecraftAccessor.mc,
-                                                class_639.method_2950(addr),
-                                                new class_642("jiji岛", addr, class_8678.field_45611),
+                                                ServerAddress.parse(addr),
+                                                new ServerInfo("jiji岛", addr, ServerType.OTHER),
                                                 false,
                                                 null
                                              );

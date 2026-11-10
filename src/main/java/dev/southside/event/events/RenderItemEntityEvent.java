@@ -1,18 +1,18 @@
 package dev.southside.event.events;
 
 import dev.southside.event.CancellableEvent;
-import net.minecraft.class_10039;
-import net.minecraft.class_4587;
-import net.minecraft.class_4597;
+import net.minecraft.client.render.entity.state.ItemEntityRenderState;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.render.VertexConsumerProvider;
 
 public class RenderItemEntityEvent extends CancellableEvent {
    private static final RenderItemEntityEvent INSTANCE = new RenderItemEntityEvent();
-   public class_10039 renderState;
-   public class_4587 matrixStack;
-   public class_4597 vertexConsumerProvider;
+   public ItemEntityRenderState renderState;
+   public MatrixStack matrixStack;
+   public VertexConsumerProvider vertexConsumerProvider;
    public int light;
 
-   public static RenderItemEntityEvent get(class_10039 renderState, class_4587 matrixStack, class_4597 vertexConsumerProvider, int light) {
+   public static RenderItemEntityEvent get(ItemEntityRenderState renderState, MatrixStack matrixStack, VertexConsumerProvider vertexConsumerProvider, int light) {
       INSTANCE.setCancelled(false);
       INSTANCE.renderState = renderState;
       INSTANCE.matrixStack = matrixStack;

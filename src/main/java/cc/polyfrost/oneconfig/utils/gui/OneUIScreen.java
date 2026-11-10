@@ -6,7 +6,7 @@ import cc.polyfrost.oneconfig.libs.universal.UResolution;
 import cc.polyfrost.oneconfig.libs.universal.UScreen;
 import cc.polyfrost.oneconfig.renderer.NanoVGHelper;
 import cc.polyfrost.oneconfig.utils.InputHandler;
-import net.minecraft.class_332;
+import net.minecraft.client.gui.DrawContext;
 import org.jetbrains.annotations.NotNull;
 
 public abstract class OneUIScreen extends UScreen implements GuiPause, BlurScreen {
@@ -27,7 +27,7 @@ public abstract class OneUIScreen extends UScreen implements GuiPause, BlurScree
    }
 
    @Override
-   public final void onDrawScreen(@NotNull UMatrixStack matrixStack, class_332 context, int mouseX, int mouseY, float partialTicks) {
+   public final void onDrawScreen(@NotNull UMatrixStack matrixStack, DrawContext context, int mouseX, int mouseY, float partialTicks) {
       super.onDrawScreen(matrixStack, context, mouseX, mouseY, partialTicks);
       if (this.useMinecraftScale) {
          this.inputHandler.scale(UResolution.getScaleFactor(), UResolution.getScaleFactor());

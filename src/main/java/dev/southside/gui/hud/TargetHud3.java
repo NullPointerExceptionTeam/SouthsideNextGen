@@ -10,8 +10,8 @@ import dev.southside.utils.math.MathUtils;
 import dev.southside.utils.misc.BezierUtil;
 import dev.southside.utils.render.animation.TimerUtil;
 import java.awt.Color;
-import net.minecraft.class_332;
-import net.minecraft.class_742;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.network.AbstractClientPlayerEntity;
 
 public class TargetHud3 extends Hud {
    private final TargetHUD parent;
@@ -22,7 +22,7 @@ public class TargetHud3 extends Hud {
    }
 
    @Override
-   protected void draw(class_332 context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
+   protected void draw(DrawContext context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
    }
 
    @Override
@@ -40,16 +40,16 @@ public class TargetHud3 extends Hud {
       public final BezierUtil y = new BezierUtil(3.0F, 0.0F);
       private static final float BASE_WIDTH = 160.0F;
       private static final float BASE_HEIGHT = 40.0F;
-      public class_742 entity;
+      public AbstractClientPlayerEntity entity;
 
-      public TargetHUDComponent(class_742 entity) {
+      public TargetHUDComponent(AbstractClientPlayerEntity entity) {
          this.entity = entity;
       }
 
       public void draw(long vg, float scale, float x, float yOffset) {
          if (!(this.y.get() < -(40.0F * scale))) {
             float currentY = this.y.get() + yOffset;
-            String text = this.entity.method_5476().getString() + " " + MathUtils.round(this.entity.method_6032(), 1) + " HP";
+            String text = this.entity.getDisplayName().getString() + " " + MathUtils.round(this.entity.getHealth(), 1) + " HP";
             NanoVGHelper nanoVGHelper = NanoVGHelper.INSTANCE;
             float mainSize = 28.0F * scale;
             float interval = 8.0F * scale;

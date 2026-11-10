@@ -4,12 +4,12 @@ import cc.polyfrost.oneconfig.config.options.impl.Switch;
 import dev.southside.module.Category;
 import dev.southside.module.Module;
 import dev.southside.utils.player.FakePlayerEntity;
-import net.minecraft.class_1297;
-import net.minecraft.class_1308;
-import net.minecraft.class_1309;
-import net.minecraft.class_1429;
-import net.minecraft.class_1646;
-import net.minecraft.class_1657;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.mob.MobEntity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.passive.AnimalEntity;
+import net.minecraft.entity.passive.VillagerEntity;
+import net.minecraft.entity.player.PlayerEntity;
 
 public class Targets extends Module {
    private static Targets INSTANCE;
@@ -32,34 +32,34 @@ public class Targets extends Module {
       this.setEnable(false);
    }
 
-   public static boolean check(class_1309 entity) {
+   public static boolean check(LivingEntity entity) {
       if (entity != null && !(entity instanceof FakePlayerEntity)) {
          Targets t = getInstance();
-         if (entity instanceof class_1657) {
+         if (entity instanceof PlayerEntity) {
             return t.players.getValue();
-         } else if (entity instanceof class_1308 && !(entity instanceof class_1646) && !(entity instanceof class_1429)) {
+         } else if (entity instanceof MobEntity && !(entity instanceof VillagerEntity) && !(entity instanceof AnimalEntity)) {
             return t.mobs.getValue();
-         } else if (entity instanceof class_1646) {
+         } else if (entity instanceof VillagerEntity) {
             return t.villagers.getValue();
          } else {
-            return entity instanceof class_1429 ? t.animals.getValue() : false;
+            return entity instanceof AnimalEntity ? t.animals.getValue() : false;
          }
       } else {
          return false;
       }
    }
 
-   public static boolean check(class_1297 entity) {
+   public static boolean check(Entity entity) {
       if (entity != null && !(entity instanceof FakePlayerEntity)) {
          Targets t = getInstance();
-         if (entity instanceof class_1657) {
+         if (entity instanceof PlayerEntity) {
             return t.players.getValue();
-         } else if (entity instanceof class_1308 && !(entity instanceof class_1646) && !(entity instanceof class_1429)) {
+         } else if (entity instanceof MobEntity && !(entity instanceof VillagerEntity) && !(entity instanceof AnimalEntity)) {
             return t.mobs.getValue();
-         } else if (entity instanceof class_1646) {
+         } else if (entity instanceof VillagerEntity) {
             return t.villagers.getValue();
          } else {
-            return entity instanceof class_1429 ? t.animals.getValue() : false;
+            return entity instanceof AnimalEntity ? t.animals.getValue() : false;
          }
       } else {
          return false;

@@ -13,13 +13,13 @@ import dev.southside.render.Render3D;
 import dev.southside.utils.ChatUtils;
 import java.util.HashSet;
 import java.util.Set;
-import net.minecraft.class_2338;
-import net.minecraft.class_2626;
-import net.minecraft.class_2637;
-import net.minecraft.class_2680;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.network.packet.s2c.play.BlockUpdateS2CPacket;
+import net.minecraft.network.packet.s2c.play.ChunkDeltaUpdateS2CPacket;
+import net.minecraft.block.BlockState;
 
 public class BlockHunter extends Module {
-   private final Set<class_2338> markedBlocks = new HashSet<>();
+   private final Set<BlockPos> markedBlocks = new HashSet<>();
    private final Color sideColor = new Color("Side Color", true, new OneColor(255, 120, 40, 60));
    private final Color lineColor = new Color("Line Color", true, new OneColor(255, 120, 40, 160));
 
@@ -29,11 +29,11 @@ public class BlockHunter extends Module {
 
    @EventHandler
    public void onPacket(PacketEvent event) {
-      if (event.getOrigin() == TransferOrigin.RECEIVE && mc.field_1687 != null) {
-         if (event.getPacket() instanceof class_2626 packet) {
-            this.markIfAir(packet.method_11309(), packet.method_11308());
-         } else if (event.getPacket() instanceof class_2637 packet) {
-            packet.method_30621(this::markIfAir);
+      if (event.getOrigin() == TransferOrigin.RECEIVE && mc.world != null) {
+         if (event.getPacket() instanceof BlockUpdateS2CPacket packet) {
+            this.markIfAir(packet.getPos(), packet.getState());
+         } else if (event.getPacket() instanceof ChunkDeltaUpdateS2CPacket packet) {
+            packet.visitUpdates(this::markIfAir);
          }
       }
    }
@@ -45,8 +45,8 @@ public class BlockHunter extends Module {
 
    @EventHandler
    public void onRender(Render3DEvent event) {
-      if (mc.field_1687 != null && !this.markedBlocks.isEmpty()) {
-         for (class_2338 pos : this.markedBlocks) {
+      if (mc.world != null && !this.markedBlocks.isEmpty()) {
+         for (BlockPos pos : this.markedBlocks) {
             Render3D.blockSides(pos, this.sideColor.getValue().toJavaColor());
             Render3D.blockLines(pos, this.lineColor.getValue().toJavaColor());
          }
@@ -59,13 +59,13 @@ public class BlockHunter extends Module {
       super.onDisable();
    }
 
-   private void markIfAir(class_2338 pos, class_2680 newState) {
-      if (pos != null && newState != null && mc.field_1687 != null) {
-         if (newState.method_26215()) {
+   private void markIfAir(BlockPos pos, BlockState newState) {
+      if (pos != null && newState != null && mc.world != null) {
+         if (newState.isAir()) {
             this.markedBlocks.remove(pos);
          } else {
-            if (!newState.method_26215() && mc.field_1687.method_8320(pos).method_26215()) {
-               class_2338 immutablePos = pos.method_10062();
+            if (!newState.isAir() && mc.world.getBlockState(pos).isAir()) {
+               BlockPos immutablePos = pos.toImmutable();
                if (this.markedBlocks.add(immutablePos)) {
                   ChatUtils.info("Detected a hider! " + this.formatPos(immutablePos));
                }
@@ -74,7 +74,7 @@ public class BlockHunter extends Module {
       }
    }
 
-   private String formatPos(class_2338 pos) {
-      return "(" + pos.method_10263() + ", " + pos.method_10264() + ", " + pos.method_10260() + ")";
+   private String formatPos(BlockPos pos) {
+      return "(" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ() + ")";
    }
 }

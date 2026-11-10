@@ -3,9 +3,9 @@ package dev.southside.anticheat.check.impl;
 import dev.southside.MinecraftAccessor;
 import dev.southside.anticheat.check.NormalCheck;
 import dev.southside.anticheat.player.PlayerData;
-import net.minecraft.class_1657;
-import net.minecraft.class_2246;
-import net.minecraft.class_2338;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.block.Blocks;
+import net.minecraft.util.math.BlockPos;
 
 public class FastWebCheck implements NormalCheck {
    private static final double SPEED_THRESHOLD_PER_TICK = 0.04;
@@ -13,13 +13,13 @@ public class FastWebCheck implements NormalCheck {
 
    @Override
    public void onUpdate(PlayerData playerData) {
-      class_1657 player = playerData.getPlayer();
-      int tick = player.field_6012;
-      if (MinecraftAccessor.mc.field_1687 != null && player.method_5805()) {
+      PlayerEntity player = playerData.getPlayer();
+      int tick = player.age;
+      if (MinecraftAccessor.mc.world != null && player.isAlive()) {
          boolean nearCobweb = this.isNearCobweb(player);
          if (nearCobweb) {
-            double vx = player.method_18798().field_1352;
-            double vz = player.method_18798().field_1350;
+            double vx = player.getVelocity().x;
+            double vz = player.getVelocity().z;
             double speed = Math.sqrt(vx * vx + vz * vz);
             if (speed > 0.04) {
                playerData.setFastWebTicks(playerData.getFastWebTicks() + 1);
@@ -40,13 +40,13 @@ public class FastWebCheck implements NormalCheck {
       }
    }
 
-   private boolean isNearCobweb(class_1657 player) {
-      class_2338 center = player.method_24515();
+   private boolean isNearCobweb(PlayerEntity player) {
+      BlockPos center = player.getBlockPos();
 
       for (int dx = -1; dx <= 1; dx++) {
          for (int dy = -1; dy <= 1; dy++) {
             for (int dz = -1; dz <= 1; dz++) {
-               if (MinecraftAccessor.mc.field_1687.method_8320(center.method_10069(dx, dy, dz)).method_26204() == class_2246.field_10343) {
+               if (MinecraftAccessor.mc.world.getBlockState(center.add(dx, dy, dz)).getBlock() == Blocks.COBWEB) {
                   return true;
                }
             }

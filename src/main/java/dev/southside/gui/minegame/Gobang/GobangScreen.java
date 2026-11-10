@@ -2,11 +2,11 @@ package dev.southside.gui.minegame.Gobang;
 
 import java.awt.Color;
 import java.awt.Point;
-import net.minecraft.class_2561;
-import net.minecraft.class_332;
-import net.minecraft.class_437;
+import net.minecraft.text.Text;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.Screen;
 
-public class GobangScreen extends class_437 {
+public class GobangScreen extends Screen {
    private static final int GRID_SIZE = 30;
    private static final int BOARD_MARGIN = 20;
    private GobangGame game;
@@ -14,17 +14,17 @@ public class GobangScreen extends class_437 {
    private long aiMoveTime = 0L;
 
    public GobangScreen() {
-      super(class_2561.method_30163("Gobang"));
+      super(Text.of("Gobang"));
       this.game = new GobangGame();
    }
 
-   protected void method_25426() {
+   protected void init() {
       this.game.initGame();
-      super.method_25426();
+      super.init();
    }
 
-   public void method_25394(class_332 context, int mouseX, int mouseY, float delta) {
-      super.method_25394(context, mouseX, mouseY, delta);
+   public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+      super.render(context, mouseX, mouseY, delta);
       if (vsAI && !this.game.isGameOver() && this.game.getCurrentPlayer() == GobangGame.Player.WHITE && System.currentTimeMillis() >= this.aiMoveTime) {
          Point bestMove = GobangAI.getBestMove(this.game, GobangGame.Player.WHITE);
          if (bestMove != null) {
@@ -42,22 +42,22 @@ public class GobangScreen extends class_437 {
    }
 
    private int getBoardStartX() {
-      return (this.field_22789 - 420) / 2;
+      return (this.width - 420) / 2;
    }
 
    private int getBoardStartY() {
-      return (this.field_22790 - 420) / 2;
+      return (this.height - 420) / 2;
    }
 
-   private void drawBoard(class_332 context) {
+   private void drawBoard(DrawContext context) {
       int startX = this.getBoardStartX();
       int startY = this.getBoardStartY();
       int boardPixelSize = 420;
-      context.method_25294(startX - 20, startY - 20, startX + boardPixelSize + 20, startY + boardPixelSize + 20, new Color(210, 180, 140).getRGB());
+      context.fill(startX - 20, startY - 20, startX + boardPixelSize + 20, startY + boardPixelSize + 20, new Color(210, 180, 140).getRGB());
 
       for (int i = 0; i < 15; i++) {
-         context.method_25292(startX, startX + boardPixelSize, startY + i * 30, Color.BLACK.getRGB());
-         context.method_25301(startX + i * 30, startY, startY + boardPixelSize, Color.BLACK.getRGB());
+         context.drawHorizontalLine(startX, startX + boardPixelSize, startY + i * 30, Color.BLACK.getRGB());
+         context.drawVerticalLine(startX + i * 30, startY, startY + boardPixelSize, Color.BLACK.getRGB());
       }
 
       int[] starPoints = new int[]{3, 11};
@@ -71,11 +71,11 @@ public class GobangScreen extends class_437 {
       this.drawStarPoint(context, startX + 210, startY + 210);
    }
 
-   private void drawStarPoint(class_332 context, int x, int y) {
-      context.method_25294(x - 2, y - 2, x + 3, y + 3, Color.BLACK.getRGB());
+   private void drawStarPoint(DrawContext context, int x, int y) {
+      context.fill(x - 2, y - 2, x + 3, y + 3, Color.BLACK.getRGB());
    }
 
-   private void drawPieces(class_332 context) {
+   private void drawPieces(DrawContext context) {
       int startX = this.getBoardStartX();
       int startY = this.getBoardStartY();
       GobangGame.Player[][] board = this.game.getBoard();
@@ -87,13 +87,13 @@ public class GobangScreen extends class_437 {
                int pieceX = startX + x * 30;
                int pieceY = startY + y * 30;
                int radius = 13;
-               context.method_25294(pieceX - radius, pieceY - radius, pieceX + radius + 1, pieceY + radius + 1, color.getRGB());
+               context.fill(pieceX - radius, pieceY - radius, pieceX + radius + 1, pieceY + radius + 1, color.getRGB());
             }
          }
       }
    }
 
-   private void drawHoverMarker(class_332 context, int mouseX, int mouseY) {
+   private void drawHoverMarker(DrawContext context, int mouseX, int mouseY) {
       if (!this.game.isGameOver()) {
          int startX = this.getBoardStartX();
          int startY = this.getBoardStartY();
@@ -106,13 +106,13 @@ public class GobangScreen extends class_437 {
                int markerY = startY + gridY * 30;
                Color color = this.game.getCurrentPlayer() == GobangGame.Player.BLACK ? new Color(0, 0, 0, 128) : new Color(255, 255, 255, 128);
                int radius = 13;
-               context.method_25294(markerX - radius, markerY - radius, markerX + radius + 1, markerY + radius + 1, color.getRGB());
+               context.fill(markerX - radius, markerY - radius, markerX + radius + 1, markerY + radius + 1, color.getRGB());
             }
          }
       }
    }
 
-   private void drawStatus(class_332 context) {
+   private void drawStatus(DrawContext context) {
       String statusText;
       if (this.game.isGameOver()) {
          if (this.game.getWinner() != null) {
@@ -124,20 +124,20 @@ public class GobangScreen extends class_437 {
          statusText = "Current Turn: " + (this.game.getCurrentPlayer() == GobangGame.Player.BLACK ? "Black" : "White");
       }
 
-      context.method_25300(this.field_22793, statusText, this.field_22789 / 2, 20, Color.WHITE.getRGB());
+      context.drawCenteredTextWithShadow(this.textRenderer, statusText, this.width / 2, 20, Color.WHITE.getRGB());
       String modeText = "Mode: " + (vsAI ? "Player vs AI" : "Player vs Player") + " (Press 'M' to toggle)";
-      context.method_25300(this.field_22793, modeText, this.field_22789 / 2, this.field_22790 - 20, Color.GRAY.getRGB());
+      context.drawCenteredTextWithShadow(this.textRenderer, modeText, this.width / 2, this.height - 20, Color.GRAY.getRGB());
    }
 
-   private void drawGameOver(class_332 context) {
+   private void drawGameOver(DrawContext context) {
       String restartText = "Press Enter to Restart";
-      context.method_25300(this.field_22793, restartText, this.field_22789 / 2, 40, Color.GREEN.getRGB());
+      context.drawCenteredTextWithShadow(this.textRenderer, restartText, this.width / 2, 40, Color.GREEN.getRGB());
    }
 
-   public boolean method_25402(double mouseX, double mouseY, int button) {
+   public boolean mouseClicked(double mouseX, double mouseY, int button) {
       if (button == 0 && !this.game.isGameOver()) {
          if (vsAI && this.game.getCurrentPlayer() == GobangGame.Player.WHITE) {
-            return super.method_25402(mouseX, mouseY, button);
+            return super.mouseClicked(mouseX, mouseY, button);
          }
 
          int startX = this.getBoardStartX();
@@ -149,10 +149,10 @@ public class GobangScreen extends class_437 {
          }
       }
 
-      return super.method_25402(mouseX, mouseY, button);
+      return super.mouseClicked(mouseX, mouseY, button);
    }
 
-   public boolean method_25404(int keyCode, int scanCode, int modifiers) {
+   public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
       if (keyCode == 77) {
          vsAI = !vsAI;
          this.game.initGame();
@@ -161,11 +161,11 @@ public class GobangScreen extends class_437 {
          this.game.initGame();
          return true;
       } else {
-         return super.method_25404(keyCode, scanCode, modifiers);
+         return super.keyPressed(keyCode, scanCode, modifiers);
       }
    }
 
-   public boolean method_25421() {
+   public boolean shouldPause() {
       return false;
    }
 }

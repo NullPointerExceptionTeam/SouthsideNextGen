@@ -27,21 +27,21 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import net.minecraft.class_1268;
-import net.minecraft.class_1657;
-import net.minecraft.class_1799;
-import net.minecraft.class_1922;
-import net.minecraft.class_2244;
-import net.minecraft.class_2338;
-import net.minecraft.class_2350;
-import net.minecraft.class_238;
-import net.minecraft.class_2382;
-import net.minecraft.class_243;
-import net.minecraft.class_265;
-import net.minecraft.class_2680;
-import net.minecraft.class_2742;
-import net.minecraft.class_2769;
-import net.minecraft.class_3965;
+import net.minecraft.util.Hand;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.ItemStack;
+import net.minecraft.world.BlockView;
+import net.minecraft.block.BedBlock;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3i;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.shape.VoxelShape;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.enums.BedPart;
+import net.minecraft.state.property.Property;
+import net.minecraft.util.hit.BlockHitResult;
 
 public class BedAura
 extends Module {
@@ -59,9 +59,9 @@ extends Module {
     private final cc.polyfrost.oneconfig.config.options.impl.Color currentBreakLineColor = new cc.polyfrost.oneconfig.config.options.impl.Color("Current Break Line Color", true, new OneColor(255, 90, 90, 180));
     private final cc.polyfrost.oneconfig.config.options.impl.Color pathSideColor = new cc.polyfrost.oneconfig.config.options.impl.Color("Path Side Color", true, new OneColor(80, 220, 255, 55));
     private final cc.polyfrost.oneconfig.config.options.impl.Color pathLineColor = new cc.polyfrost.oneconfig.config.options.impl.Color("Path Line Color", true, new OneColor(80, 220, 255, 160));
-    private class_2338[] bedPos;
-    private class_2338 currentBlock;
-    private class_2338 previousBlockBroken;
+    private BlockPos[] bedPos;
+    private BlockPos currentBlock;
+    private BlockPos previousBlockBroken;
     private float breakProgress;
     private boolean isBreaking;
     private long nextBreakTime;
@@ -71,7 +71,7 @@ extends Module {
     private int previousSlot = -1;
     private ProgressBarOverlay.ProgressHandle progressHandle;
     private boolean silentToolActive;
-    private List<class_2338> currentPath = new ArrayList<class_2338>();
+    private List<BlockPos> currentPath = new ArrayList<BlockPos>();
 
     public BedAura() {
         super(Category.Combat, "BedAura", "Breaks enemy beds");
@@ -108,11 +108,11 @@ extends Module {
 
     @EventHandler
     private void onTick(TickEvent event) {
-        class_2338 targetBlock;
+        BlockPos targetBlock;
         if (event.getState() == Stage.POST) {
             return;
         }
-        if (BedAura.mc.field_1724 == null || BedAura.mc.field_1687 == null || BedAura.mc.field_1761 == null) {
+        if (BedAura.mc.player == null || BedAura.mc.world == null || BedAura.mc.interactionManager == null) {
             return;
         }
         this.updateProgressBar();
@@ -137,8 +137,8 @@ extends Module {
                 return;
             }
         } else {
-            class_2680 footState = BedAura.mc.field_1687.method_8320(this.bedPos[0]);
-            if (!(footState.method_26204() instanceof class_2244)) {
+            BlockState footState = BedAura.mc.world.getBlockState(this.bedPos[0]);
+            if (!(footState.getBlock() instanceof BedBlock)) {
                 this.fullReset();
                 this.bedPos = null;
                 return;
@@ -170,43 +170,43 @@ extends Module {
 
     @EventHandler
     private void onRender3D(Render3DEvent event) {
-        class_2680 state;
-        if (!((Boolean)this.renderBox.getValue()).booleanValue() || BedAura.mc.field_1687 == null) {
+        BlockState state;
+        if (!((Boolean)this.renderBox.getValue()).booleanValue() || BedAura.mc.world == null) {
             return;
         }
         if (this.bedPos != null) {
-            for (class_2338 pos : this.bedPos) {
-                class_2680 state2;
-                if (pos == null || !((state2 = BedAura.mc.field_1687.method_8320(pos)).method_26204() instanceof class_2244)) continue;
+            for (BlockPos pos : this.bedPos) {
+                BlockState state2;
+                if (pos == null || !((state2 = BedAura.mc.world.getBlockState(pos)).getBlock() instanceof BedBlock)) continue;
                 this.renderStateBox(pos, state2, ((OneColor)this.bedSideColor.getValue()).toJavaColor(), ((OneColor)this.bedLineColor.getValue()).toJavaColor());
             }
         }
-        for (class_2338 pos : this.currentPath) {
-            class_2680 state3;
-            if (this.currentBlock != null && this.currentBlock.equals((Object)pos) || (state3 = BedAura.mc.field_1687.method_8320(pos)).method_26215()) continue;
+        for (BlockPos pos : this.currentPath) {
+            BlockState state3;
+            if (this.currentBlock != null && this.currentBlock.equals((Object)pos) || (state3 = BedAura.mc.world.getBlockState(pos)).isAir()) continue;
             this.renderStateBox(pos, state3, ((OneColor)this.pathSideColor.getValue()).toJavaColor(), ((OneColor)this.pathLineColor.getValue()).toJavaColor());
         }
-        if (this.currentBlock != null && !(state = BedAura.mc.field_1687.method_8320(this.currentBlock)).method_26215()) {
+        if (this.currentBlock != null && !(state = BedAura.mc.world.getBlockState(this.currentBlock)).isAir()) {
             this.renderStateBox(this.currentBlock, state, ((OneColor)this.currentBreakSideColor.getValue()).toJavaColor(), ((OneColor)this.currentBreakLineColor.getValue()).toJavaColor());
         }
     }
 
     @EventHandler
     private void onHeldItem(UpdateHeldItemEvent event) {
-        if (!((Boolean)this.autoTool.getValue()).booleanValue() || !this.silentToolActive || BedAura.mc.field_1724 == null) {
+        if (!((Boolean)this.autoTool.getValue()).booleanValue() || !this.silentToolActive || BedAura.mc.player == null) {
             return;
         }
-        if (event.getHand() != class_1268.field_5808 || this.previousSlot == -1) {
+        if (event.getHand() != Hand.MAIN_HAND || this.previousSlot == -1) {
             return;
         }
-        class_1799 originalItem = BedAura.mc.field_1724.method_31548().method_5438(this.previousSlot);
-        if (!originalItem.method_7960()) {
+        ItemStack originalItem = BedAura.mc.player.getInventory().getStack(this.previousSlot);
+        if (!originalItem.isEmpty()) {
             event.setItem(originalItem);
         }
     }
 
-    private void processBreak(class_2338 blockPos) {
-        if (blockPos == null || BedAura.mc.field_1724 == null || BedAura.mc.field_1687 == null) {
+    private void processBreak(BlockPos blockPos) {
+        if (blockPos == null || BedAura.mc.player == null || BedAura.mc.world == null) {
             this.fullReset();
             return;
         }
@@ -217,8 +217,8 @@ extends Module {
         if (((Number)this.fov.getValue()).doubleValue() < 360.0 && !this.isInFov(blockPos)) {
             return;
         }
-        class_2680 state = BedAura.mc.field_1687.method_8320(blockPos);
-        if (state.method_26215()) {
+        BlockState state = BedAura.mc.world.getBlockState(blockPos);
+        if (state.isAir()) {
             this.fullReset();
             return;
         }
@@ -230,7 +230,7 @@ extends Module {
             if (now < this.nextAimTime) {
                 return;
             }
-            class_3965 startHit = this.getAimedHit(blockPos);
+            BlockHitResult startHit = this.getAimedHit(blockPos);
             if (startHit == null) {
                 return;
             }
@@ -244,15 +244,15 @@ extends Module {
         float progressPerCall = this.getBlockBreakProgress(state);
         this.breakProgress += progressPerCall;
         this.breakProgress = Math.min(1.0f, this.breakProgress);
-        BedAura.mc.field_1687.method_8517(BedAura.mc.field_1724.method_5628(), blockPos, Math.min(9, Math.max(0, (int)(this.breakProgress * 10.0f) - 1)));
+        BedAura.mc.world.setBlockBreakingInfo(BedAura.mc.player.getId(), blockPos, Math.min(9, Math.max(0, (int)(this.breakProgress * 10.0f) - 1)));
         this.updateProgressBar();
-        if (this.breakProgress < 1.0f && !BedAura.mc.field_1687.method_8320(blockPos).method_26215()) {
+        if (this.breakProgress < 1.0f && !BedAura.mc.world.getBlockState(blockPos).isAir()) {
             return;
         }
         if (now < this.nextAimTime) {
             return;
         }
-        class_3965 finishHit = this.getAimedHit(blockPos);
+        BlockHitResult finishHit = this.getAimedHit(blockPos);
         if (finishHit == null) {
             return;
         }
@@ -264,33 +264,33 @@ extends Module {
     }
 
     private void runWithBestTool(Runnable action) {
-        if (BedAura.mc.field_1724 == null || BedAura.mc.field_1761 == null || !((Boolean)this.autoTool.getValue()).booleanValue() || this.toolSlot == BedAura.mc.field_1724.method_31548().field_7545) {
+        if (BedAura.mc.player == null || BedAura.mc.interactionManager == null || !((Boolean)this.autoTool.getValue()).booleanValue() || this.toolSlot == BedAura.mc.player.getInventory().selectedSlot) {
             action.run();
             return;
         }
-        int oldSlot = BedAura.mc.field_1724.method_31548().field_7545;
-        BedAura.mc.field_1724.method_31548().field_7545 = this.toolSlot;
-        BedAura.mc.field_1761.method_2911();
+        int oldSlot = BedAura.mc.player.getInventory().selectedSlot;
+        BedAura.mc.player.getInventory().selectedSlot = this.toolSlot;
+        BedAura.mc.interactionManager.syncSelectedSlot();
         try {
             action.run();
         }
         finally {
-            BedAura.mc.field_1724.method_31548().field_7545 = oldSlot;
-            BedAura.mc.field_1761.method_2911();
+            BedAura.mc.player.getInventory().selectedSlot = oldSlot;
+            BedAura.mc.interactionManager.syncSelectedSlot();
         }
     }
 
-    private class_3965 getAimedHit(class_2338 blockPos) {
+    private BlockHitResult getAimedHit(BlockPos blockPos) {
         Rotation rotation = RotationUtils.getRotationBlock(blockPos, 0.0f);
         ClientRayTraceUtil.updateEyePos();
-        class_3965 rayTraceResult = ClientRayTraceUtil.getFacedBlock(rotation.yaw, rotation.pitch);
-        return rayTraceResult != null && rayTraceResult.method_17777().equals((Object)blockPos) ? rayTraceResult : this.createSyntheticHit(blockPos);
+        BlockHitResult rayTraceResult = ClientRayTraceUtil.getFacedBlock(rotation.yaw, rotation.pitch);
+        return rayTraceResult != null && rayTraceResult.getBlockPos().equals((Object)blockPos) ? rayTraceResult : this.createSyntheticHit(blockPos);
     }
 
-    private void onBlockFinished(class_2338 brokenPos) {
-        class_2338 class_23382 = this.previousBlockBroken = brokenPos == null ? null : brokenPos.method_10062();
-        if (BedAura.mc.field_1724 != null && BedAura.mc.field_1687 != null && brokenPos != null) {
-            BedAura.mc.field_1687.method_8517(BedAura.mc.field_1724.method_5628(), brokenPos, -1);
+    private void onBlockFinished(BlockPos brokenPos) {
+        BlockPos brokenBlock = this.previousBlockBroken = brokenPos == null ? null : brokenPos.toImmutable();
+        if (BedAura.mc.player != null && BedAura.mc.world != null && brokenPos != null) {
+            BedAura.mc.world.setBlockBreakingInfo(BedAura.mc.player.getId(), brokenPos, -1);
         }
         if (this.breakMode.isMode("Full") && !this.currentPath.isEmpty() && this.currentPath.getFirst().equals((Object)brokenPos)) {
             this.currentPath.removeFirst();
@@ -307,13 +307,13 @@ extends Module {
         this.breakProgress = 0.0f;
         this.currentBlock = null;
         this.isBreaking = false;
-        this.toolSlot = BedAura.mc.field_1724 != null ? BedAura.mc.field_1724.method_31548().field_7545 : 0;
+        this.toolSlot = BedAura.mc.player != null ? BedAura.mc.player.getInventory().selectedSlot : 0;
         this.silentToolActive = false;
     }
 
     private void fullReset() {
-        if (this.currentBlock != null && BedAura.mc.field_1687 != null && BedAura.mc.field_1724 != null) {
-            BedAura.mc.field_1687.method_8517(BedAura.mc.field_1724.method_5628(), this.currentBlock, -1);
+        if (this.currentBlock != null && BedAura.mc.world != null && BedAura.mc.player != null) {
+            BedAura.mc.world.setBlockBreakingInfo(BedAura.mc.player.getId(), this.currentBlock, -1);
         }
         BlockBreakUtils.stopBreaking();
         this.cancelProgressBar();
@@ -343,98 +343,98 @@ extends Module {
         }
     }
 
-    private class_2338[] scanForBed() {
-        if (BedAura.mc.field_1724 == null || BedAura.mc.field_1687 == null) {
+    private BlockPos[] scanForBed() {
+        if (BedAura.mc.player == null || BedAura.mc.world == null) {
             return null;
         }
-        class_2338 playerPos = BedAura.mc.field_1724.method_24515();
+        BlockPos playerPos = BedAura.mc.player.getBlockPos();
         int radius = (int)Math.ceil(((Number)this.range.getValue()).doubleValue());
-        class_2338 selfBed = (Boolean)this.ignoreSelf.getValue() != false ? BedwarsCheckUtils.INSTANCE.getSelfBed() : null;
-        ArrayList<class_2338> foundBeds = new ArrayList<class_2338>();
+        BlockPos selfBed = (Boolean)this.ignoreSelf.getValue() != false ? BedwarsCheckUtils.INSTANCE.getSelfBed() : null;
+        ArrayList<BlockPos> foundBeds = new ArrayList<BlockPos>();
         for (int y = radius; y >= -radius; --y) {
             for (int x = -radius; x <= radius; ++x) {
                 for (int z = -radius; z <= radius; ++z) {
-                    class_2680 state;
-                    class_2338 pos2 = playerPos.method_10069(x, y, z);
-                    if (!this.inRange(pos2) || !((state = BedAura.mc.field_1687.method_8320(pos2)).method_26204() instanceof class_2244) || state.method_11654((class_2769)class_2244.field_9967) != class_2742.field_12557 || selfBed != null && this.isSameBed(pos2, selfBed, state) || ((Number)this.fov.getValue()).doubleValue() < 360.0 && !this.isInFov(pos2)) continue;
-                    foundBeds.add(pos2.method_10062());
+                    BlockState state;
+                    BlockPos pos2 = playerPos.add(x, y, z);
+                    if (!this.inRange(pos2) || !((state = BedAura.mc.world.getBlockState(pos2)).getBlock() instanceof BedBlock) || state.get((Property)BedBlock.PART) != BedPart.FOOT || selfBed != null && this.isSameBed(pos2, selfBed, state) || ((Number)this.fov.getValue()).doubleValue() < 360.0 && !this.isInFov(pos2)) continue;
+                    foundBeds.add(pos2.toImmutable());
                 }
             }
         }
-        foundBeds.sort(Comparator.comparingDouble(pos -> BedAura.mc.field_1724.method_33571().method_1022(class_243.method_24953((class_2382)pos))));
+        foundBeds.sort(Comparator.comparingDouble(pos -> BedAura.mc.player.getEyePos().distanceTo(Vec3d.ofCenter((Vec3i)pos))));
         if (foundBeds.isEmpty()) {
             return null;
         }
-        class_2338 foot = (class_2338)foundBeds.getFirst();
-        class_2338 head = this.getBedHeadPos(foot, BedAura.mc.field_1687.method_8320(foot));
+        BlockPos foot = (BlockPos)foundBeds.getFirst();
+        BlockPos head = this.getBedHeadPos(foot, BedAura.mc.world.getBlockState(foot));
         if (head == null) {
             return null;
         }
-        return new class_2338[]{foot, head};
+        return new BlockPos[]{foot, head};
     }
 
-    private boolean isSameBed(class_2338 bedFoot, class_2338 selfBed, class_2680 footState) {
+    private boolean isSameBed(BlockPos bedFoot, BlockPos selfBed, BlockState footState) {
         if (bedFoot.equals((Object)selfBed)) {
             return true;
         }
-        class_2338 selfHead = this.getBedHeadPos(selfBed, BedAura.mc.field_1687.method_8320(selfBed));
-        class_2338 bedHead = this.getBedHeadPos(bedFoot, footState);
+        BlockPos selfHead = this.getBedHeadPos(selfBed, BedAura.mc.world.getBlockState(selfBed));
+        BlockPos bedHead = this.getBedHeadPos(bedFoot, footState);
         if (selfHead == null || bedHead == null) {
             return false;
         }
         return bedFoot.equals((Object)selfHead) || bedHead.equals((Object)selfBed) || bedHead.equals((Object)selfHead);
     }
 
-    private class_2338 getBedHeadPos(class_2338 footPos, class_2680 footState) {
-        if (!(footState.method_26204() instanceof class_2244)) {
+    private BlockPos getBedHeadPos(BlockPos footPos, BlockState footState) {
+        if (!(footState.getBlock() instanceof BedBlock)) {
             return null;
         }
-        class_2350 facing = (class_2350)footState.method_11654((class_2769)class_2244.field_11177);
-        return footState.method_11654((class_2769)class_2244.field_9967) == class_2742.field_12560 ? footPos.method_10062() : footPos.method_10093(facing).method_10062();
+        Direction facing = (Direction)footState.get((Property)BedBlock.FACING);
+        return footState.get((Property)BedBlock.PART) == BedPart.HEAD ? footPos.toImmutable() : footPos.offset(facing).toImmutable();
     }
 
-    private boolean isCovered(class_2338 pos) {
-        if (BedAura.mc.field_1687 == null) {
+    private boolean isCovered(BlockPos pos) {
+        if (BedAura.mc.world == null) {
             return false;
         }
-        for (class_2350 direction : class_2350.values()) {
-            class_2338 offset = pos.method_10093(direction);
-            if (!BedAura.mc.field_1687.method_8320(offset).method_26215()) continue;
+        for (Direction direction : Direction.values()) {
+            BlockPos offset = pos.offset(direction);
+            if (!BedAura.mc.world.getBlockState(offset).isAir()) continue;
             return false;
         }
         return true;
     }
 
-    private class_2338 getBreakNearBlockTarget() {
-        if (this.bedPos == null || BedAura.mc.field_1687 == null || BedAura.mc.field_1724 == null) {
+    private BlockPos getBreakNearBlockTarget() {
+        if (this.bedPos == null || BedAura.mc.world == null || BedAura.mc.player == null) {
             return null;
         }
         if (!this.isCovered(this.bedPos[0]) || !this.isCovered(this.bedPos[1])) {
             return this.bedPos[0];
         }
-        class_2338 best = null;
+        BlockPos best = null;
         double bestScore = Double.MAX_VALUE;
-        HashSet<class_2338> bedSet = new HashSet<class_2338>(List.of(this.bedPos));
-        for (class_2338 bed : this.bedPos) {
+        HashSet<BlockPos> bedSet = new HashSet<BlockPos>(List.of(this.bedPos));
+        for (BlockPos bed : this.bedPos) {
             if (bed == null) continue;
-            for (class_2350 direction : class_2350.values()) {
-                class_2680 state;
-                class_2338 candidate;
-                if (direction == class_2350.field_11033 || bedSet.contains(candidate = bed.method_10093(direction)) || !this.inRange(candidate) || (state = BedAura.mc.field_1687.method_8320(candidate)).method_26215()) continue;
-                double score = BedAura.mc.field_1724.method_33571().method_1022(class_243.method_24953((class_2382)candidate));
+            for (Direction direction : Direction.values()) {
+                BlockState state;
+                BlockPos candidate;
+                if (direction == Direction.DOWN || bedSet.contains(candidate = bed.offset(direction)) || !this.inRange(candidate) || (state = BedAura.mc.world.getBlockState(candidate)).isAir()) continue;
+                double score = BedAura.mc.player.getEyePos().distanceTo(Vec3d.ofCenter((Vec3i)candidate));
                 if (candidate.equals((Object)this.previousBlockBroken)) {
                     score -= 1.5;
                 }
                 if (!(score < bestScore)) continue;
                 bestScore = score;
-                best = candidate.method_10062();
+                best = candidate.toImmutable();
             }
         }
         return best;
     }
 
-    private class_2338 getFullModeTarget() {
-        if (this.bedPos == null || BedAura.mc.field_1687 == null || BedAura.mc.field_1724 == null) {
+    private BlockPos getFullModeTarget() {
+        if (this.bedPos == null || BedAura.mc.world == null || BedAura.mc.player == null) {
             return null;
         }
         if (this.isBedDirectlyBreakable(this.bedPos[0])) {
@@ -444,7 +444,7 @@ extends Module {
         if (this.currentPath.isEmpty()) {
             this.currentPath = this.findLegitLikePath(this.bedPos[0]);
         }
-        while (!this.currentPath.isEmpty() && BedAura.mc.field_1687.method_8320(this.currentPath.getFirst()).method_26215()) {
+        while (!this.currentPath.isEmpty() && BedAura.mc.world.getBlockState(this.currentPath.getFirst()).isAir()) {
             this.currentPath.removeFirst();
         }
         if (this.currentPath.isEmpty()) {
@@ -453,76 +453,76 @@ extends Module {
         return this.currentPath.getFirst();
     }
 
-    private boolean isBedDirectlyBreakable(class_2338 bedPos) {
-        if (BedAura.mc.field_1724 == null || BedAura.mc.field_1687 == null) {
+    private boolean isBedDirectlyBreakable(BlockPos bedPos) {
+        if (BedAura.mc.player == null || BedAura.mc.world == null) {
             return false;
         }
         Rotation rotation = RotationUtils.getRotationBlock(bedPos, 0.0f);
         ClientRayTraceUtil.updateEyePos();
-        class_3965 hit = ClientRayTraceUtil.getFacedBlock(rotation.yaw, rotation.pitch);
-        return hit != null && hit.method_17777().equals((Object)bedPos);
+        BlockHitResult hit = ClientRayTraceUtil.getFacedBlock(rotation.yaw, rotation.pitch);
+        return hit != null && hit.getBlockPos().equals((Object)bedPos);
     }
 
-    private List<class_2338> findLegitLikePath(class_2338 bedPos) {
-        if (BedAura.mc.field_1724 == null || BedAura.mc.field_1687 == null) {
+    private List<BlockPos> findLegitLikePath(BlockPos bedPos) {
+        if (BedAura.mc.player == null || BedAura.mc.world == null) {
             return List.of();
         }
         Rotation rotation = RotationUtils.getRotationBlock(bedPos, 0.0f);
         ClientRayTraceUtil.updateEyePos();
-        class_3965 hit = ClientRayTraceUtil.getFacedBlock(rotation.yaw, rotation.pitch);
-        if (hit == null || hit.method_17777().equals((Object)bedPos)) {
+        BlockHitResult hit = ClientRayTraceUtil.getFacedBlock(rotation.yaw, rotation.pitch);
+        if (hit == null || hit.getBlockPos().equals((Object)bedPos)) {
             return List.of();
         }
-        class_2338 startPos = hit.method_17777();
-        ArrayDeque<class_2338> queue = new ArrayDeque<class_2338>();
-        HashMap<class_2338, class_2338> parent = new HashMap<class_2338, class_2338>();
-        HashSet<class_2338> visited = new HashSet<class_2338>();
+        BlockPos startPos = hit.getBlockPos();
+        ArrayDeque<BlockPos> queue = new ArrayDeque<BlockPos>();
+        HashMap<BlockPos, BlockPos> parent = new HashMap<BlockPos, BlockPos>();
+        HashSet<BlockPos> visited = new HashSet<BlockPos>();
         queue.add(startPos);
         visited.add(startPos);
         parent.put(startPos, null);
         while (!queue.isEmpty()) {
-            class_2338 current = (class_2338)queue.poll();
+            BlockPos current = (BlockPos)queue.poll();
             if (this.isAdjacentToBed(current, bedPos)) {
-                ArrayDeque<class_2338> reversed = new ArrayDeque<class_2338>();
-                class_2338 cursor = current;
+                ArrayDeque<BlockPos> reversed = new ArrayDeque<BlockPos>();
+                BlockPos cursor = current;
                 while (cursor != null) {
-                    reversed.push(cursor.method_10062());
-                    cursor = (class_2338)parent.get(cursor);
+                    reversed.push(cursor.toImmutable());
+                    cursor = (BlockPos)parent.get(cursor);
                 }
-                return new ArrayList<class_2338>(reversed);
+                return new ArrayList<BlockPos>(reversed);
             }
-            for (class_2350 direction : class_2350.values()) {
-                class_2680 state;
-                class_2338 next;
-                if (direction == class_2350.field_11033 || !visited.add(next = current.method_10093(direction)) || !this.inRange(next) || (state = BedAura.mc.field_1687.method_8320(next)).method_26215() || state.method_26204() instanceof class_2244) continue;
+            for (Direction direction : Direction.values()) {
+                BlockState state;
+                BlockPos next;
+                if (direction == Direction.DOWN || !visited.add(next = current.offset(direction)) || !this.inRange(next) || (state = BedAura.mc.world.getBlockState(next)).isAir() || state.getBlock() instanceof BedBlock) continue;
                 parent.put(next, current);
                 queue.add(next);
             }
         }
-        return List.of(startPos.method_10062());
+        return List.of(startPos.toImmutable());
     }
 
-    private boolean isAdjacentToBed(class_2338 pos, class_2338 bedPos) {
-        for (class_2350 direction : class_2350.values()) {
-            if (!pos.method_10093(direction).equals((Object)bedPos)) continue;
+    private boolean isAdjacentToBed(BlockPos pos, BlockPos bedPos) {
+        for (Direction direction : Direction.values()) {
+            if (!pos.offset(direction).equals((Object)bedPos)) continue;
             return true;
         }
         return false;
     }
 
-    private void prepareBestTool(class_2680 state) {
-        if (!((Boolean)this.autoTool.getValue()).booleanValue() || BedAura.mc.field_1724 == null) {
-            this.toolSlot = BedAura.mc.field_1724 != null ? BedAura.mc.field_1724.method_31548().field_7545 : 0;
+    private void prepareBestTool(BlockState state) {
+        if (!((Boolean)this.autoTool.getValue()).booleanValue() || BedAura.mc.player == null) {
+            this.toolSlot = BedAura.mc.player != null ? BedAura.mc.player.getInventory().selectedSlot : 0;
             this.silentToolActive = false;
             return;
         }
         int bestSlot = -1;
         float bestSpeed = 1.0f;
         for (int i = 0; i < 9; ++i) {
-            class_1799 stack = BedAura.mc.field_1724.method_31548().method_5438(i);
-            if (stack.method_7960()) continue;
-            float speed = stack.method_7924(state);
-            if (stack.method_7951(state)) {
+            ItemStack stack = BedAura.mc.player.getInventory().getStack(i);
+            if (stack.isEmpty()) continue;
+            float speed = stack.getMiningSpeedMultiplier(state);
+            if (stack.isSuitableFor(state)) {
                 speed += 5.0f;
             }
             if (!(speed > bestSpeed)) continue;
@@ -530,13 +530,13 @@ extends Module {
             bestSlot = i;
         }
         if (this.previousSlot == -1) {
-            this.previousSlot = BedAura.mc.field_1724.method_31548().field_7545;
+            this.previousSlot = BedAura.mc.player.getInventory().selectedSlot;
         }
         if (bestSlot != -1) {
             this.toolSlot = bestSlot;
             this.silentToolActive = bestSlot != this.previousSlot;
         } else {
-            this.toolSlot = BedAura.mc.field_1724.method_31548().field_7545;
+            this.toolSlot = BedAura.mc.player.getInventory().selectedSlot;
             this.silentToolActive = false;
         }
     }
@@ -546,32 +546,32 @@ extends Module {
         this.silentToolActive = false;
     }
 
-    private float getBlockBreakProgress(class_2680 state) {
+    private float getBlockBreakProgress(BlockState state) {
         float hardness;
         float speed;
-        class_1799 stack;
-        if (BedAura.mc.field_1724 == null || BedAura.mc.field_1687 == null) {
+        ItemStack stack;
+        if (BedAura.mc.player == null || BedAura.mc.world == null) {
             return 0.0f;
         }
-        if (this.toolSlot >= 0 && this.toolSlot < 9 && !(stack = BedAura.mc.field_1724.method_31548().method_5438(this.toolSlot)).method_7960() && (speed = stack.method_7924(state)) > 1.0f && stack.method_7951(state) && (hardness = state.method_26214((class_1922)BedAura.mc.field_1687, this.currentBlock == null ? class_2338.field_10980 : this.currentBlock)) > 0.0f) {
+        if (this.toolSlot >= 0 && this.toolSlot < 9 && !(stack = BedAura.mc.player.getInventory().getStack(this.toolSlot)).isEmpty() && (speed = stack.getMiningSpeedMultiplier(state)) > 1.0f && stack.isSuitableFor(state) && (hardness = state.getHardness((BlockView)BedAura.mc.world, this.currentBlock == null ? BlockPos.ORIGIN : this.currentBlock)) > 0.0f) {
             return speed / hardness / 30.0f;
         }
-        return state.method_26165((class_1657)BedAura.mc.field_1724, (class_1922)BedAura.mc.field_1687, this.currentBlock == null ? class_2338.field_10980 : this.currentBlock);
+        return state.calcBlockBreakingDelta((PlayerEntity)BedAura.mc.player, (BlockView)BedAura.mc.world, this.currentBlock == null ? BlockPos.ORIGIN : this.currentBlock);
     }
 
-    private boolean inRange(class_2338 pos) {
-        return BedAura.mc.field_1724 != null && BedAura.mc.field_1724.method_33571().method_1022(class_243.method_24953((class_2382)pos)) <= ((Number)this.range.getValue()).doubleValue();
+    private boolean inRange(BlockPos pos) {
+        return BedAura.mc.player != null && BedAura.mc.player.getEyePos().distanceTo(Vec3d.ofCenter((Vec3i)pos)) <= ((Number)this.range.getValue()).doubleValue();
     }
 
-    private boolean isInFov(class_2338 pos) {
-        if (BedAura.mc.field_1724 == null) {
+    private boolean isInFov(BlockPos pos) {
+        if (BedAura.mc.player == null) {
             return false;
         }
-        class_243 eyePos = BedAura.mc.field_1724.method_33571();
-        class_243 target = class_243.method_24953((class_2382)pos);
-        class_243 diff = target.method_1020(eyePos);
-        double targetYaw = Math.toDegrees(Math.atan2(diff.field_1350, diff.field_1352)) - 90.0;
-        double yawDiff = Math.abs(this.wrapDegrees(targetYaw - (double)BedAura.mc.field_1724.method_36454()));
+        Vec3d eyePos = BedAura.mc.player.getEyePos();
+        Vec3d target = Vec3d.ofCenter((Vec3i)pos);
+        Vec3d diff = target.subtract(eyePos);
+        double targetYaw = Math.toDegrees(Math.atan2(diff.z, diff.x)) - 90.0;
+        double yawDiff = Math.abs(this.wrapDegrees(targetYaw - (double)BedAura.mc.player.getYaw()));
         return yawDiff <= ((Number)this.fov.getValue()).doubleValue() / 2.0;
     }
 
@@ -586,20 +586,20 @@ extends Module {
         return wrapped;
     }
 
-    private class_3965 createSyntheticHit(class_2338 pos) {
-        if (BedAura.mc.field_1724 == null) {
+    private BlockHitResult createSyntheticHit(BlockPos pos) {
+        if (BedAura.mc.player == null) {
             return null;
         }
-        class_243 eye = BedAura.mc.field_1724.method_33571();
-        class_243 center = class_243.method_24953((class_2382)pos);
-        class_243 diff = center.method_1020(eye);
-        class_2350 side = class_2350.method_10142((double)diff.field_1352, (double)diff.field_1351, (double)diff.field_1350).method_10153();
-        return new class_3965(center, side, pos, false);
+        Vec3d eye = BedAura.mc.player.getEyePos();
+        Vec3d center = Vec3d.ofCenter((Vec3i)pos);
+        Vec3d diff = center.subtract(eye);
+        Direction side = Direction.getFacing((double)diff.x, (double)diff.y, (double)diff.z).getOpposite();
+        return new BlockHitResult(center, side, pos, false);
     }
 
-    private void renderStateBox(class_2338 pos, class_2680 state, Color side, Color line) {
-        class_265 shape = state.method_26218((class_1922)BedAura.mc.field_1687, pos);
-        class_238 box = shape.method_1110() ? new class_238(pos) : shape.method_1107().method_996(pos);
+    private void renderStateBox(BlockPos pos, BlockState state, Color side, Color line) {
+        VoxelShape shape = state.getOutlineShape((BlockView)BedAura.mc.world, pos);
+        Box box = shape.isEmpty() ? new Box(pos) : shape.getBoundingBox().offset(pos);
         Render3D.boxSides(box, side);
         Render3D.boxLines(box, line);
     }

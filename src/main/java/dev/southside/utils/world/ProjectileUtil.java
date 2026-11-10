@@ -5,53 +5,53 @@ import dev.southside.utils.ChatUtils;
 import dev.southside.utils.math.MathUtils;
 import dev.southside.utils.types.Rotation;
 import java.util.Optional;
-import net.minecraft.class_1297;
-import net.minecraft.class_2246;
-import net.minecraft.class_2338;
-import net.minecraft.class_2350;
-import net.minecraft.class_238;
-import net.minecraft.class_239;
-import net.minecraft.class_243;
-import net.minecraft.class_2680;
-import net.minecraft.class_3532;
-import net.minecraft.class_3959;
-import net.minecraft.class_3965;
-import net.minecraft.class_239.class_240;
-import net.minecraft.class_3959.class_242;
-import net.minecraft.class_3959.class_3960;
+import net.minecraft.entity.Entity;
+import net.minecraft.block.Blocks;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.block.BlockState;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.world.RaycastContext;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.HitResult.Type;
+import net.minecraft.world.RaycastContext.FluidHandling;
+import net.minecraft.world.RaycastContext.ShapeType;
 
 public class ProjectileUtil {
    public static ProjectileUtil.ProjectileHit predict(
       double posX, double posY, double posZ, double motionX, double motionY, double motionZ, double motionSlowdown, double size, double gravity, boolean draw
    ) {
-      class_239 landingPosition = null;
+      HitResult landingPosition = null;
       boolean hasLanded = false;
       boolean hitEntity = false;
       int ticks = 0;
 
       while (!hasLanded && posY > -60.0) {
          ticks++;
-         class_243 posBefore = new class_243(posX, posY, posZ);
-         class_243 posAfter = new class_243(posX + motionX, posY + motionY, posZ + motionZ);
-         class_3965 blockHitResult = MinecraftAccessor.mc
-            .field_1687
-            .method_17742(new class_3959(posBefore, posAfter, class_3960.field_17558, class_242.field_1347, MinecraftAccessor.mc.field_1724));
-         if (blockHitResult != null && blockHitResult.method_17783() == class_240.field_1332) {
+         Vec3d posBefore = new Vec3d(posX, posY, posZ);
+         Vec3d posAfter = new Vec3d(posX + motionX, posY + motionY, posZ + motionZ);
+         BlockHitResult blockHitResult = MinecraftAccessor.mc
+            .world
+            .raycast(new RaycastContext(posBefore, posAfter, ShapeType.COLLIDER, FluidHandling.ANY, MinecraftAccessor.mc.player));
+         if (blockHitResult != null && blockHitResult.getType() == Type.BLOCK) {
             hasLanded = true;
             landingPosition = blockHitResult;
-            posAfter = blockHitResult.method_17784();
+            posAfter = blockHitResult.getPos();
          }
 
-         class_238 arrowBox = new class_238(posX - size, posY - size, posZ - size, posX + size, posY + size, posZ + size);
+         Box arrowBox = new Box(posX - size, posY - size, posZ - size, posX + size, posY + size, posZ + size);
 
-         for (class_1297 entity : MinecraftAccessor.mc.field_1687.method_8335(null, arrowBox.method_1009(motionX, motionY, motionZ).method_1009(1.0, 1.0, 1.0))) {
-            if (entity.method_5863() && entity != MinecraftAccessor.mc.field_1724) {
-               class_238 var2 = entity.method_5829().method_1009(size, size, size);
-               Optional<class_243> possibleEntityLanding = var2.method_992(posBefore, posAfter);
+         for (Entity entity : MinecraftAccessor.mc.world.getOtherEntities(null, arrowBox.expand(motionX, motionY, motionZ).expand(1.0, 1.0, 1.0))) {
+            if (entity.canHit() && entity != MinecraftAccessor.mc.player) {
+               Box var2 = entity.getBoundingBox().expand(size, size, size);
+               Optional<Vec3d> possibleEntityLanding = var2.raycast(posBefore, posAfter);
                if (possibleEntityLanding.isPresent()) {
                   hitEntity = true;
                   hasLanded = true;
-                  landingPosition = new class_3965(possibleEntityLanding.get(), null, class_2338.field_10980, false);
+                  landingPosition = new BlockHitResult(possibleEntityLanding.get(), null, BlockPos.ORIGIN, false);
                }
             }
          }
@@ -59,9 +59,9 @@ public class ProjectileUtil {
          posX += motionX;
          posY += motionY;
          posZ += motionZ;
-         class_2338 var35 = new class_2338((int)Math.floor(posX), (int)Math.floor(posY), (int)Math.floor(posZ));
-         class_2680 var36 = MinecraftAccessor.mc.field_1687.method_8320(var35);
-         if (var36.method_27852(class_2246.field_10382)) {
+         BlockPos var35 = new BlockPos((int)Math.floor(posX), (int)Math.floor(posY), (int)Math.floor(posZ));
+         BlockState var36 = MinecraftAccessor.mc.world.getBlockState(var35);
+         if (var36.isOf(Blocks.WATER)) {
             motionX *= 0.6;
             motionY *= 0.6;
             motionZ *= 0.6;
@@ -74,7 +74,7 @@ public class ProjectileUtil {
          motionY -= gravity;
       }
 
-      return new ProjectileUtil.ProjectileHit(posX, posY, posZ, hitEntity, hasLanded, (class_3965)landingPosition, ticks);
+      return new ProjectileUtil.ProjectileHit(posX, posY, posZ, hitEntity, hasLanded, (BlockHitResult)landingPosition, ticks);
    }
 
    public static class EnderPearlPredictor {
@@ -133,16 +133,16 @@ public class ProjectileUtil {
          float gravity = 0.03F;
          float size = 0.25F;
          float motionSlowdown = 0.99F;
-         double posX = this.predictX - class_3532.method_15362(rotation.yaw / 180.0F * (float) Math.PI) * 0.16F;
-         double posY = this.predictY + MinecraftAccessor.mc.field_1724.method_18381(MinecraftAccessor.mc.field_1724.method_18376()) - 0.1F;
-         double posZ = this.predictZ - class_3532.method_15374(rotation.yaw / 180.0F * (float) Math.PI) * 0.16F;
-         double motionX = -class_3532.method_15374(rotation.yaw / 180.0F * (float) Math.PI)
-               * class_3532.method_15362(rotation.pitch / 180.0F * (float) Math.PI)
+         double posX = this.predictX - MathHelper.cos(rotation.yaw / 180.0F * (float) Math.PI) * 0.16F;
+         double posY = this.predictY + MinecraftAccessor.mc.player.getEyeHeight(MinecraftAccessor.mc.player.getPose()) - 0.1F;
+         double posZ = this.predictZ - MathHelper.sin(rotation.yaw / 180.0F * (float) Math.PI) * 0.16F;
+         double motionX = -MathHelper.sin(rotation.yaw / 180.0F * (float) Math.PI)
+               * MathHelper.cos(rotation.pitch / 180.0F * (float) Math.PI)
             * 0.4;
-         double motionY = -class_3532.method_15374(rotation.pitch / 180.0F * (float) Math.PI) * 0.4;
-         double motionZ = class_3532.method_15362(rotation.yaw / 180.0F * (float) Math.PI) * class_3532.method_15362(rotation.pitch / 180.0F * (float) Math.PI)
+         double motionY = -MathHelper.sin(rotation.pitch / 180.0F * (float) Math.PI) * 0.4;
+         double motionZ = MathHelper.cos(rotation.yaw / 180.0F * (float) Math.PI) * MathHelper.cos(rotation.pitch / 180.0F * (float) Math.PI)
             * 0.4;
-         float distance = class_3532.method_15355((float)(motionX * motionX + motionY * motionY + motionZ * motionZ));
+         float distance = MathHelper.sqrt((float)(motionX * motionX + motionY * motionY + motionZ * motionZ));
          motionX /= distance;
          motionY /= distance;
          motionZ /= distance;
@@ -168,13 +168,13 @@ public class ProjectileUtil {
 
             return 0.05;
          } else {
-            class_3965 hitBlock = projectileHit.landingPosition();
-            if (hitBlock instanceof class_3965) {
-               class_2338 hitBlockx = hitBlock.method_17777();
-               class_2338 landPos = hitBlockx.method_10093(hitBlock.method_17780());
-               class_2350 side = hitBlock.method_17780();
+            BlockHitResult hitBlock = projectileHit.landingPosition();
+            if (hitBlock instanceof BlockHitResult) {
+               BlockPos hitBlockx = hitBlock.getBlockPos();
+               BlockPos landPos = hitBlockx.offset(hitBlock.getSide());
+               Direction side = hitBlock.getSide();
                double score;
-               if (side == class_2350.field_11036) {
+               if (side == Direction.UP) {
                   score = this.assessBlockPos(landPos) * this.distanceFunction(projectileHit.ticks);
                } else {
                   double nearbyScore = this.assessNearbyGround(hitBlockx, landPos);
@@ -187,10 +187,10 @@ public class ProjectileUtil {
                         "§7[assess] yaw=%.0f pitch=%.0f → §a%s§7 at (%d,%d,%d) ticks=%d finalScore=%.3f",
                         rotation.yaw,
                         rotation.pitch,
-                        side == class_2350.field_11036 ? "TOP" : side.name(),
-                        landPos.method_10263(),
-                        landPos.method_10264(),
-                        landPos.method_10260(),
+                        side == Direction.UP ? "TOP" : side.name(),
+                        landPos.getX(),
+                        landPos.getY(),
+                        landPos.getZ(),
                         projectileHit.ticks(),
                         score
                      )
@@ -208,15 +208,15 @@ public class ProjectileUtil {
          }
       }
 
-      private double assessBlockPos(class_2338 pos) {
+      private double assessBlockPos(BlockPos pos) {
          for (int y = 0; y >= -5; y--) {
-            class_2338 checkPos = pos.method_10069(0, y, 0);
-            class_2680 blockState = MinecraftAccessor.mc.field_1687.method_8320(checkPos);
-            if (blockState.method_26212(MinecraftAccessor.mc.field_1687, checkPos)) {
+            BlockPos checkPos = pos.add(0, y, 0);
+            BlockState blockState = MinecraftAccessor.mc.world.getBlockState(checkPos);
+            if (blockState.isSolidBlock(MinecraftAccessor.mc.world, checkPos)) {
                return y == 0 ? 0.4 : 1.0;
             }
 
-            if (blockState.method_26225()) {
+            if (blockState.isOpaque()) {
                return 0.99;
             }
          }
@@ -224,14 +224,14 @@ public class ProjectileUtil {
          return 0.05;
       }
 
-      private double assessNearbyGround(class_2338 hitBlock, class_2338 landPos) {
-         if (MinecraftAccessor.mc.field_1687.method_8320(hitBlock).method_26212(MinecraftAccessor.mc.field_1687, hitBlock)
-            && MinecraftAccessor.mc.field_1687.method_8320(hitBlock.method_10084()).method_26215()) {
+      private double assessNearbyGround(BlockPos hitBlock, BlockPos landPos) {
+         if (MinecraftAccessor.mc.world.getBlockState(hitBlock).isSolidBlock(MinecraftAccessor.mc.world, hitBlock)
+            && MinecraftAccessor.mc.world.getBlockState(hitBlock.up()).isAir()) {
             return 0.85;
-         } else if (MinecraftAccessor.mc.field_1687.method_8320(hitBlock).method_26212(MinecraftAccessor.mc.field_1687, hitBlock)) {
+         } else if (MinecraftAccessor.mc.world.getBlockState(hitBlock).isSolidBlock(MinecraftAccessor.mc.world, hitBlock)) {
             for (int y = 1; y <= 5; y++) {
-               class_2338 above = hitBlock.method_10086(y);
-               if (MinecraftAccessor.mc.field_1687.method_8320(above).method_26215()) {
+               BlockPos above = hitBlock.up(y);
+               if (MinecraftAccessor.mc.world.getBlockState(above).isAir()) {
                   return 0.75;
                }
             }
@@ -239,8 +239,8 @@ public class ProjectileUtil {
             return 0.6;
          } else {
             for (int yx = 0; yx >= -5; yx--) {
-               class_2338 below = landPos.method_10069(0, yx, 0);
-               if (MinecraftAccessor.mc.field_1687.method_8320(below).method_26212(MinecraftAccessor.mc.field_1687, below)) {
+               BlockPos below = landPos.add(0, yx, 0);
+               if (MinecraftAccessor.mc.world.getBlockState(below).isSolidBlock(MinecraftAccessor.mc.world, below)) {
                   return yx == 0 ? 0.3 : 0.7;
                }
             }
@@ -249,8 +249,8 @@ public class ProjectileUtil {
                for (int dz = -1; dz <= 1; dz++) {
                   if (dx != 0 || dz != 0) {
                      for (int dy = -1; dy <= 2; dy++) {
-                        class_2338 nearby = landPos.method_10069(dx, dy, dz);
-                        if (MinecraftAccessor.mc.field_1687.method_8320(nearby).method_26212(MinecraftAccessor.mc.field_1687, nearby)) {
+                        BlockPos nearby = landPos.add(dx, dy, dz);
+                        if (MinecraftAccessor.mc.world.getBlockState(nearby).isSolidBlock(MinecraftAccessor.mc.world, nearby)) {
                            return 0.55;
                         }
                      }
@@ -268,6 +268,6 @@ public class ProjectileUtil {
       }
    }
 
-   public record ProjectileHit(double posX, double posY, double posZ, boolean hitEntity, boolean hasLanded, class_3965 landingPosition, int ticks) {
+   public record ProjectileHit(double posX, double posY, double posZ, boolean hitEntity, boolean hasLanded, BlockHitResult landingPosition, int ticks) {
    }
 }

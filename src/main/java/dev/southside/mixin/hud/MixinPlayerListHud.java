@@ -5,53 +5,53 @@ import dev.southside.manager.FriendManager;
 import dev.southside.module.impl.misc.AntiBot;
 import dev.southside.module.impl.misc.Teams;
 import java.util.UUID;
-import net.minecraft.class_124;
-import net.minecraft.class_1657;
-import net.minecraft.class_2561;
-import net.minecraft.class_310;
-import net.minecraft.class_355;
-import net.minecraft.class_5250;
-import net.minecraft.class_640;
+import net.minecraft.util.Formatting;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.text.Text;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.hud.PlayerListHud;
+import net.minecraft.text.MutableText;
+import net.minecraft.client.network.PlayerListEntry;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin({class_355.class})
+@Mixin({PlayerListHud.class})
 public abstract class MixinPlayerListHud {
    @Inject(
-      method = {"method_1918(Lnet/minecraft/class_640;)Lnet/minecraft/class_2561;"},
+      method = {"getPlayerName(Lnet/minecraft/client/network/PlayerListEntry;)Lnet/minecraft/text/Text;"},
       at = {@At("RETURN")},
       cancellable = true
    )
-   private void southside$addStatusTag(class_640 entry, CallbackInfoReturnable<class_2561> cir) {
-      class_2561 original = (class_2561)cir.getReturnValue();
+   private void southside$addStatusTag(PlayerListEntry entry, CallbackInfoReturnable<Text> cir) {
+      Text original = (Text)cir.getReturnValue();
       if (original != null) {
          Southside southside = Southside.get();
-         class_310 client = class_310.method_1551();
+         MinecraftClient client = MinecraftClient.getInstance();
          if (southside != null && client != null) {
             FriendManager friendManager = southside.getFriendManager();
-            UUID uuid = entry.method_2966() != null ? entry.method_2966().getId() : null;
-            String name = entry.method_2966() != null ? entry.method_2966().getName() : null;
-            class_1657 player = client.field_1687 != null && uuid != null ? client.field_1687.method_18470(uuid) : null;
+            UUID uuid = entry.getProfile() != null ? entry.getProfile().getId() : null;
+            String name = entry.getProfile() != null ? entry.getProfile().getName() : null;
+            PlayerEntity player = client.world != null && uuid != null ? client.world.getPlayerByUuid(uuid) : null;
             boolean isBot = player != null && AntiBot.isBot(player);
             boolean isFriend = friendManager != null && name != null && friendManager.isFriend(name);
             boolean isTeam = player != null && Teams.isTeam(player);
             if (isBot || isFriend || isTeam) {
-               class_5250 decorated = class_2561.method_43473();
+               MutableText decorated = Text.empty();
                if (isBot) {
-                  decorated.method_10852(class_2561.method_43470("[Bot] ").method_27692(class_124.field_1061));
+                  decorated.append(Text.literal("[Bot] ").formatted(Formatting.RED));
                }
 
                if (isFriend) {
-                  decorated.method_10852(class_2561.method_43470("[Friend] ").method_27692(class_124.field_1060));
+                  decorated.append(Text.literal("[Friend] ").formatted(Formatting.GREEN));
                }
 
                if (isTeam) {
-                  decorated.method_10852(class_2561.method_43470("[Team] ").method_27692(class_124.field_1060));
+                  decorated.append(Text.literal("[Team] ").formatted(Formatting.GREEN));
                }
 
-               cir.setReturnValue(decorated.method_10852(original.method_27661()));
+               cir.setReturnValue(decorated.append(original.copy()));
             }
          }
       }

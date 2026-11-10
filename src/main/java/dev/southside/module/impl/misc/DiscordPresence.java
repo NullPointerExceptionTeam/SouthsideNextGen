@@ -16,28 +16,28 @@ import dev.southside.utils.math.RandomUtils;
 import dev.southside.utils.network.NetPayload;
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.class_3545;
-import net.minecraft.class_3928;
-import net.minecraft.class_404;
-import net.minecraft.class_412;
-import net.minecraft.class_4189;
-import net.minecraft.class_420;
-import net.minecraft.class_422;
-import net.minecraft.class_426;
-import net.minecraft.class_429;
-import net.minecraft.class_440;
-import net.minecraft.class_442;
-import net.minecraft.class_443;
-import net.minecraft.class_445;
-import net.minecraft.class_446;
-import net.minecraft.class_458;
-import net.minecraft.class_4905;
-import net.minecraft.class_500;
-import net.minecraft.class_5235;
-import net.minecraft.class_524;
-import net.minecraft.class_525;
-import net.minecraft.class_526;
-import net.minecraft.class_5375;
+import net.minecraft.util.Pair;
+import net.minecraft.client.gui.screen.world.LevelLoadingScreen;
+import net.minecraft.client.gui.screen.option.ChatOptionsScreen;
+import net.minecraft.client.gui.screen.multiplayer.ConnectScreen;
+import net.minecraft.client.gui.screen.option.AccessibilityOptionsScreen;
+import net.minecraft.client.gui.screen.multiplayer.DirectConnectScreen;
+import net.minecraft.client.gui.screen.multiplayer.AddServerScreen;
+import net.minecraft.client.gui.screen.option.LanguageOptionsScreen;
+import net.minecraft.client.gui.screen.option.OptionsScreen;
+import net.minecraft.client.gui.screen.option.SkinOptionsScreen;
+import net.minecraft.client.gui.screen.TitleScreen;
+import net.minecraft.client.gui.screen.option.SoundOptionsScreen;
+import net.minecraft.client.gui.screen.CreditsScreen;
+import net.minecraft.client.gui.screen.option.VideoOptionsScreen;
+import net.minecraft.client.gui.screen.option.ControlsOptionsScreen;
+import net.minecraft.client.realms.gui.screen.RealmsScreen;
+import net.minecraft.client.gui.screen.multiplayer.MultiplayerScreen;
+import net.minecraft.client.gui.screen.world.EditGameRulesScreen;
+import net.minecraft.client.gui.screen.world.EditWorldScreen;
+import net.minecraft.client.gui.screen.world.CreateWorldScreen;
+import net.minecraft.client.gui.screen.world.SelectWorldScreen;
+import net.minecraft.client.gui.screen.pack.PackScreen;
 
 public class DiscordPresence extends Module {
    public final Text line1String1 = new Text("Line 1 Text 1", "{player}", false, false, "First line message", 100, "{player}");
@@ -67,25 +67,25 @@ public class DiscordPresence extends Module {
    private final List<String> line2Scripts = new ArrayList<>();
    private int line2Ticks;
    private int line2I;
-   public static final List<class_3545<String, String>> customStates = new ArrayList<>();
+   public static final List<Pair<String, String>> customStates = new ArrayList<>();
 
    public DiscordPresence() {
       super(Category.Misc, "Discord Presence", "南方Discord大王。");
    }
 
    public static void registerCustomState(String packageName, String state) {
-      for (class_3545<String, String> pair : customStates) {
-         if (((String)pair.method_15442()).equals(packageName)) {
-            pair.method_34965(state);
+      for (Pair<String, String> pair : customStates) {
+         if (((String)pair.getLeft()).equals(packageName)) {
+            pair.setRight(state);
             return;
          }
       }
 
-      customStates.add(new class_3545(packageName, state));
+      customStates.add(new Pair(packageName, state));
    }
 
    public static void unregisterCustomState(String packageName) {
-      customStates.removeIf(pair -> ((String)pair.method_15442()).equals(packageName));
+      customStates.removeIf(pair -> ((String)pair.getLeft()).equals(packageName));
    }
 
    @Override
@@ -159,31 +159,31 @@ public class DiscordPresence extends Module {
             result = message.replace("{client.version}", Southside.CLIENT_VERSION);
          }
 
-         if (mc.method_1548() != null) {
-            result = result.replace("{player}", mc.method_1548().method_1676());
+         if (mc.getSession() != null) {
+            result = result.replace("{player}", mc.getSession().getUsername());
          }
 
-         if (mc.field_1724 != null) {
-            result = result.replace("{player.mode}", mc.field_1724.method_7337() ? "Creative" : (mc.field_1724.method_7325() ? "Spectator" : "Survival"));
+         if (mc.player != null) {
+            result = result.replace("{player.mode}", mc.player.isCreative() ? "Creative" : (mc.player.isSpectator() ? "Spectator" : "Survival"));
          }
 
-         if (mc.method_1558() != null) {
-            result = result.replace("{server}", mc.method_1558().field_3752);
-         } else if (mc.method_1542()) {
+         if (mc.getCurrentServerEntry() != null) {
+            result = result.replace("{server}", mc.getCurrentServerEntry().name);
+         } else if (mc.isInSingleplayer()) {
             result = result.replace("{server}", "Singleplayer");
          } else {
             result = result.replace("{server}", "Main Menu");
          }
 
-         if (mc.method_1562() != null && mc.method_1562().method_2880() != null) {
-            int playerCount = mc.method_1562().method_2880().size();
+         if (mc.getNetworkHandler() != null && mc.getNetworkHandler().getPlayerList() != null) {
+            int playerCount = mc.getNetworkHandler().getPlayerList().size();
             result = result.replace("{server.player_count}", String.valueOf(playerCount));
          } else {
             result = result.replace("{server.player_count}", "0");
          }
 
-         if (mc.field_1687 != null) {
-            result = result.replace("{server.difficulty}", mc.field_1687.method_8407().method_5460());
+         if (mc.world != null) {
+            result = result.replace("{server.difficulty}", mc.world.getDifficulty().getName());
          } else {
             result = result.replace("{server.difficulty}", "Unknown");
          }
@@ -258,45 +258,45 @@ public class DiscordPresence extends Module {
                this.line2Ticks = 0;
             }
          } else if (!this.lastWasInMainMenu) {
-            rpc.setDetails(mc.method_1548().method_1676());
-            if (mc.field_1755 instanceof class_442) {
+            rpc.setDetails(mc.getSession().getUsername());
+            if (mc.currentScreen instanceof TitleScreen) {
                rpc.setState("Looking at title screen");
-            } else if (mc.field_1755 instanceof class_526) {
+            } else if (mc.currentScreen instanceof SelectWorldScreen) {
                rpc.setState("Selecting world");
-            } else if (mc.field_1755 instanceof class_525 || mc.field_1755 instanceof class_5235) {
+            } else if (mc.currentScreen instanceof CreateWorldScreen || mc.currentScreen instanceof EditGameRulesScreen) {
                rpc.setState("Creating world");
-            } else if (mc.field_1755 instanceof class_524) {
+            } else if (mc.currentScreen instanceof EditWorldScreen) {
                rpc.setState("Editing world");
-            } else if (mc.field_1755 instanceof class_3928) {
+            } else if (mc.currentScreen instanceof LevelLoadingScreen) {
                rpc.setState("Loading world");
-            } else if (mc.field_1755 instanceof class_500) {
+            } else if (mc.currentScreen instanceof MultiplayerScreen) {
                rpc.setState("Selecting server");
-            } else if (mc.field_1755 instanceof class_422) {
+            } else if (mc.currentScreen instanceof AddServerScreen) {
                rpc.setState("Adding server");
-            } else if (mc.field_1755 instanceof class_412 || mc.field_1755 instanceof class_420) {
+            } else if (mc.currentScreen instanceof ConnectScreen || mc.currentScreen instanceof DirectConnectScreen) {
                rpc.setState("Connecting to server");
-            } else if (mc.field_1755 instanceof class_429
-               || mc.field_1755 instanceof class_440
-               || mc.field_1755 instanceof class_443
-               || mc.field_1755 instanceof class_446
-               || mc.field_1755 instanceof class_458
-               || mc.field_1755 instanceof class_426
-               || mc.field_1755 instanceof class_404
-               || mc.field_1755 instanceof class_5375
-               || mc.field_1755 instanceof class_4189) {
+            } else if (mc.currentScreen instanceof OptionsScreen
+               || mc.currentScreen instanceof SkinOptionsScreen
+               || mc.currentScreen instanceof SoundOptionsScreen
+               || mc.currentScreen instanceof VideoOptionsScreen
+               || mc.currentScreen instanceof ControlsOptionsScreen
+               || mc.currentScreen instanceof LanguageOptionsScreen
+               || mc.currentScreen instanceof ChatOptionsScreen
+               || mc.currentScreen instanceof PackScreen
+               || mc.currentScreen instanceof AccessibilityOptionsScreen) {
                rpc.setState("Changing options");
-            } else if (mc.field_1755 instanceof class_445) {
+            } else if (mc.currentScreen instanceof CreditsScreen) {
                rpc.setState("Reading credits");
-            } else if (mc.field_1755 instanceof class_4905) {
+            } else if (mc.currentScreen instanceof RealmsScreen) {
                rpc.setState("Browsing Realms");
             } else {
                boolean setState = false;
-               if (mc.field_1755 != null) {
-                  String className = mc.field_1755.getClass().getName();
+               if (mc.currentScreen != null) {
+                  String className = mc.currentScreen.getClass().getName();
 
-                  for (class_3545<String, String> pair : customStates) {
-                     if (className.startsWith((String)pair.method_15442())) {
-                        rpc.setState((String)pair.method_15441());
+                  for (Pair<String, String> pair : customStates) {
+                     if (className.startsWith((String)pair.getLeft())) {
+                        rpc.setState((String)pair.getRight());
                         setState = true;
                         break;
                      }

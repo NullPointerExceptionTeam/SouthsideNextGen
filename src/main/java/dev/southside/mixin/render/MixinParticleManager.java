@@ -2,36 +2,36 @@ package dev.southside.mixin.render;
 
 import dev.southside.Southside;
 import dev.southside.module.impl.render.NoRender;
-import net.minecraft.class_691;
-import net.minecraft.class_702;
-import net.minecraft.class_703;
-import net.minecraft.class_727;
-import net.minecraft.class_677.class_678;
-import net.minecraft.class_677.class_681;
+import net.minecraft.client.particle.ExplosionLargeParticle;
+import net.minecraft.client.particle.ParticleManager;
+import net.minecraft.client.particle.Particle;
+import net.minecraft.client.particle.BlockDustParticle;
+import net.minecraft.client.particle.FireworksSparkParticle.Flash;
+import net.minecraft.client.particle.FireworksSparkParticle.FireworkParticle;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin({class_702.class})
+@Mixin({ParticleManager.class})
 public class MixinParticleManager {
    @Inject(
       at = {@At("HEAD")},
-      method = {"method_3058(Lnet/minecraft/class_703;)V"},
+      method = {"addParticle(Lnet/minecraft/client/particle/Particle;)V"},
       cancellable = true
    )
-   public void addParticleHook(class_703 p, CallbackInfo e) {
+   public void addParticleHook(Particle p, CallbackInfo e) {
       NoRender noRender = Southside.get().getModuleManager().get(NoRender.class);
       if (noRender.isEnabled()) {
-         if (noRender.explosions.getValue() && p instanceof class_691) {
+         if (noRender.explosions.getValue() && p instanceof ExplosionLargeParticle) {
             e.cancel();
          }
 
-         if (noRender.breakParticles.getValue() && p instanceof class_727) {
+         if (noRender.breakParticles.getValue() && p instanceof BlockDustParticle) {
             e.cancel();
          }
 
-         if (noRender.fireworks.getValue() && (p instanceof class_681 || p instanceof class_678)) {
+         if (noRender.fireworks.getValue() && (p instanceof FireworkParticle || p instanceof Flash)) {
             e.cancel();
          }
       }

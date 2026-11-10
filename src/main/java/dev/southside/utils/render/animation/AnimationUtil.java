@@ -82,8 +82,8 @@ public class AnimationUtil {
 
          double diff = endPoint - current;
          double factor = diff
-            * MinecraftAccessor.mc.method_61966().method_60637(false)
-            / (1.0 / speed * (Math.min(240.0, (double)MinecraftAccessor.mc.method_47599()) / 240.0));
+            * MinecraftAccessor.mc.getRenderTickCounter().getTickDelta(false)
+            / (1.0 / speed * (Math.min(240.0, (double)MinecraftAccessor.mc.getCurrentFps()) / 240.0));
          if (diff < 0.0 && factor < diff) {
             factor = diff;
          } else if (diff > 0.0 && factor >= diff) {
@@ -125,7 +125,7 @@ public class AnimationUtil {
          }
 
          double diff = endPoint - current;
-         double factor = diff * MinecraftAccessor.mc.method_61966().method_60637(false) * speed;
+         double factor = diff * MinecraftAccessor.mc.getRenderTickCounter().getTickDelta(false) * speed;
          if (diff < 0.0 && factor < diff) {
             factor = diff;
          } else if (diff > 0.0 && factor >= diff) {

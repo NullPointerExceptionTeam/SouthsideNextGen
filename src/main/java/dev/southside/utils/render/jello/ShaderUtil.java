@@ -6,9 +6,9 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import net.minecraft.class_1041;
-import net.minecraft.class_2960;
-import net.minecraft.class_3298;
+import net.minecraft.client.util.Window;
+import net.minecraft.util.Identifier;
+import net.minecraft.resource.Resource;
 import org.lwjgl.opengl.GL20;
 
 public class ShaderUtil implements MinecraftAccessor {
@@ -171,11 +171,11 @@ public class ShaderUtil implements MinecraftAccessor {
                ),
                35632
             );
-            default -> this.createShader(((class_3298)mc.method_1478().method_14486(class_2960.method_60654(fragmentShaderLoc)).get()).method_14482(), 35632);
+            default -> this.createShader(((Resource)mc.getResourceManager().getResource(Identifier.of(fragmentShaderLoc)).get()).getInputStream(), 35632);
          };
          GL20.glAttachShader(program, fragmentShaderID);
          int vertexShaderID = this.createShader(
-            ((class_3298)mc.method_1478().method_14486(class_2960.method_60654(vertexShaderLoc)).get()).method_14482(), 35633
+            ((Resource)mc.getResourceManager().getResource(Identifier.of(vertexShaderLoc)).get()).getInputStream(), 35633
          );
          GL20.glAttachShader(program, vertexShaderID);
       } catch (IOException var7) {
@@ -266,9 +266,9 @@ public class ShaderUtil implements MinecraftAccessor {
    }
 
    public static void drawQuads() {
-      class_1041 sr = mc.method_22683();
-      float width = sr.method_4486();
-      float height = sr.method_4502();
+      Window sr = mc.getWindow();
+      float width = sr.getScaledWidth();
+      float height = sr.getScaledHeight();
       GL20.glBegin(7);
       GL20.glTexCoord2f(0.0F, 1.0F);
       GL20.glVertex2f(0.0F, 0.0F);

@@ -12,18 +12,18 @@ import dev.southside.utils.misc.BezierUtil;
 import java.awt.Color;
 import java.util.Collection;
 import java.util.HashMap;
-import net.minecraft.class_1058;
-import net.minecraft.class_1291;
-import net.minecraft.class_1292;
-import net.minecraft.class_1293;
-import net.minecraft.class_1921;
-import net.minecraft.class_2561;
-import net.minecraft.class_332;
-import net.minecraft.class_4074;
-import net.minecraft.class_4587;
-import net.minecraft.class_5244;
-import net.minecraft.class_5250;
-import net.minecraft.class_6880;
+import net.minecraft.client.texture.Sprite;
+import net.minecraft.entity.effect.StatusEffect;
+import net.minecraft.entity.effect.StatusEffectUtil;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.client.render.RenderLayer;
+import net.minecraft.text.Text;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.texture.StatusEffectSpriteManager;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.screen.ScreenTexts;
+import net.minecraft.text.MutableText;
+import net.minecraft.registry.entry.RegistryEntry;
 
 public class PotionHud extends Hud {
    private final HashMap<String, PotionHud.PotionEffectComponent> potionEffects = new HashMap<>();
@@ -34,8 +34,8 @@ public class PotionHud extends Hud {
    }
 
    @Override
-   protected void draw(class_332 context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
-      Collection<class_1293> effects = mc.field_1724.method_6026();
+   protected void draw(DrawContext context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
+      Collection<StatusEffectInstance> effects = mc.player.getStatusEffects();
       if (!(this.height.get() < 1.0F) || example || !effects.isEmpty()) {
          ScissorHelper scissorHelper = ScissorHelper.INSTANCE;
          NanoVGHelper nanoVGHelper = NanoVGHelper.INSTANCE;
@@ -47,10 +47,10 @@ public class PotionHud extends Hud {
                int size = effects.size();
 
                for (int i = 0; i < size; i++) {
-                  class_1293 e = effects.stream().toList().get(i);
-                  String name = ((class_1291)e.method_5579().comp_349()).method_5560().getString();
+                  StatusEffectInstance e = effects.stream().toList().get(i);
+                  String name = ((StatusEffect)e.getEffectType().value()).getName().getString();
                   if (!this.potionEffects.containsKey(name)) {
-                     this.potionEffects.put(name, new PotionHud.PotionEffectComponent(e, e.method_5584()));
+                     this.potionEffects.put(name, new PotionHud.PotionEffectComponent(e, e.getDuration()));
                   }
 
                   PotionHud.PotionEffectComponent componentxx = this.potionEffects.get(name);
@@ -77,13 +77,13 @@ public class PotionHud extends Hud {
             scissorHelper.resetScissor(vg, scissor);
          });
          if (!example) {
-            context.method_44379((int)x, (int)y, (int)(x + 150.0F * scale), (int)(y + this.height.get()));
+            context.enableScissor((int)x, (int)y, (int)(x + 150.0F * scale), (int)(y + this.height.get()));
 
             for (PotionHud.PotionEffectComponent component : this.potionEffects.values()) {
                component.drawIcon(context, x, y, scale);
             }
 
-            context.method_44380();
+            context.disableScissor();
          }
       }
    }
@@ -102,43 +102,43 @@ public class PotionHud extends Hud {
       private final BezierUtil y = new BezierUtil(3.0F, 0.0F);
       private static final float height = 30.0F;
       public int maxDuration;
-      public class_1293 effect;
+      public StatusEffectInstance effect;
 
-      public PotionEffectComponent(class_1293 effect, int dur) {
+      public PotionEffectComponent(StatusEffectInstance effect, int dur) {
          this.effect = effect;
          this.maxDuration = dur;
       }
 
-      public void drawIcon(class_332 context, float x, float yOffset, float scale) {
+      public void drawIcon(DrawContext context, float x, float yOffset, float scale) {
          if (!(this.y.get() < -30.0F)) {
             float y = this.y.get() + yOffset;
-            class_4074 statusEffectSpriteManager = MinecraftAccessor.mc.method_18505();
-            class_6880<class_1291> statusEffect = this.effect.method_5579();
-            class_1058 sprite = statusEffectSpriteManager.method_18663(statusEffect);
-            class_4587 matrix = context.method_51448();
-            matrix.method_22903();
-            matrix.method_46416(x, y, 0.0F);
-            matrix.method_22905(scale * 1.25F, scale * 1.25F, scale * 1.25F);
-            context.method_52709(class_1921::method_62277, sprite, 5, 5, 18, 18);
-            matrix.method_22909();
+            StatusEffectSpriteManager statusEffectSpriteManager = MinecraftAccessor.mc.getStatusEffectSpriteManager();
+            RegistryEntry<StatusEffect> statusEffect = this.effect.getEffectType();
+            Sprite sprite = statusEffectSpriteManager.getSprite(statusEffect);
+            MatrixStack matrix = context.getMatrices();
+            matrix.push();
+            matrix.translate(x, y, 0.0F);
+            matrix.scale(scale * 1.25F, scale * 1.25F, scale * 1.25F);
+            context.drawSpriteStretched(RenderLayer::getGuiTextured, sprite, 5, 5, 18, 18);
+            matrix.pop();
          }
       }
 
       public void draw(long vg, float x, float yOffset, float scale) {
-         if (!(this.y.get() < -30.0F) && MinecraftAccessor.mc.field_1724 != null) {
+         if (!(this.y.get() < -30.0F) && MinecraftAccessor.mc.player != null) {
             float y = this.y.get() + yOffset;
             NanoVGHelper nanoVGHelper = NanoVGHelper.INSTANCE;
             String duration = null;
-            if (MinecraftAccessor.mc.field_1687 != null) {
-               duration = class_1292.method_5577(this.effect, 1.0F, MinecraftAccessor.mc.field_1687.method_54719().method_54748()).getString();
+            if (MinecraftAccessor.mc.world != null) {
+               duration = StatusEffectUtil.getDurationText(this.effect, 1.0F, MinecraftAccessor.mc.world.getTickManager().getTickRate()).getString();
             }
 
             if (PotionEffects.style.isMode("Simple")) {
                this.drawSimple(vg, nanoVGHelper, x, y, scale, duration);
             } else {
-               float progressBarWidth = 150.0F * scale * (1.0F * this.effect.method_5584() / this.maxDuration);
+               float progressBarWidth = 150.0F * scale * (1.0F * this.effect.getDuration() / this.maxDuration);
                float progressBarHeight = 36.5F * scale;
-               if (MinecraftAccessor.mc.field_1724.method_6026().size() == 1) {
+               if (MinecraftAccessor.mc.player.getStatusEffects().size() == 1) {
                   float rad = 5.0F * scale;
                   ScissorHelper scissorHelper = ScissorHelper.INSTANCE;
                   Scissor scissor = scissorHelper.scissor(vg, x + progressBarWidth, y + scale, 150.0F * scale - progressBarWidth, progressBarHeight);
@@ -185,7 +185,7 @@ public class PotionHud extends Hud {
                      Fonts.REGULAR
                   );
                   scissorHelper.resetScissor(vg, scissor1);
-               } else if (!(y + progressBarHeight >= yOffset + 35.5F * scale * MinecraftAccessor.mc.field_1724.method_6026().size())
+               } else if (!(y + progressBarHeight >= yOffset + 35.5F * scale * MinecraftAccessor.mc.player.getStatusEffects().size())
                   && !(y <= yOffset + 35.5F * scale)) {
                   ScissorHelper scissorHelper = ScissorHelper.INSTANCE;
                   Scissor scissor = scissorHelper.scissor(vg, x + progressBarWidth, y + scale, 150.0F * scale - progressBarWidth, progressBarHeight);
@@ -232,7 +232,7 @@ public class PotionHud extends Hud {
                   scissorHelper.resetScissor(vg, scissor1);
                } else {
                   float rad = 5.0F * scale;
-                  boolean top = y + progressBarHeight <= yOffset + 35.5F * scale * MinecraftAccessor.mc.field_1724.method_6026().size();
+                  boolean top = y + progressBarHeight <= yOffset + 35.5F * scale * MinecraftAccessor.mc.player.getStatusEffects().size();
                   ScissorHelper scissorHelper = ScissorHelper.INSTANCE;
                   Scissor scissor = scissorHelper.scissor(vg, x + progressBarWidth, y + scale, 150.0F * scale - progressBarWidth, progressBarHeight);
                   nanoVGHelper.drawRoundedRectVaried(
@@ -303,10 +303,10 @@ public class PotionHud extends Hud {
          }
       }
 
-      private class_2561 getStatusEffectDescription(class_1293 statusEffect) {
-         class_5250 mutableText = ((class_1291)statusEffect.method_5579().comp_349()).method_5560().method_27661();
-         if (statusEffect.method_5578() >= 1 && statusEffect.method_5578() <= 9) {
-            mutableText.method_10852(class_5244.field_41874).method_10852(class_2561.method_43471("enchantment.level." + (statusEffect.method_5578() + 1)));
+      private Text getStatusEffectDescription(StatusEffectInstance statusEffect) {
+         MutableText mutableText = ((StatusEffect)statusEffect.getEffectType().value()).getName().copy();
+         if (statusEffect.getAmplifier() >= 1 && statusEffect.getAmplifier() <= 9) {
+            mutableText.append(ScreenTexts.SPACE).append(Text.translatable("enchantment.level." + (statusEffect.getAmplifier() + 1)));
          }
 
          return mutableText;
@@ -329,7 +329,7 @@ public class PotionHud extends Hud {
 
          float barY = y + scale + h - 2.0F * scale;
          float barH = 2.0F * scale;
-         float progress = 1.0F * this.effect.method_5584() / this.maxDuration;
+         float progress = 1.0F * this.effect.getDuration() / this.maxDuration;
          helper.drawRect(vg, x, barY, w, barH, new Color(255, 255, 255, 30).getRGB());
          if (progress > 0.0F) {
             helper.drawRect(vg, x, barY, w * progress, barH, new Color(255, 255, 255, 220).getRGB());

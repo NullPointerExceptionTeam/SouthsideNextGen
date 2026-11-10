@@ -9,7 +9,7 @@ import dev.southside.module.Module;
 import dev.southside.orbit.EventHandler;
 import dev.southside.utils.ChatUtils;
 import java.util.ArrayList;
-import net.minecraft.class_5900;
+import net.minecraft.network.packet.s2c.play.TeamS2CPacket;
 
 public class AntiStaff extends Module {
    private final ArrayList<String> staff_Ids = new ArrayList<>();
@@ -70,14 +70,14 @@ public class AntiStaff extends Module {
       ChatUtils.warning("Staff Detected! (" + name + ")");
       ChatUtils.warning("Staff Detected! (" + name + ")");
       ChatUtils.warning("Staff Detected! (" + name + ")");
-      if (this.autoHub.getValue() && mc.field_1724 != null && mc.method_1562() != null) {
+      if (this.autoHub.getValue() && mc.player != null && mc.getNetworkHandler() != null) {
          String cmd = this.hubCommand.getValue().trim();
          if (!cmd.isEmpty()) {
             ChatUtils.warning("Auto Hub → " + cmd);
             if (cmd.startsWith("/")) {
-               mc.method_1562().method_45731(cmd.substring(1));
+               mc.getNetworkHandler().sendCommand(cmd.substring(1));
             } else {
-               mc.method_1562().method_45729(cmd);
+               mc.getNetworkHandler().sendChatMessage(cmd);
             }
          }
       }
@@ -85,8 +85,8 @@ public class AntiStaff extends Module {
 
    @EventHandler
    public void onPacket(PacketEvent event) {
-      if (event.getPacket() instanceof class_5900 packet) {
-         for (String name : packet.method_34178()) {
+      if (event.getPacket() instanceof TeamS2CPacket packet) {
+         for (String name : packet.getPlayerNames()) {
             if (this.staff_Ids.contains(name)) {
                this.onStaffDetected(name);
             }
@@ -96,8 +96,8 @@ public class AntiStaff extends Module {
 
    @EventHandler
    public void onAddE(AddEntityEvent event) {
-      if (this.staff_Ids.contains(event.entity.method_5476().getString())) {
-         this.onStaffDetected(event.entity.method_5476().getString());
+      if (this.staff_Ids.contains(event.entity.getDisplayName().getString())) {
+         this.onStaffDetected(event.entity.getDisplayName().getString());
       }
    }
 }

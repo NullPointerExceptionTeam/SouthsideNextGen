@@ -19,18 +19,18 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.DecoderException;
 import java.util.List;
 import java.util.concurrent.RejectedExecutionException;
-import net.minecraft.class_2535;
-import net.minecraft.class_2540;
-import net.minecraft.class_2547;
-import net.minecraft.class_2561;
-import net.minecraft.class_2596;
-import net.minecraft.class_2739;
-import net.minecraft.class_2987;
-import net.minecraft.class_310;
-import net.minecraft.class_7439;
-import net.minecraft.class_7648;
-import net.minecraft.class_8042;
-import net.minecraft.class_2945.class_7834;
+import net.minecraft.network.ClientConnection;
+import net.minecraft.network.PacketByteBuf;
+import net.minecraft.network.listener.PacketListener;
+import net.minecraft.text.Text;
+import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.s2c.play.EntityTrackerUpdateS2CPacket;
+import net.minecraft.network.OffThreadException;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.network.packet.s2c.play.GameMessageS2CPacket;
+import net.minecraft.network.PacketCallbacks;
+import net.minecraft.network.packet.s2c.play.BundleS2CPacket;
+import net.minecraft.entity.data.DataTracker.SerializedEntry;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.Final;
@@ -41,64 +41,64 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin({class_2535.class})
+@Mixin({ClientConnection.class})
 public class MixinClientConnection {
    @Shadow
    @Nullable
-   private volatile class_2547 field_11652;
+   private volatile PacketListener packetListener;
    @Shadow
    @Nullable
-   private volatile class_2547 field_45669;
+   private volatile PacketListener prePlayStateListener;
    @Shadow
    @Final
-   private static Logger field_11642;
+   private static Logger LOGGER;
    @Shadow
-   private Channel field_11651;
+   private Channel channel;
    @Shadow
-   private int field_11658;
+   private int packetsReceivedCounter;
 
    @Shadow
-   private static <T extends class_2547> void method_10759(class_2596<T> packet, class_2547 listener) {
+   private static <T extends PacketListener> void handlePacket(Packet<T> packet, PacketListener listener) {
    }
 
    @Shadow
-   public void method_10747(class_2561 disconnectReason) {
+   public void disconnect(Text disconnectReason) {
    }
 
    @Shadow
-   public void method_10752(class_2596<?> packet, @Nullable class_7648 callbacks) {
+   public void send(Packet<?> packet, @Nullable PacketCallbacks callbacks) {
    }
 
    @Overwrite
-   public void method_10743(class_2596<?> packet) {
-      PacketEvent event = new PacketEvent(TransferOrigin.SEND, packet, (class_2535)(Object)this);
+   public void send(Packet<?> packet) {
+      PacketEvent event = new PacketEvent(TransferOrigin.SEND, packet, (ClientConnection)(Object)this);
       PacketUtils.callPacket(event.getPacket());
       if (!Southside.INSTANCE.getEventBus().call(event).isCancelled()) {
          if (BlinkUtils.onPacket(event.getPacket())) {
-            this.method_10752(event.getPacket(), null);
+            this.send(event.getPacket(), null);
             Southside.INSTANCE.getEventBus().call(new PacketSendPostEvent(event.getPacket()));
          }
       }
    }
 
    @Overwrite
-   public void method_10770(ChannelHandlerContext channelHandlerContext, class_2596<?> packet) {
-      if (this.field_11651.isOpen()) {
-         class_2547 packetListener = this.field_11652;
+   public void channelRead0(ChannelHandlerContext channelHandlerContext, Packet<?> packet) {
+      if (this.channel.isOpen()) {
+         PacketListener packetListener = this.packetListener;
          if (packetListener == null) {
             throw new IllegalStateException("Received a packet before the packet listener was initialized");
          }
 
-         if (packet instanceof class_8042 bundleS2CPacket) {
-            for (class_2596 packet1 : bundleS2CPacket.method_48324()) {
+         if (packet instanceof BundleS2CPacket bundleS2CPacket) {
+            for (Packet packet1 : bundleS2CPacket.getPackets()) {
                packet1 = HeypixelViaversionItemTransfer.transfer(packet1);
-               if (packet1 instanceof class_2739 var30) {
-                  class_2739 var40 = var30;
+               if (packet1 instanceof EntityTrackerUpdateS2CPacket var30) {
+                  EntityTrackerUpdateS2CPacket var40 = var30;
 
                   int var41;
 
                   try {
-                     var41 = var40.comp_1127();
+                     var41 = var40.id();
                   } catch (Throwable var15) {
                      throw new MatchException(var15.toString(), var15);
                   }
@@ -106,18 +106,18 @@ public class MixinClientConnection {
                   int var34 = var41;
                   var40 = var30;
 
-                  List<class_7834<?>> var43;
+                  List<SerializedEntry<?>> var43;
 
                   try {
-                     var43 = var40.comp_1128();
+                     var43 = var40.trackedValues();
                   } catch (Throwable var14) {
                      throw new MatchException(var14.toString(), var14);
                   }
 
-                  List<class_7834<?>> var35 = var43;
-                  if (MinecraftAccessor.mc.field_1724 != null && var34 == MinecraftAccessor.mc.field_1724.method_5628()) {
-                     for (class_7834<?> entry : var35) {
-                        if (entry.comp_1115() == 0 && entry.comp_1117() instanceof Byte flags) {
+                  List<SerializedEntry<?>> var35 = var43;
+                  if (MinecraftAccessor.mc.player != null && var34 == MinecraftAccessor.mc.player.getId()) {
+                     for (SerializedEntry<?> entry : var35) {
+                        if (entry.id() == 0 && entry.value() instanceof Byte flags) {
                            PlayerUtils.serverSprinting = (flags & 8) != 0;
                         }
                      }
@@ -126,20 +126,20 @@ public class MixinClientConnection {
 
                if (!PingSpoofManager.onPacket(packet1)) {
                   if (Disabler.postState() && Disabler.postDelayPackets(packet1)) {
-                     class_2596<?> delayedPacket = packet1;
-                     class_310.method_1551().execute(() -> Disabler.storedPackets.add(delayedPacket));
+                     Packet<?> delayedPacket = packet1;
+                     MinecraftClient.getInstance().execute(() -> Disabler.storedPackets.add(delayedPacket));
                   } else {
-                     if (packet1 instanceof class_7439 messageS2CPacket && messageS2CPacket.comp_763().getString().contains("Veta")) {
+                     if (packet1 instanceof GameMessageS2CPacket messageS2CPacket && messageS2CPacket.content().getString().contains("Veta")) {
                         Southside.get().setVeta(true);
                      }
 
-                     PacketEvent event = new PacketEvent(TransferOrigin.RECEIVE, packet1, (class_2535)(Object)this);
+                     PacketEvent event = new PacketEvent(TransferOrigin.RECEIVE, packet1, (ClientConnection)(Object)this);
                      if (!Southside.INSTANCE.getEventBus().call(event).isCancelled() && !ServerPacketManager.onPacket(packet1)) {
                         MovementUtils.onPacketRec(packet1);
 
                         try {
-                           method_10759(packet1, packetListener);
-                        } catch (class_2987 var16) {
+                           handlePacket(packet1, packetListener);
+                        } catch (OffThreadException var16) {
                         }
                      }
                   }
@@ -150,13 +150,13 @@ public class MixinClientConnection {
          }
 
          packet = HeypixelViaversionItemTransfer.transfer(packet);
-         if (packet instanceof class_2739 event) {
-            class_2739 var10000 = event;
+         if (packet instanceof EntityTrackerUpdateS2CPacket event) {
+            EntityTrackerUpdateS2CPacket var10000 = event;
 
             int var37;
 
             try {
-               var37 = var10000.comp_1127();
+               var37 = var10000.id();
             } catch (Throwable var21) {
                throw new MatchException(var21.toString(), var21);
             }
@@ -164,18 +164,18 @@ public class MixinClientConnection {
             int eventx = var37;
             var10000 = event;
 
-            List<class_7834<?>> var39;
+            List<SerializedEntry<?>> var39;
 
             try {
-               var39 = var10000.comp_1128();
+               var39 = var10000.trackedValues();
             } catch (Throwable var20) {
                throw new MatchException(var20.toString(), var20);
             }
 
-            List<class_7834<?>> var28 = var39;
-            if (MinecraftAccessor.mc.field_1724 != null && eventx == MinecraftAccessor.mc.field_1724.method_5628()) {
-               for (class_7834<?> entryx : var28) {
-                  if (entryx.comp_1115() == 0 && entryx.comp_1117() instanceof Byte flags) {
+            List<SerializedEntry<?>> var28 = var39;
+            if (MinecraftAccessor.mc.player != null && eventx == MinecraftAccessor.mc.player.getId()) {
+               for (SerializedEntry<?> entryx : var28) {
+                  if (entryx.id() == 0 && entryx.value() instanceof Byte flags) {
                      PlayerUtils.serverSprinting = (flags & 8) != 0;
                   }
                }
@@ -187,16 +187,16 @@ public class MixinClientConnection {
          }
 
          if (Disabler.postState() && Disabler.postDelayPackets(packet)) {
-            class_2596<?> delayedPacket = packet;
-            class_310.method_1551().execute(() -> Disabler.storedPackets.add(delayedPacket));
+            Packet<?> delayedPacket = packet;
+            MinecraftClient.getInstance().execute(() -> Disabler.storedPackets.add(delayedPacket));
             return;
          }
 
-         if (packet instanceof class_7439 messageS2CPacket && messageS2CPacket.comp_763().getString().contains("Veta")) {
+         if (packet instanceof GameMessageS2CPacket messageS2CPacket && messageS2CPacket.content().getString().contains("Veta")) {
             Southside.get().setVeta(true);
          }
 
-         PacketEvent event = new PacketEvent(TransferOrigin.RECEIVE, packet, (class_2535)(Object)this);
+         PacketEvent event = new PacketEvent(TransferOrigin.RECEIVE, packet, (ClientConnection)(Object)this);
          if (Southside.INSTANCE.getEventBus().call(event).isCancelled()) {
             return;
          }
@@ -206,57 +206,57 @@ public class MixinClientConnection {
          }
 
          MovementUtils.onPacketRec(packet);
-         if (packetListener.method_52413(packet)) {
+         if (packetListener.accepts(packet)) {
             try {
-               method_10759(packet, packetListener);
-            } catch (class_2987 var17) {
+               handlePacket(packet, packetListener);
+            } catch (OffThreadException var17) {
             } catch (RejectedExecutionException var18) {
-               this.method_10747(class_2561.method_43471("multiplayer.disconnect.server_shutdown"));
+               this.disconnect(Text.translatable("multiplayer.disconnect.server_shutdown"));
             } catch (ClassCastException var19) {
-               field_11642.error("Received {} that couldn't be processed", packet.getClass(), var19);
-               this.method_10747(class_2561.method_43471("multiplayer.disconnect.invalid_packet"));
+               LOGGER.error("Received {} that couldn't be processed", packet.getClass(), var19);
+               this.disconnect(Text.translatable("multiplayer.disconnect.invalid_packet"));
             }
 
-            this.field_11658++;
+            this.packetsReceivedCounter++;
          }
       }
    }
 
    @Inject(
-      method = {"method_36942(Lnet/minecraft/class_2596;Lnet/minecraft/class_7648;Z)V"},
+      method = {"sendInternal(Lnet/minecraft/network/packet/Packet;Lnet/minecraft/network/PacketCallbacks;Z)V"},
       at = {@At("HEAD")},
       cancellable = true
    )
-   private void onHighLevelSend(class_2596<?> packet, class_7648 callbacks, boolean flush, CallbackInfo ci) {
+   private void onHighLevelSend(Packet<?> packet, PacketCallbacks callbacks, boolean flush, CallbackInfo ci) {
       if (Southside.INSTANCE
          .getEventBus()
-         .call(new HighLevelPacketEvent((class_2535)(Object)this, this.field_11652 != null ? this.field_11652 : this.field_45669, packet, TransferOrigin.SEND))
+         .call(new HighLevelPacketEvent((ClientConnection)(Object)this, this.packetListener != null ? this.packetListener : this.prePlayStateListener, packet, TransferOrigin.SEND))
          .isCancelled()) {
          ci.cancel();
       }
    }
 
    @Inject(
-      method = {"method_10770(Lio/netty/channel/ChannelHandlerContext;Lnet/minecraft/class_2596;)V"},
+      method = {"channelRead0(Lio/netty/channel/ChannelHandlerContext;Lnet/minecraft/network/packet/Packet;)V"},
       at = {@At("HEAD")},
       cancellable = true
    )
-   private void onHighLevelReceive(ChannelHandlerContext channelHandlerContext, class_2596<?> packet, CallbackInfo ci) {
+   private void onHighLevelReceive(ChannelHandlerContext channelHandlerContext, Packet<?> packet, CallbackInfo ci) {
       if (Southside.INSTANCE
          .getEventBus()
-         .call(new HighLevelPacketEvent((class_2535)(Object)this, this.field_11652 != null ? this.field_11652 : this.field_45669, packet, TransferOrigin.RECEIVE))
+         .call(new HighLevelPacketEvent((ClientConnection)(Object)this, this.packetListener != null ? this.packetListener : this.prePlayStateListener, packet, TransferOrigin.RECEIVE))
          .isCancelled()) {
          ci.cancel();
       }
    }
 
-   private byte[] readByteArray(class_2540 buf, int maxSize) {
-      int i = buf.method_10816() - 1;
+   private byte[] readByteArray(PacketByteBuf buf, int maxSize) {
+      int i = buf.readVarInt() - 1;
       if (i > maxSize) {
          throw new DecoderException("ByteArray with size " + i + " is bigger than allowed " + maxSize);
       } else {
          byte[] abyte = new byte[i];
-         buf.method_52979(abyte);
+         buf.readBytes(abyte);
          return abyte;
       }
    }

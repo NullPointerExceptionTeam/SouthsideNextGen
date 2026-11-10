@@ -9,8 +9,8 @@ import dev.southside.module.Module;
 import dev.southside.orbit.EventHandler;
 import dev.southside.utils.misc.BlinkUtils;
 import dev.southside.utils.player.PlayerUtils;
-import net.minecraft.class_1753;
-import net.minecraft.class_1764;
+import net.minecraft.item.BowItem;
+import net.minecraft.item.CrossbowItem;
 
 public class NoSlow extends Module {
    public Switch blink = new Switch("Use Blink", true);
@@ -27,17 +27,17 @@ public class NoSlow extends Module {
    @EventHandler
    public void onRotate(RotationEvent event) {
       boolean isValid = this.blink.getValue()
-         && mc.field_1724.method_6048() > 16
-         && !(mc.field_1724.method_6030().method_7909() instanceof class_1753)
-         && !(mc.field_1724.method_6030().method_7909() instanceof class_1764);
+         && mc.player.getItemUseTime() > 16
+         && !(mc.player.getActiveItem().getItem() instanceof BowItem)
+         && !(mc.player.getActiveItem().getItem() instanceof CrossbowItem);
       if (BlinkUtils.blinking) {
          this.useTickCounter++;
       }
 
       if (isValid && !BlinkUtils.blinking) {
          BlinkUtils.blink();
-         this.useTickCounter = mc.field_1724.method_6048();
-         mc.field_1690.field_1904.method_23481(false);
+         this.useTickCounter = mc.player.getItemUseTime();
+         mc.options.useKey.setPressed(false);
       }
 
       if (this.useTickCounter >= 32) {
@@ -48,9 +48,9 @@ public class NoSlow extends Module {
 
    @EventHandler
    public void onSlow(PlayerSlowdownEvent event) {
-      boolean shouldActivate = mc.field_1724.method_6048() % 3 != 0
-         && !(mc.field_1724.method_6030().method_7909() instanceof class_1753)
-         && !(mc.field_1724.method_6030().method_7909() instanceof class_1764);
+      boolean shouldActivate = mc.player.getItemUseTime() % 3 != 0
+         && !(mc.player.getActiveItem().getItem() instanceof BowItem)
+         && !(mc.player.getActiveItem().getItem() instanceof CrossbowItem);
       if (shouldActivate) {
          if (!this.wasSlowdownActive) {
             this.pausePhase = true;
@@ -64,14 +64,14 @@ public class NoSlow extends Module {
             if (this.pauseTimer <= 0) {
                this.pausePhase = false;
                event.setCancelled(true);
-               mc.field_1724.method_5728(true);
+               mc.player.setSprinting(true);
             }
 
             return;
          }
 
          event.setCancelled(true);
-         mc.field_1724.method_5728(true);
+         mc.player.setSprinting(true);
       } else {
          this.wasSlowdownActive = false;
          this.pausePhase = false;
@@ -81,7 +81,7 @@ public class NoSlow extends Module {
 
    @EventHandler
    public void onFoV(UpdateFoVEvent event) {
-      if (PlayerUtils.isMoving() && mc.field_1724.method_6115()) {
+      if (PlayerUtils.isMoving() && mc.player.isUsingItem()) {
          event.setFov(1.0F);
       }
    }

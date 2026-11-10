@@ -37,20 +37,20 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import lombok.Generated;
-import net.minecraft.class_2540;
-import net.minecraft.class_2547;
-import net.minecraft.class_2550;
-import net.minecraft.class_2552;
-import net.minecraft.class_2596;
-import net.minecraft.class_2889;
-import net.minecraft.class_2933;
-import net.minecraft.class_2937;
-import net.minecraft.class_8592;
-import net.minecraft.class_8700;
-import net.minecraft.class_9097;
-import net.minecraft.class_9103;
-import net.minecraft.class_9127;
-import net.minecraft.class_9145;
+import net.minecraft.network.PacketByteBuf;
+import net.minecraft.network.listener.PacketListener;
+import net.minecraft.network.handler.SplitterHandler;
+import net.minecraft.network.handler.SizePrepender;
+import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.c2s.handshake.HandshakeC2SPacket;
+import net.minecraft.network.listener.ServerQueryPacketListener;
+import net.minecraft.network.packet.c2s.query.QueryRequestC2SPacket;
+import net.minecraft.network.packet.c2s.handshake.ConnectionIntent;
+import net.minecraft.network.handler.NetworkStateTransitionHandler;
+import net.minecraft.network.state.HandshakeStates;
+import net.minecraft.network.state.QueryStates;
+import net.minecraft.network.NetworkState;
+import net.minecraft.network.packet.PacketType;
 import org.slf4j.Logger;
 
 public class VetaDetector {
@@ -154,11 +154,11 @@ public class VetaDetector {
       return base;
    }
 
-   public static class DecoderHandler<T extends class_2547> extends ByteToMessageDecoder implements class_8700 {
+   public static class DecoderHandler<T extends PacketListener> extends ByteToMessageDecoder implements NetworkStateTransitionHandler {
       private static final Logger LOGGER = LogUtils.getLogger();
-      private final class_9127<T> state;
+      private final NetworkState<T> state;
 
-      public DecoderHandler(class_9127<T> state) {
+      public DecoderHandler(NetworkState<T> state) {
          this.state = state;
       }
 
@@ -169,10 +169,10 @@ public class VetaDetector {
                return;
             }
 
-            class_2540 b = new class_2540(buf);
-            int id = b.method_10816();
-            if (this.state.equals(class_9103.field_48264) && id == 0) {
-               out.add(new VetaDetector.FakePacket(b.method_19772()));
+            PacketByteBuf b = new PacketByteBuf(buf);
+            int id = b.readVarInt();
+            if (this.state.equals(QueryStates.S2C) && id == 0) {
+               out.add(new VetaDetector.FakePacket(b.readString()));
                ctx.close();
             }
          } catch (Throwable var7) {
@@ -185,17 +185,17 @@ public class VetaDetector {
       }
    }
 
-   public static class EncoderHandler<T extends class_2547> extends MessageToByteEncoder<class_2596<T>> {
+   public static class EncoderHandler<T extends PacketListener> extends MessageToByteEncoder<Packet<T>> {
       private static final Logger LOGGER = LogUtils.getLogger();
-      private final class_9127<T> state;
+      private final NetworkState<T> state;
 
-      public EncoderHandler(class_9127<T> state) {
+      public EncoderHandler(NetworkState<T> state) {
          this.state = state;
       }
 
-      protected void encode(ChannelHandlerContext ctx, class_2596<T> packet, ByteBuf out) {
+      protected void encode(ChannelHandlerContext ctx, Packet<T> packet, ByteBuf out) {
          try {
-            this.state.comp_2236().encode(out, packet);
+            this.state.codec().encode(out, packet);
          } catch (Throwable var5) {
             ctx.close();
          }
@@ -206,17 +206,17 @@ public class VetaDetector {
       }
    }
 
-   public record FakePacket(String text) implements class_2596<class_2933> {
-      public class_9145<? extends class_2596<class_2933>> method_65080() {
+   public record FakePacket(String text) implements Packet<ServerQueryPacketListener> {
+      public PacketType<? extends Packet<ServerQueryPacketListener>> getPacketType() {
          return null;
       }
 
       @Override
-      public void method_65081(class_2933 listener) {
-         this.apply(listener);
+      public void apply(ServerQueryPacketListener listener) {
+         this.send(listener);
       }
 
-      public void apply(class_2933 listener) {
+      public void send(ServerQueryPacketListener listener) {
       }
    }
 
@@ -274,11 +274,11 @@ public class VetaDetector {
                   ChannelPipeline pipeline = ch.pipeline();
                   pipeline.addLast("read-timeout", new ReadTimeoutHandler(1));
                   pipeline.addLast("write-timeout", new WriteTimeoutHandler(1));
-                  pipeline.addLast("splitter", new class_2550(null));
+                  pipeline.addLast("splitter", new SplitterHandler(null));
                   pipeline.addLast(new ChannelHandler[]{new FlowControlHandler()});
-                  pipeline.addLast("decoder", new VetaDetector.DecoderHandler(class_9103.field_48264));
-                  pipeline.addLast("prepender", new class_2552());
-                  pipeline.addLast("encoder", new VetaDetector.EncoderHandler(class_9097.field_48231));
+                  pipeline.addLast("decoder", new VetaDetector.DecoderHandler(QueryStates.S2C));
+                  pipeline.addLast("prepender", new SizePrepender());
+                  pipeline.addLast("encoder", new VetaDetector.EncoderHandler(HandshakeStates.C2S));
                   pipeline.addLast("manager", new VetaDetector.MotdScanner.MotdHandler(MotdScanner.this.ip, MotdScanner.this.port, MotdScanner.this.callback));
                }
             });
@@ -289,7 +289,7 @@ public class VetaDetector {
          this.callback = callback;
       }
 
-      private static class MotdHandler extends SimpleChannelInboundHandler<class_2596> {
+      private static class MotdHandler extends SimpleChannelInboundHandler<Packet> {
          private final String ip;
          private final int port;
          private final Consumer<String> callback;
@@ -297,22 +297,22 @@ public class VetaDetector {
          public void channelActive(ChannelHandlerContext ctx) {
             try {
                ctx.channel().config().setAutoRead(false);
-               class_2889 handshake = new class_2889(766, this.ip, this.port, class_8592.field_44974);
+               HandshakeC2SPacket handshake = new HandshakeC2SPacket(766, this.ip, this.port, ConnectionIntent.STATUS);
                ctx.write(handshake);
                ChannelPipeline p = ctx.pipeline();
                if (p.get("encoder") != null) {
                   p.remove("encoder");
                }
 
-               p.addBefore("manager", "encoder", new VetaDetector.EncoderHandler(class_9103.field_48263));
-               ctx.writeAndFlush(class_2937.field_48259, ctx.voidPromise());
+               p.addBefore("manager", "encoder", new VetaDetector.EncoderHandler(QueryStates.C2S));
+               ctx.writeAndFlush(QueryRequestC2SPacket.INSTANCE, ctx.voidPromise());
                ctx.channel().config().setAutoRead(true);
             } catch (Throwable var4) {
                ctx.close();
             }
          }
 
-         protected void channelRead0(ChannelHandlerContext ctx, class_2596 msg) {
+         protected void channelRead0(ChannelHandlerContext ctx, Packet msg) {
             try {
                if (msg instanceof VetaDetector.FakePacket response && this.callback != null) {
                   this.callback.accept(response.text);

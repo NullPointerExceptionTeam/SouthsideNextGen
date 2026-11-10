@@ -10,21 +10,21 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 import lombok.Generated;
-import net.minecraft.class_2281;
-import net.minecraft.class_2338;
-import net.minecraft.class_2623;
-import net.minecraft.class_2680;
-import net.minecraft.class_2885;
-import net.minecraft.class_437;
-import net.minecraft.class_476;
+import net.minecraft.block.ChestBlock;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.network.packet.s2c.play.BlockEventS2CPacket;
+import net.minecraft.block.BlockState;
+import net.minecraft.network.packet.c2s.play.PlayerInteractBlockC2SPacket;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screen.ingame.GenericContainerScreen;
 
 public class ChestManager implements MinecraftAccessor, ChatAdapter {
-   private final Queue<class_2338> tryQueue = new LinkedBlockingQueue<>();
-   private final Queue<class_2338> stealQueue = new LinkedBlockingQueue<>();
-   public final Set<class_2338> selfStolen = new LinkedHashSet<>();
-   private final Set<class_2338> stolenChests = new LinkedHashSet<>();
+   private final Queue<BlockPos> tryQueue = new LinkedBlockingQueue<>();
+   private final Queue<BlockPos> stealQueue = new LinkedBlockingQueue<>();
+   public final Set<BlockPos> selfStolen = new LinkedHashSet<>();
+   private final Set<BlockPos> stolenChests = new LinkedHashSet<>();
 
-   public void trySteal(class_2338 pos) {
+   public void trySteal(BlockPos pos) {
       if (!this.stealQueue.contains(pos)) {
          if (!this.tryQueue.contains(pos)) {
             this.tryQueue.offer(pos);
@@ -32,11 +32,11 @@ public class ChestManager implements MinecraftAccessor, ChatAdapter {
       }
    }
 
-   public void onSteal(class_2338 pos) {
+   public void onSteal(BlockPos pos) {
       this.stealQueue.offer(pos);
    }
 
-   public void onPacketNotify(class_2338 pos) {
+   public void onPacketNotify(BlockPos pos) {
       if (this.tryQueue.remove(pos)) {
          this.stealQueue.offer(pos);
       } else if (!this.stealQueue.contains(pos)) {
@@ -46,7 +46,7 @@ public class ChestManager implements MinecraftAccessor, ChatAdapter {
 
    public void stolenAll() {
       while (!this.stealQueue.isEmpty()) {
-         class_2338 poll = this.stealQueue.poll();
+         BlockPos poll = this.stealQueue.poll();
          if (poll != null) {
             this.selfStolen.add(poll);
             this.onStolen(poll);
@@ -54,7 +54,7 @@ public class ChestManager implements MinecraftAccessor, ChatAdapter {
       }
    }
 
-   public void onStolen(class_2338 pos) {
+   public void onStolen(BlockPos pos) {
       if (this.stealQueue.remove(pos)) {
          this.selfStolen.add(pos);
       }
@@ -62,33 +62,33 @@ public class ChestManager implements MinecraftAccessor, ChatAdapter {
       this.stolenChests.add(pos);
    }
 
-   public class_2338 getStealingChest() {
-      class_437 currentScreen = mc.field_1755;
-      return currentScreen instanceof class_476 && !this.stealQueue.isEmpty() ? this.stealQueue.peek() : null;
+   public BlockPos getStealingChest() {
+      Screen currentScreen = mc.currentScreen;
+      return currentScreen instanceof GenericContainerScreen && !this.stealQueue.isEmpty() ? this.stealQueue.peek() : null;
    }
 
-   public boolean isStolen(class_2338 pos) {
+   public boolean isStolen(BlockPos pos) {
       return this.stolenChests.contains(pos);
    }
 
-   public boolean isSelfStolen(class_2338 pos) {
+   public boolean isSelfStolen(BlockPos pos) {
       return this.selfStolen.contains(pos);
    }
 
    @EventHandler
    public void onPacket(PacketEvent event) {
-      if (event.getPacket() instanceof class_2623 sb) {
-         if (mc.field_1687 != null) {
-            class_2680 state = mc.field_1687.method_8320(sb.method_11298());
-            if (state.method_26204() instanceof class_2281 && sb.method_11294() == 1 && sb.method_11296() == 1) {
-               this.onPacketNotify(sb.method_11298());
+      if (event.getPacket() instanceof BlockEventS2CPacket sb) {
+         if (mc.world != null) {
+            BlockState state = mc.world.getBlockState(sb.getPos());
+            if (state.getBlock() instanceof ChestBlock && sb.getType() == 1 && sb.getData() == 1) {
+               this.onPacketNotify(sb.getPos());
             }
          }
-      } else if (event.getPacket() instanceof class_2885 ib) {
-         class_2338 pos = ib.method_12543().method_17777();
-         if (mc.field_1687 != null) {
-            class_2680 state = mc.field_1687.method_8320(pos);
-            if (state.method_26204() instanceof class_2281) {
+      } else if (event.getPacket() instanceof PlayerInteractBlockC2SPacket ib) {
+         BlockPos pos = ib.getBlockHitResult().getBlockPos();
+         if (mc.world != null) {
+            BlockState state = mc.world.getBlockState(pos);
+            if (state.getBlock() instanceof ChestBlock) {
                this.trySteal(pos);
             }
          }
@@ -104,22 +104,22 @@ public class ChestManager implements MinecraftAccessor, ChatAdapter {
    }
 
    @Generated
-   public Queue<class_2338> getTryQueue() {
+   public Queue<BlockPos> getTryQueue() {
       return this.tryQueue;
    }
 
    @Generated
-   public Queue<class_2338> getStealQueue() {
+   public Queue<BlockPos> getStealQueue() {
       return this.stealQueue;
    }
 
    @Generated
-   public Set<class_2338> getSelfStolen() {
+   public Set<BlockPos> getSelfStolen() {
       return this.selfStolen;
    }
 
    @Generated
-   public Set<class_2338> getStolenChests() {
+   public Set<BlockPos> getStolenChests() {
       return this.stolenChests;
    }
 }

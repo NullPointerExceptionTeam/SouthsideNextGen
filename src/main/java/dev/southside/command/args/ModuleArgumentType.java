@@ -12,13 +12,13 @@ import dev.southside.module.Module;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
-import net.minecraft.class_2172;
-import net.minecraft.class_2561;
+import net.minecraft.command.CommandSource;
+import net.minecraft.text.Text;
 
 public class ModuleArgumentType implements ArgumentType<Module> {
    private static final ModuleArgumentType INSTANCE = new ModuleArgumentType();
    private static final DynamicCommandExceptionType NO_SUCH_MODULE = new DynamicCommandExceptionType(
-      name -> class_2561.method_43470("Module with name " + name + " doesn't exist.")
+      name -> Text.literal("Module with name " + name + " doesn't exist.")
    );
    private static final Collection<String> EXAMPLES = Southside.get()
       .getModuleManager()
@@ -50,7 +50,7 @@ public class ModuleArgumentType implements ArgumentType<Module> {
    }
 
    public <S> CompletableFuture<Suggestions> listSuggestions(CommandContext<S> context, SuggestionsBuilder builder) {
-      return class_2172.method_9264(Southside.get().getModuleManager().getModules().stream().map(Module::getReachableName), builder);
+      return CommandSource.suggestMatching(Southside.get().getModuleManager().getModules().stream().map(Module::getReachableName), builder);
    }
 
    public Collection<String> getExamples() {

@@ -8,19 +8,19 @@ import dev.southside.Southside;
 import dev.southside.mixin.hud.InGameHudAccessor;
 import dev.southside.module.impl.render.ScoreBoard;
 import java.util.NoSuchElementException;
-import net.minecraft.class_2561;
-import net.minecraft.class_266;
-import net.minecraft.class_268;
-import net.minecraft.class_269;
-import net.minecraft.class_327;
-import net.minecraft.class_332;
-import net.minecraft.class_4587;
-import net.minecraft.class_8646;
-import net.minecraft.class_9022;
-import net.minecraft.class_9025;
+import net.minecraft.text.Text;
+import net.minecraft.scoreboard.ScoreboardObjective;
+import net.minecraft.scoreboard.Team;
+import net.minecraft.scoreboard.Scoreboard;
+import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.scoreboard.ScoreboardDisplaySlot;
+import net.minecraft.scoreboard.number.NumberFormat;
+import net.minecraft.scoreboard.number.StyledNumberFormat;
 
 public class ScoreBoardHud extends Hud {
-   private static final class_2561 COLON_TEXT = class_2561.method_43470(": ");
+   private static final Text COLON_TEXT = Text.literal(": ");
    public final Switch noScore = new Switch("No Score", true);
 
    public ScoreBoardHud(float x, float y, int positionAlignment, float scale) {
@@ -28,7 +28,7 @@ public class ScoreBoardHud extends Hud {
    }
 
    @Override
-   protected void draw(class_332 context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
+   protected void draw(DrawContext context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
       ScoreBoardHud.ScoreboardRenderData renderData = this.resolveRenderData(example);
       if (renderData != null) {
          if (this.isVanillaStyle()) {
@@ -41,7 +41,7 @@ public class ScoreBoardHud extends Hud {
       }
    }
 
-   private void drawModernStyle(class_332 context, ScoreBoardHud.ScoreboardRenderData data, float x, float y, float scale) {
+   private void drawModernStyle(DrawContext context, ScoreBoardHud.ScoreboardRenderData data, float x, float y, float scale) {
       ScoreBoardHud.SidebarEntry[] entries = data.entries();
       float padding = 5.0F;
       float titleHeight = 16.0F;
@@ -50,33 +50,33 @@ public class ScoreBoardHud extends Hud {
       float totalHeight = titleHeight + contentHeight;
       float width = data.maxWidth() + padding * 2.0F;
       float radius = 5.0F;
-      int backgroundColor = mc.field_1690.method_19345(0.3F);
-      int titleBackgroundColor = mc.field_1690.method_19345(0.4F);
+      int backgroundColor = mc.options.getTextBackgroundColor(0.3F);
+      int titleBackgroundColor = mc.options.getTextBackgroundColor(0.4F);
       NanoVGHelper helper = NanoVGHelper.INSTANCE;
       helper.setupAndDraw(true, vg -> {
          helper.drawRoundedRect(vg, x, y, width * scale, totalHeight * scale, backgroundColor, radius * scale);
          helper.drawRoundedRectVaried(vg, x, y, width * scale, titleHeight * scale, titleBackgroundColor, radius * scale, radius * scale, 0.0F, 0.0F);
       });
-      class_4587 matrixStack = context.method_51448();
-      matrixStack.method_22903();
-      matrixStack.method_46416(x, y, 0.0F);
-      matrixStack.method_22905(scale, scale, 1.0F);
+      MatrixStack matrixStack = context.getMatrices();
+      matrixStack.push();
+      matrixStack.translate(x, y, 0.0F);
+      matrixStack.scale(scale, scale, 1.0F);
       int leftPadding = (int)padding;
       int titleX = (int)(leftPadding + (data.maxWidth() - data.titleWidth()) / 2.0F);
-      context.method_51439(mc.field_1772, data.title(), titleX, 5, -1, false);
+      context.drawText(mc.textRenderer, data.title(), titleX, 5, -1, false);
       float startY = titleHeight + padding;
 
       for (int i = 0; i < entries.length; i++) {
          ScoreBoardHud.SidebarEntry entry = entries[i];
          int entryY = (int)(startY + i * entrySpacing);
-         context.method_51439(mc.field_1772, entry.name, leftPadding, entryY, -1, false);
+         context.drawText(mc.textRenderer, entry.name, leftPadding, entryY, -1, false);
          this.drawScore(context, data, entry, leftPadding, entryY);
       }
 
-      matrixStack.method_22909();
+      matrixStack.pop();
    }
 
-   private void drawSimpleStyle(class_332 context, ScoreBoardHud.ScoreboardRenderData data, float x, float y, float scale) {
+   private void drawSimpleStyle(DrawContext context, ScoreBoardHud.ScoreboardRenderData data, float x, float y, float scale) {
       ScoreBoardHud.SidebarEntry[] entries = data.entries();
       float padding = 5.0F;
       float titleHeight = 16.0F;
@@ -90,26 +90,26 @@ public class ScoreBoardHud extends Hud {
          helper.drawRect(vg, x, y, width * scale, totalHeight * scale, bgColor);
          helper.drawRect(vg, x, y, width * scale, titleHeight * scale, 553648127);
       });
-      class_4587 matrixStack = context.method_51448();
-      matrixStack.method_22903();
-      matrixStack.method_46416(x, y, 0.0F);
-      matrixStack.method_22905(scale, scale, 1.0F);
+      MatrixStack matrixStack = context.getMatrices();
+      matrixStack.push();
+      matrixStack.translate(x, y, 0.0F);
+      matrixStack.scale(scale, scale, 1.0F);
       int leftPadding = (int)padding;
       int titleX = (int)(leftPadding + (data.maxWidth() - data.titleWidth()) / 2.0F);
-      context.method_51439(mc.field_1772, data.title(), titleX, 5, -1, false);
+      context.drawText(mc.textRenderer, data.title(), titleX, 5, -1, false);
       float startY = titleHeight + padding;
 
       for (int i = 0; i < entries.length; i++) {
          ScoreBoardHud.SidebarEntry entry = entries[i];
          int entryY = (int)(startY + i * entrySpacing);
-         context.method_51439(mc.field_1772, entry.name, leftPadding, entryY, -1, false);
+         context.drawText(mc.textRenderer, entry.name, leftPadding, entryY, -1, false);
          this.drawScore(context, data, entry, leftPadding, entryY);
       }
 
-      matrixStack.method_22909();
+      matrixStack.pop();
    }
 
-   private void drawVanillaStyle(class_332 context, ScoreBoardHud.ScoreboardRenderData data, float x, float y, float scale) {
+   private void drawVanillaStyle(DrawContext context, ScoreBoardHud.ScoreboardRenderData data, float x, float y, float scale) {
       ScoreBoardHud.SidebarEntry[] entries = data.entries();
       float rowHeight = 9.0F;
       float width = data.maxWidth() + 8.0F;
@@ -121,57 +121,57 @@ public class ScoreBoardHud extends Hud {
          helper.drawRect(vg, x, y, width * scale, baseHeight * scale, backgroundColor);
          helper.drawRect(vg, x, y, width * scale, rowHeight * scale, headerColor);
       });
-      class_4587 matrixStack = context.method_51448();
-      matrixStack.method_22903();
-      matrixStack.method_46416(x, y, 0.0F);
-      matrixStack.method_22905(scale, scale, 1.0F);
+      MatrixStack matrixStack = context.getMatrices();
+      matrixStack.push();
+      matrixStack.translate(x, y, 0.0F);
+      matrixStack.scale(scale, scale, 1.0F);
       int titleX = (int)((width - data.titleWidth()) / 2.0F);
-      context.method_51439(mc.field_1772, data.title(), titleX, 1, -1, false);
+      context.drawText(mc.textRenderer, data.title(), titleX, 1, -1, false);
       int leftPadding = 4;
 
       for (int i = 0; i < entries.length; i++) {
          ScoreBoardHud.SidebarEntry entry = entries[i];
          int entryY = (int)((i + 1) * rowHeight);
-         context.method_51439(mc.field_1772, entry.name, leftPadding, entryY, -1, false);
+         context.drawText(mc.textRenderer, entry.name, leftPadding, entryY, -1, false);
          this.drawScore(context, data, entry, leftPadding, entryY);
       }
 
-      matrixStack.method_22909();
+      matrixStack.pop();
    }
 
-   private void drawScore(class_332 context, ScoreBoardHud.ScoreboardRenderData data, ScoreBoardHud.SidebarEntry entry, int leftPadding, int y) {
+   private void drawScore(DrawContext context, ScoreBoardHud.ScoreboardRenderData data, ScoreBoardHud.SidebarEntry entry, int leftPadding, int y) {
       if (!this.hideScores() && entry.scoreWidth > 0) {
          int scoreX = leftPadding + (data.maxWidth() - entry.scoreWidth);
          int colonX = scoreX - data.colonWidth();
-         context.method_51439(mc.field_1772, COLON_TEXT, colonX, y, -1, false);
-         context.method_51439(mc.field_1772, entry.score, scoreX, y, -1, false);
+         context.drawText(mc.textRenderer, COLON_TEXT, colonX, y, -1, false);
+         context.drawText(mc.textRenderer, entry.score, scoreX, y, -1, false);
       }
    }
 
    private ScoreBoardHud.ScoreboardRenderData resolveRenderData(boolean example) {
-      class_266 objective = this.getObjective();
-      InGameHudAccessor accessor = (InGameHudAccessor)mc.field_1705;
+      ScoreboardObjective objective = this.getObjective();
+      InGameHudAccessor accessor = (InGameHudAccessor)mc.inGameHud;
       if (accessor == null) {
          return null;
       } else {
-         class_327 renderer = accessor.invokeGetTextRenderer();
+         TextRenderer renderer = accessor.invokeGetTextRenderer();
          if (objective == null) {
-            return !example ? null : this.buildRenderData(class_2561.method_43470("Scoreboard"), this.getExampleEntries(renderer), accessor);
+            return !example ? null : this.buildRenderData(Text.literal("Scoreboard"), this.getExampleEntries(renderer), accessor);
          } else {
-            return this.buildRenderData(objective.method_1114(), this.getSidebarEntries(objective), accessor);
+            return this.buildRenderData(objective.getDisplayName(), this.getSidebarEntries(objective), accessor);
          }
       }
    }
 
-   private ScoreBoardHud.ScoreboardRenderData buildRenderData(class_2561 title, ScoreBoardHud.SidebarEntry[] entries, InGameHudAccessor accessor) {
-      class_327 renderer = accessor.invokeGetTextRenderer();
-      int titleWidth = renderer.method_27525(title);
-      int colonWidth = renderer.method_27525(COLON_TEXT);
+   private ScoreBoardHud.ScoreboardRenderData buildRenderData(Text title, ScoreBoardHud.SidebarEntry[] entries, InGameHudAccessor accessor) {
+      TextRenderer renderer = accessor.invokeGetTextRenderer();
+      int titleWidth = renderer.getWidth(title);
+      int colonWidth = renderer.getWidth(COLON_TEXT);
       boolean includeScores = !this.hideScores();
       int maxWidth = titleWidth;
 
       for (ScoreBoardHud.SidebarEntry entry : entries) {
-         int entryWidth = renderer.method_27525(entry.name);
+         int entryWidth = renderer.getWidth(entry.name);
          if (includeScores && entry.scoreWidth > 0) {
             entryWidth += colonWidth + entry.scoreWidth;
          }
@@ -182,7 +182,7 @@ public class ScoreBoardHud extends Hud {
       return new ScoreBoardHud.ScoreboardRenderData(title, entries, maxWidth, titleWidth, colonWidth);
    }
 
-   private ScoreBoardHud.SidebarEntry[] getExampleEntries(class_327 renderer) {
+   private ScoreBoardHud.SidebarEntry[] getExampleEntries(TextRenderer renderer) {
       return new ScoreBoardHud.SidebarEntry[]{
          this.createExampleEntry(renderer, "Player 1", "12"),
          this.createExampleEntry(renderer, "Player 2", "7"),
@@ -190,10 +190,10 @@ public class ScoreBoardHud extends Hud {
       };
    }
 
-   private ScoreBoardHud.SidebarEntry createExampleEntry(class_327 renderer, String name, String score) {
-      class_2561 nameText = class_2561.method_43470(name);
-      class_2561 scoreText = class_2561.method_43470(score);
-      int scoreWidth = renderer.method_27525(scoreText);
+   private ScoreBoardHud.SidebarEntry createExampleEntry(TextRenderer renderer, String name, String score) {
+      Text nameText = Text.literal(name);
+      Text scoreText = Text.literal(score);
+      int scoreWidth = renderer.getWidth(scoreText);
       return new ScoreBoardHud.SidebarEntry(nameText, scoreText, scoreWidth);
    }
 
@@ -224,48 +224,48 @@ public class ScoreBoardHud extends Hud {
       }
    }
 
-   private class_266 getObjective() {
-      class_269 scoreboard = null;
-      if (mc.field_1687 != null) {
-         scoreboard = mc.field_1687.method_8428();
+   private ScoreboardObjective getObjective() {
+      Scoreboard scoreboard = null;
+      if (mc.world != null) {
+         scoreboard = mc.world.getScoreboard();
       }
 
-      class_268 team = null;
-      if (scoreboard != null && mc.field_1724 != null) {
-         team = scoreboard.method_1164(mc.field_1724.method_5820());
+      Team team = null;
+      if (scoreboard != null && mc.player != null) {
+         team = scoreboard.getScoreHolderTeam(mc.player.getNameForScoreboard());
       }
 
-      class_266 scoreboardObjective = null;
+      ScoreboardObjective scoreboardObjective = null;
       if (team != null) {
-         class_8646 slot = class_8646.method_52622(team.method_1202());
+         ScoreboardDisplaySlot slot = ScoreboardDisplaySlot.fromFormatting(team.getColor());
          if (slot != null) {
-            scoreboardObjective = scoreboard.method_1189(slot);
+            scoreboardObjective = scoreboard.getObjectiveForSlot(slot);
          }
       }
 
       if (scoreboard != null) {
-         return scoreboardObjective != null ? scoreboardObjective : scoreboard.method_1189(class_8646.field_45157);
+         return scoreboardObjective != null ? scoreboardObjective : scoreboard.getObjectiveForSlot(ScoreboardDisplaySlot.SIDEBAR);
       } else {
          return null;
       }
    }
 
-   private ScoreBoardHud.SidebarEntry[] getSidebarEntries(class_266 objective) {
-      InGameHudAccessor accessor = (InGameHudAccessor)mc.field_1705;
-      class_9022 numberFormat = objective.method_55380(class_9025.field_47567);
-      return mc.field_1687 != null
-         ? mc.field_1687
-            .method_8428()
-            .method_1184(objective)
+   private ScoreBoardHud.SidebarEntry[] getSidebarEntries(ScoreboardObjective objective) {
+      InGameHudAccessor accessor = (InGameHudAccessor)mc.inGameHud;
+      NumberFormat numberFormat = objective.getNumberFormatOr(StyledNumberFormat.RED);
+      return mc.world != null
+         ? mc.world
+            .getScoreboard()
+            .getScoreboardEntries(objective)
             .stream()
-            .filter(entry -> !entry.method_55385())
+            .filter(entry -> !entry.hidden())
             .sorted(InGameHudAccessor.getScoreboardEntryComparator())
             .limit(15L)
             .map(entry -> {
-               class_268 team = mc.field_1687.method_8428().method_1164(entry.comp_2127());
-               class_2561 displayName = class_268.method_1142(team, entry.method_55387());
-               class_2561 scoreText = entry.method_55386(numberFormat);
-               int scoreWidth = accessor.invokeGetTextRenderer().method_27525(scoreText);
+               Team team = mc.world.getScoreboard().getScoreHolderTeam(entry.owner());
+               Text displayName = Team.decorateName(team, entry.name());
+               Text scoreText = entry.formatted(numberFormat);
+               int scoreWidth = accessor.invokeGetTextRenderer().getWidth(scoreText);
                return new ScoreBoardHud.SidebarEntry(displayName, scoreText, scoreWidth);
             })
             .toArray(ScoreBoardHud.SidebarEntry[]::new)
@@ -305,9 +305,9 @@ public class ScoreBoardHud extends Hud {
       }
    }
 
-   record ScoreboardRenderData(class_2561 title, ScoreBoardHud.SidebarEntry[] entries, int maxWidth, int titleWidth, int colonWidth) {
+   record ScoreboardRenderData(Text title, ScoreBoardHud.SidebarEntry[] entries, int maxWidth, int titleWidth, int colonWidth) {
    }
 
-   record SidebarEntry(class_2561 name, class_2561 score, int scoreWidth) {
+   record SidebarEntry(Text name, Text score, int scoreWidth) {
    }
 }

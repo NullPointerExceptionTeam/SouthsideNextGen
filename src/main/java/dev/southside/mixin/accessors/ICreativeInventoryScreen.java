@@ -1,14 +1,14 @@
 package dev.southside.mixin.accessors;
 
-import net.minecraft.class_1761;
-import net.minecraft.class_481;
+import net.minecraft.item.ItemGroup;
+import net.minecraft.client.gui.screen.ingame.CreativeInventoryScreen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
-@Mixin({class_481.class})
+@Mixin({CreativeInventoryScreen.class})
 public interface ICreativeInventoryScreen {
-   @Accessor("field_2896")
-   static class_1761 getSelectedTab() {
+   @Accessor("selectedTab")
+   static ItemGroup getSelectedTab() {
       return null;
    }
 }

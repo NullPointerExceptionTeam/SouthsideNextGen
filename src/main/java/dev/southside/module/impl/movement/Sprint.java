@@ -14,8 +14,8 @@ public class Sprint extends Module {
    @EventHandler
    public void onTick(TickEvent event) {
       if (!event.getState().equals(Stage.POST)) {
-         mc.field_1690.field_1867.method_23481(true);
-         mc.field_1690.field_21333.method_41748(false);
+         mc.options.sprintKey.setPressed(true);
+         mc.options.sprintToggled.setValue(false);
       }
    }
 }

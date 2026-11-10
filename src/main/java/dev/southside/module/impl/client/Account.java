@@ -21,8 +21,8 @@ import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.function.Consumer;
-import net.minecraft.class_310;
-import net.minecraft.class_419;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.DisconnectedScreen;
 import org.jetbrains.annotations.Nullable;
 
 public class Account extends Module {
@@ -148,7 +148,7 @@ public class Account extends Module {
 
    private void dispatchSuccess(@Nullable Consumer<Account.Credentials> consumer, Account.Credentials credentials) {
       if (consumer != null) {
-         class_310 client = class_310.method_1551();
+         MinecraftClient client = MinecraftClient.getInstance();
          Runnable callback = () -> consumer.accept(credentials);
          if (client != null) {
             client.execute(callback);
@@ -160,7 +160,7 @@ public class Account extends Module {
 
    private void dispatchFailure(@Nullable Consumer<String> consumer, String message) {
       if (consumer != null) {
-         class_310 client = class_310.method_1551();
+         MinecraftClient client = MinecraftClient.getInstance();
          Runnable callback = () -> consumer.accept(message);
          if (client != null) {
             client.execute(callback);
@@ -177,7 +177,7 @@ public class Account extends Module {
             return;
          }
 
-         if (event.screen instanceof class_419 && !this.autoFetchedOnLastDisconnect) {
+         if (event.screen instanceof DisconnectedScreen && !this.autoFetchedOnLastDisconnect) {
             this.autoFetchedOnLastDisconnect = true;
             Notification.addNotification("检测到断开，正在自动获取账号...", "Powered BY FreeCookie", Notification.NotificationType.INFO);
             this.getAccount().run();
@@ -219,7 +219,7 @@ public class Account extends Module {
    }
 
    private void debug(String message) {
-      if (this.debugMode.getValue() && mc.field_1724 != null) {
+      if (this.debugMode.getValue() && mc.player != null) {
          this.message(message, new Object[0]);
       }
    }

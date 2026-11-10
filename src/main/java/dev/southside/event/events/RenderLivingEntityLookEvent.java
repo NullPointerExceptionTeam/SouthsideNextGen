@@ -1,10 +1,10 @@
 package dev.southside.event.events;
 
 import lombok.Generated;
-import net.minecraft.class_1309;
+import net.minecraft.entity.LivingEntity;
 
 public class RenderLivingEntityLookEvent {
-   private class_1309 entity;
+   private LivingEntity entity;
    private float prevBodyYaw;
    private float prevHeadYaw;
    private float prevPitch;
@@ -13,7 +13,7 @@ public class RenderLivingEntityLookEvent {
    private float pitch;
 
    @Generated
-   public class_1309 getEntity() {
+   public LivingEntity getEntity() {
       return this.entity;
    }
 
@@ -48,7 +48,7 @@ public class RenderLivingEntityLookEvent {
    }
 
    @Generated
-   public RenderLivingEntityLookEvent(class_1309 entity, float prevBodyYaw, float prevHeadYaw, float prevPitch, float bodyYaw, float headYaw, float pitch) {
+   public RenderLivingEntityLookEvent(LivingEntity entity, float prevBodyYaw, float prevHeadYaw, float prevPitch, float bodyYaw, float headYaw, float pitch) {
       this.entity = entity;
       this.prevBodyYaw = prevBodyYaw;
       this.prevHeadYaw = prevHeadYaw;
@@ -59,7 +59,7 @@ public class RenderLivingEntityLookEvent {
    }
 
    @Generated
-   public void setEntity(class_1309 entity) {
+   public void setEntity(LivingEntity entity) {
       this.entity = entity;
    }
 

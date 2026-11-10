@@ -1,21 +1,21 @@
 package dev.southside.event.events;
 
-import net.minecraft.class_4184;
-import net.minecraft.class_4587;
+import net.minecraft.client.render.Camera;
+import net.minecraft.client.util.math.MatrixStack;
 import org.joml.Matrix4f;
 
 public class Render3DEvent {
-   private final class_4184 camera;
-   private final class_4587 matrixStack;
+   private final Camera camera;
+   private final MatrixStack matrixStack;
    private final float tickDelta;
 
-   public Render3DEvent(class_4184 camera, class_4587 matrixStack, float tickDelta) {
+   public Render3DEvent(Camera camera, MatrixStack matrixStack, float tickDelta) {
       this.tickDelta = tickDelta;
       this.camera = camera;
       this.matrixStack = matrixStack;
    }
 
-   public class_4184 getCamera() {
+   public Camera getCamera() {
       return this.camera;
    }
 
@@ -23,11 +23,11 @@ public class Render3DEvent {
       return this.tickDelta;
    }
 
-   public class_4587 getMatrixStack() {
+   public MatrixStack getMatrixStack() {
       return this.matrixStack;
    }
 
    public Matrix4f getProjectionMatrix() {
-      return this.matrixStack.method_23760().method_23761();
+      return this.matrixStack.peek().getPositionMatrix();
    }
 }

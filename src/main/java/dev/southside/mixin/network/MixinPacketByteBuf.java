@@ -1,8 +1,8 @@
 package dev.southside.mixin.network;
 
-import net.minecraft.class_2540;
+import net.minecraft.network.PacketByteBuf;
 import org.spongepowered.asm.mixin.Mixin;
 
-@Mixin({class_2540.class})
+@Mixin({PacketByteBuf.class})
 public class MixinPacketByteBuf {
 }

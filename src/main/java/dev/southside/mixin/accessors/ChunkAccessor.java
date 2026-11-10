@@ -1,14 +1,14 @@
 package dev.southside.mixin.accessors;
 
 import java.util.Map;
-import net.minecraft.class_2338;
-import net.minecraft.class_2586;
-import net.minecraft.class_2791;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.world.chunk.Chunk;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
-@Mixin({class_2791.class})
+@Mixin({Chunk.class})
 public interface ChunkAccessor {
-   @Accessor("field_34543")
-   Map<class_2338, class_2586> getBlockEntities();
+   @Accessor("blockEntities")
+   Map<BlockPos, BlockEntity> getBlockEntities();
 }

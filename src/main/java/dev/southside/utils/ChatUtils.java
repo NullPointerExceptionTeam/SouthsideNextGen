@@ -1,34 +1,34 @@
 package dev.southside.utils;
 
 import dev.southside.utils.misc.StringUtils;
-import net.minecraft.class_124;
-import net.minecraft.class_2561;
-import net.minecraft.class_2583;
-import net.minecraft.class_310;
+import net.minecraft.util.Formatting;
+import net.minecraft.text.Text;
+import net.minecraft.text.Style;
+import net.minecraft.client.MinecraftClient;
 
 public interface ChatUtils {
-   class_2561 CLIENT_MSG_PREFIX = class_2561.method_43473()
-      .method_10852(class_2561.method_43470("[").method_10862(class_2583.field_24360.method_10977(class_124.field_1080)))
-      .method_10852(class_2561.method_43470("S").method_10862(class_2583.field_24360.method_10977(class_124.field_1062)))
-      .method_10852(class_2561.method_43470("] ").method_10862(class_2583.field_24360.method_10977(class_124.field_1080)));
+   Text CLIENT_MSG_PREFIX = Text.empty()
+      .append(Text.literal("[").setStyle(Style.EMPTY.withColor(Formatting.GRAY)))
+      .append(Text.literal("S").setStyle(Style.EMPTY.withColor(Formatting.DARK_AQUA)))
+      .append(Text.literal("] ").setStyle(Style.EMPTY.withColor(Formatting.GRAY)));
 
    static void message(String text, Object... args) {
       if (text != null) {
-         if (class_310.method_1551().field_1705 != null) {
-            class_310.method_1551()
-               .field_1705
-               .method_1743()
-               .method_1812(
-                  class_2561.method_43473().method_10852(CLIENT_MSG_PREFIX).method_10852(class_2561.method_43470(StringUtils.getReplaced(text, args)))
+         if (MinecraftClient.getInstance().inGameHud != null) {
+            MinecraftClient.getInstance()
+               .inGameHud
+               .getChatHud()
+               .addMessage(
+                  Text.empty().append(CLIENT_MSG_PREFIX).append(Text.literal(StringUtils.getReplaced(text, args)))
                );
          }
       }
    }
 
-   static void message(class_2561 text) {
+   static void message(Text text) {
       if (text != null) {
-         if (class_310.method_1551().field_1705 != null) {
-            class_310.method_1551().field_1705.method_1743().method_1812(class_2561.method_43473().method_10852(CLIENT_MSG_PREFIX).method_10852(text));
+         if (MinecraftClient.getInstance().inGameHud != null) {
+            MinecraftClient.getInstance().inGameHud.getChatHud().addMessage(Text.empty().append(CLIENT_MSG_PREFIX).append(text));
          }
       }
    }
@@ -37,17 +37,17 @@ public interface ChatUtils {
       message(text, args);
    }
 
-   static void info(class_2561 text) {
+   static void info(Text text) {
       message(text);
    }
 
    static void messagef(String text, Object... args) {
       if (text != null) {
-         if (class_310.method_1551().field_1705 != null) {
-            class_310.method_1551()
-               .field_1705
-               .method_1743()
-               .method_1812(class_2561.method_43473().method_10852(CLIENT_MSG_PREFIX).method_10852(class_2561.method_43470(String.format(text, args))));
+         if (MinecraftClient.getInstance().inGameHud != null) {
+            MinecraftClient.getInstance()
+               .inGameHud
+               .getChatHud()
+               .addMessage(Text.empty().append(CLIENT_MSG_PREFIX).append(Text.literal(String.format(text, args))));
          }
       }
    }
@@ -58,32 +58,32 @@ public interface ChatUtils {
 
    static void error(String text, Object... args) {
       if (text != null) {
-         if (class_310.method_1551().field_1705 != null) {
-            class_310.method_1551()
-               .field_1705
-               .method_1743()
-               .method_1812(
-                  class_2561.method_43473()
-                     .method_10852(CLIENT_MSG_PREFIX)
-                     .method_10852(
-                        class_2561.method_43470(StringUtils.getReplaced(text, args)).method_10862(class_2583.field_24360.method_10977(class_124.field_1061))
+         if (MinecraftClient.getInstance().inGameHud != null) {
+            MinecraftClient.getInstance()
+               .inGameHud
+               .getChatHud()
+               .addMessage(
+                  Text.empty()
+                     .append(CLIENT_MSG_PREFIX)
+                     .append(
+                        Text.literal(StringUtils.getReplaced(text, args)).setStyle(Style.EMPTY.withColor(Formatting.RED))
                      )
                );
          }
       }
    }
 
-   static void error(class_2561 text) {
+   static void error(Text text) {
       if (text != null) {
-         if (class_310.method_1551().field_1705 != null) {
-            class_310.method_1551()
-               .field_1705
-               .method_1743()
-               .method_1812(
-                  class_2561.method_43473()
-                     .method_10852(CLIENT_MSG_PREFIX)
-                     .method_10852(text)
-                     .method_10862(class_2583.field_24360.method_10977(class_124.field_1061))
+         if (MinecraftClient.getInstance().inGameHud != null) {
+            MinecraftClient.getInstance()
+               .inGameHud
+               .getChatHud()
+               .addMessage(
+                  Text.empty()
+                     .append(CLIENT_MSG_PREFIX)
+                     .append(text)
+                     .setStyle(Style.EMPTY.withColor(Formatting.RED))
                );
          }
       }
@@ -91,14 +91,14 @@ public interface ChatUtils {
 
    static void errorf(String text, Object... args) {
       if (text != null) {
-         if (class_310.method_1551().field_1705 != null) {
-            class_310.method_1551()
-               .field_1705
-               .method_1743()
-               .method_1812(
-                  class_2561.method_43473()
-                     .method_10852(CLIENT_MSG_PREFIX)
-                     .method_10852(class_2561.method_43470(String.format(text, args)).method_10862(class_2583.field_24360.method_10977(class_124.field_1061)))
+         if (MinecraftClient.getInstance().inGameHud != null) {
+            MinecraftClient.getInstance()
+               .inGameHud
+               .getChatHud()
+               .addMessage(
+                  Text.empty()
+                     .append(CLIENT_MSG_PREFIX)
+                     .append(Text.literal(String.format(text, args)).setStyle(Style.EMPTY.withColor(Formatting.RED)))
                );
          }
       }
@@ -106,32 +106,32 @@ public interface ChatUtils {
 
    static void success(String text, Object... args) {
       if (text != null) {
-         if (class_310.method_1551().field_1705 != null) {
-            class_310.method_1551()
-               .field_1705
-               .method_1743()
-               .method_1812(
-                  class_2561.method_43473()
-                     .method_10852(CLIENT_MSG_PREFIX)
-                     .method_10852(
-                        class_2561.method_43470(StringUtils.getReplaced(text, args)).method_10862(class_2583.field_24360.method_10977(class_124.field_1080))
+         if (MinecraftClient.getInstance().inGameHud != null) {
+            MinecraftClient.getInstance()
+               .inGameHud
+               .getChatHud()
+               .addMessage(
+                  Text.empty()
+                     .append(CLIENT_MSG_PREFIX)
+                     .append(
+                        Text.literal(StringUtils.getReplaced(text, args)).setStyle(Style.EMPTY.withColor(Formatting.GRAY))
                      )
                );
          }
       }
    }
 
-   static void success(class_2561 text) {
+   static void success(Text text) {
       if (text != null) {
-         if (class_310.method_1551().field_1705 != null) {
-            class_310.method_1551()
-               .field_1705
-               .method_1743()
-               .method_1812(
-                  class_2561.method_43473()
-                     .method_10852(CLIENT_MSG_PREFIX)
-                     .method_10852(text)
-                     .method_10862(class_2583.field_24360.method_10977(class_124.field_1080))
+         if (MinecraftClient.getInstance().inGameHud != null) {
+            MinecraftClient.getInstance()
+               .inGameHud
+               .getChatHud()
+               .addMessage(
+                  Text.empty()
+                     .append(CLIENT_MSG_PREFIX)
+                     .append(text)
+                     .setStyle(Style.EMPTY.withColor(Formatting.GRAY))
                );
          }
       }
@@ -139,14 +139,14 @@ public interface ChatUtils {
 
    static void successf(String text, Object... args) {
       if (text != null) {
-         if (class_310.method_1551().field_1705 != null) {
-            class_310.method_1551()
-               .field_1705
-               .method_1743()
-               .method_1812(
-                  class_2561.method_43473()
-                     .method_10852(CLIENT_MSG_PREFIX)
-                     .method_10852(class_2561.method_43470(String.format(text, args)).method_10862(class_2583.field_24360.method_10977(class_124.field_1080)))
+         if (MinecraftClient.getInstance().inGameHud != null) {
+            MinecraftClient.getInstance()
+               .inGameHud
+               .getChatHud()
+               .addMessage(
+                  Text.empty()
+                     .append(CLIENT_MSG_PREFIX)
+                     .append(Text.literal(String.format(text, args)).setStyle(Style.EMPTY.withColor(Formatting.GRAY)))
                );
          }
       }
@@ -154,33 +154,33 @@ public interface ChatUtils {
 
    static void warning(String text, Object... replacement) {
       if (text != null) {
-         if (class_310.method_1551().field_1705 != null) {
-            class_310.method_1551()
-               .field_1705
-               .method_1743()
-               .method_1812(
-                  class_2561.method_43473()
-                     .method_10852(CLIENT_MSG_PREFIX)
-                     .method_10852(
-                        class_2561.method_43470(StringUtils.getReplaced(text, replacement))
-                           .method_10862(class_2583.field_24360.method_10977(class_124.field_1061))
+         if (MinecraftClient.getInstance().inGameHud != null) {
+            MinecraftClient.getInstance()
+               .inGameHud
+               .getChatHud()
+               .addMessage(
+                  Text.empty()
+                     .append(CLIENT_MSG_PREFIX)
+                     .append(
+                        Text.literal(StringUtils.getReplaced(text, replacement))
+                           .setStyle(Style.EMPTY.withColor(Formatting.RED))
                      )
                );
          }
       }
    }
 
-   static void warning(class_2561 text) {
+   static void warning(Text text) {
       if (text != null) {
-         if (class_310.method_1551().field_1705 != null) {
-            class_310.method_1551()
-               .field_1705
-               .method_1743()
-               .method_1812(
-                  class_2561.method_43473()
-                     .method_10852(CLIENT_MSG_PREFIX)
-                     .method_10852(text)
-                     .method_10862(class_2583.field_24360.method_10977(class_124.field_1061))
+         if (MinecraftClient.getInstance().inGameHud != null) {
+            MinecraftClient.getInstance()
+               .inGameHud
+               .getChatHud()
+               .addMessage(
+                  Text.empty()
+                     .append(CLIENT_MSG_PREFIX)
+                     .append(text)
+                     .setStyle(Style.EMPTY.withColor(Formatting.RED))
                );
          }
       }
@@ -188,15 +188,15 @@ public interface ChatUtils {
 
    static void warningf(String text, Object... replacement) {
       if (text != null) {
-         if (class_310.method_1551().field_1705 != null) {
-            class_310.method_1551()
-               .field_1705
-               .method_1743()
-               .method_1812(
-                  class_2561.method_43473()
-                     .method_10852(CLIENT_MSG_PREFIX)
-                     .method_10852(
-                        class_2561.method_43470(String.format(text, replacement)).method_10862(class_2583.field_24360.method_10977(class_124.field_1061))
+         if (MinecraftClient.getInstance().inGameHud != null) {
+            MinecraftClient.getInstance()
+               .inGameHud
+               .getChatHud()
+               .addMessage(
+                  Text.empty()
+                     .append(CLIENT_MSG_PREFIX)
+                     .append(
+                        Text.literal(String.format(text, replacement)).setStyle(Style.EMPTY.withColor(Formatting.RED))
                      )
                );
          }
@@ -204,16 +204,16 @@ public interface ChatUtils {
    }
 
    static void postChatMessage(String message) {
-      if (class_310.method_1551().field_1705 != null) {
-         class_310.method_1551()
-            .field_1705
-            .method_1743()
-            .method_1812(
-               class_2561.method_43473()
-                  .method_10852(CLIENT_MSG_PREFIX)
-                  .method_10852(
-                     class_2561.method_43470(String.format(message, class_124.field_1068))
-                        .method_10862(class_2583.field_24360.method_10977(class_124.field_1061))
+      if (MinecraftClient.getInstance().inGameHud != null) {
+         MinecraftClient.getInstance()
+            .inGameHud
+            .getChatHud()
+            .addMessage(
+               Text.empty()
+                  .append(CLIENT_MSG_PREFIX)
+                  .append(
+                     Text.literal(String.format(message, Formatting.WHITE))
+                        .setStyle(Style.EMPTY.withColor(Formatting.RED))
                   )
             );
       }
@@ -221,39 +221,39 @@ public interface ChatUtils {
 
    static void ircMessage(String sender, String message, String client, String rank) {
       postChatMessage(
-         class_124.field_1075
+         Formatting.AQUA
             + "[IRC] "
-            + class_124.field_1070
-            + class_124.field_1060
+            + Formatting.RESET
+            + Formatting.GREEN
             + "("
             + client
             + ") "
-            + class_124.field_1070
-            + class_124.field_1067
-            + class_124.field_1065
+            + Formatting.RESET
+            + Formatting.BOLD
+            + Formatting.GOLD
             + sender
             + " "
-            + class_124.field_1070
+            + Formatting.RESET
             + getRankColor(rank)
-            + class_124.field_1070
+            + Formatting.RESET
             + "["
             + rank
-            + class_124.field_1070
+            + Formatting.RESET
             + "] "
-            + class_124.field_1070
+            + Formatting.RESET
             + ": "
             + message
       );
    }
 
    private static String getRankColor(String rank) {
-      String color = String.valueOf(class_124.field_1068);
+      String color = String.valueOf(Formatting.WHITE);
       switch (rank) {
          case "Admin":
-            color = String.valueOf(class_124.field_1061);
+            color = String.valueOf(Formatting.RED);
             break;
          case "Reseller":
-            color = String.valueOf(class_124.field_1058);
+            color = String.valueOf(Formatting.DARK_BLUE);
       }
 
       return color;

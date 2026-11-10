@@ -9,13 +9,13 @@ import dev.southside.utils.player.MovementUtils;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Predicate;
 import lombok.Generated;
-import net.minecraft.class_2596;
-import net.minecraft.class_2827;
-import net.minecraft.class_310;
-import net.minecraft.class_412;
+import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.c2s.common.KeepAliveC2SPacket;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.multiplayer.ConnectScreen;
 
 public final class ServerPacketManager {
-   private static final class_310 mc = class_310.method_1551();
+   private static final MinecraftClient mc = MinecraftClient.getInstance();
    public static boolean deSyncing = false;
    public static boolean releasing = false;
    public static final LinkedBlockingQueue<Object> packets = new LinkedBlockingQueue<>();
@@ -33,8 +33,8 @@ public final class ServerPacketManager {
       }
    }
 
-   public static boolean onPacket(class_2596 packet) {
-      if (mc.field_1755 instanceof class_412) {
+   public static boolean onPacket(Packet packet) {
+      if (mc.currentScreen instanceof ConnectScreen) {
          stop();
          return false;
       } else {
@@ -60,16 +60,16 @@ public final class ServerPacketManager {
       releasing = true;
 
       try {
-         if (mc.method_1562() == null) {
+         if (mc.getNetworkHandler() == null) {
             stop();
             return;
          }
 
          while (true) {
-            class_2596 packet;
+            Packet packet;
             synchronized (packets) {
                Object obj = packets.poll();
-               if (obj instanceof class_2596 incoming) {
+               if (obj instanceof Packet incoming) {
                   packet = incoming;
                } else {
                   if (obj instanceof Runnable runnable) {
@@ -87,9 +87,9 @@ public final class ServerPacketManager {
                }
             }
 
-            if (!(packet instanceof class_2827)) {
+            if (!(packet instanceof KeepAliveC2SPacket)) {
                if (event) {
-                  PacketEvent event1 = new PacketEvent(TransferOrigin.RECEIVE, packet, mc.method_1562().method_48296());
+                  PacketEvent event1 = new PacketEvent(TransferOrigin.RECEIVE, packet, mc.getNetworkHandler().getConnection());
                   Southside.INSTANCE.getEventBus().call(event1);
                   if (event1.isCancelled()) {
                      continue;
@@ -99,7 +99,7 @@ public final class ServerPacketManager {
                MovementUtils.onPacketRec(packet);
 
                try {
-                  packet.method_65081(mc.method_1562());
+                  packet.apply(mc.getNetworkHandler());
                } catch (Exception var6) {
                   var6.printStackTrace();
                }
@@ -112,16 +112,16 @@ public final class ServerPacketManager {
    }
 
    public static void releaseTick(boolean event) {
-      if (mc.method_1562() == null) {
+      if (mc.getNetworkHandler() == null) {
          stop();
       } else {
          releasing = true;
 
          while (true) {
-            class_2596 packet;
+            Packet packet;
             synchronized (packets) {
                Object obj = packets.poll();
-               if (obj instanceof class_2596 incoming) {
+               if (obj instanceof Packet incoming) {
                   packet = incoming;
                } else {
                   if (obj instanceof Runnable runnable) {
@@ -139,13 +139,13 @@ public final class ServerPacketManager {
                }
             }
 
-            if (packet instanceof class_2827) {
+            if (packet instanceof KeepAliveC2SPacket) {
                deSyncTick--;
                break;
             }
 
             if (event) {
-               PacketEvent event1 = new PacketEvent(TransferOrigin.RECEIVE, packet, mc.method_1562().method_48296());
+               PacketEvent event1 = new PacketEvent(TransferOrigin.RECEIVE, packet, mc.getNetworkHandler().getConnection());
                Southside.INSTANCE.getEventBus().call(event1);
                if (event1.isCancelled()) {
                   continue;
@@ -155,7 +155,7 @@ public final class ServerPacketManager {
             MovementUtils.onPacketRec(packet);
 
             try {
-               packet.method_65081(mc.method_1562());
+               packet.apply(mc.getNetworkHandler());
             } catch (Exception var6) {
                var6.printStackTrace();
             }
@@ -165,18 +165,18 @@ public final class ServerPacketManager {
       }
    }
 
-   public static void releaseUntil(Predicate<class_2596> flag, boolean event) {
-      if (mc.method_1562() == null) {
+   public static void releaseUntil(Predicate<Packet> flag, boolean event) {
+      if (mc.getNetworkHandler() == null) {
          stop();
       } else {
          releasing = true;
          boolean stopRelease = false;
 
          while (true) {
-            class_2596 packet;
+            Packet packet;
             synchronized (packets) {
                Object obj = packets.poll();
-               if (obj instanceof class_2596 incoming) {
+               if (obj instanceof Packet incoming) {
                   packet = incoming;
                } else {
                   if (obj instanceof Runnable runnable) {
@@ -193,14 +193,14 @@ public final class ServerPacketManager {
                }
             }
 
-            if (packet instanceof class_2827) {
+            if (packet instanceof KeepAliveC2SPacket) {
                deSyncTick--;
                if (stopRelease) {
                   break;
                }
             } else {
                if (event) {
-                  PacketEvent event1 = new PacketEvent(TransferOrigin.RECEIVE, packet, mc.method_1562().method_48296());
+                  PacketEvent event1 = new PacketEvent(TransferOrigin.RECEIVE, packet, mc.getNetworkHandler().getConnection());
                   Southside.INSTANCE.getEventBus().call(event1);
                   if (event1.isCancelled()) {
                      continue;
@@ -210,7 +210,7 @@ public final class ServerPacketManager {
                MovementUtils.onPacketRec(packet);
 
                try {
-                  packet.method_65081(mc.method_1562());
+                  packet.apply(mc.getNetworkHandler());
                } catch (Exception var8) {
                   var8.printStackTrace();
                }
@@ -225,15 +225,15 @@ public final class ServerPacketManager {
       }
    }
 
-   public static void filteredRelease(Predicate<class_2596> flag, boolean event) {
-      if (mc.method_1562() == null) {
+   public static void filteredRelease(Predicate<Packet> flag, boolean event) {
+      if (mc.getNetworkHandler() == null) {
          stop();
       } else {
          while (true) {
-            class_2596 packet;
+            Packet packet;
             synchronized (packets) {
                Object obj = packets.poll();
-               if (obj instanceof class_2596 incoming) {
+               if (obj instanceof Packet incoming) {
                   packet = incoming;
                } else {
                   if (obj instanceof Runnable runnable) {
@@ -251,11 +251,11 @@ public final class ServerPacketManager {
                }
             }
 
-            if (packet instanceof class_2827) {
+            if (packet instanceof KeepAliveC2SPacket) {
                deSyncTick--;
             } else if (!flag.test(packet)) {
                if (event) {
-                  PacketEvent event1 = new PacketEvent(TransferOrigin.RECEIVE, packet, mc.method_1562().method_48296());
+                  PacketEvent event1 = new PacketEvent(TransferOrigin.RECEIVE, packet, mc.getNetworkHandler().getConnection());
                   Southside.INSTANCE.getEventBus().call(event1);
                   if (event1.isCancelled()) {
                      continue;
@@ -265,7 +265,7 @@ public final class ServerPacketManager {
                MovementUtils.onPacketRec(packet);
 
                try {
-                  packet.method_65081(mc.method_1562());
+                  packet.apply(mc.getNetworkHandler());
                } catch (Exception var7) {
                   var7.printStackTrace();
                }
@@ -276,7 +276,7 @@ public final class ServerPacketManager {
 
    public static void postTick() {
       if (deSyncing) {
-         packets.add(new class_2827(-1337L));
+         packets.add(new KeepAliveC2SPacket(-1337L));
       }
    }
 

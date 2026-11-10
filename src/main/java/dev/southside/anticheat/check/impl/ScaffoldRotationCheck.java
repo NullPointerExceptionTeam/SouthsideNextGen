@@ -3,7 +3,7 @@ package dev.southside.anticheat.check.impl;
 import dev.southside.anticheat.check.NormalCheck;
 import dev.southside.anticheat.player.PlayerData;
 import java.util.LinkedList;
-import net.minecraft.class_1657;
+import net.minecraft.entity.player.PlayerEntity;
 
 public class ScaffoldRotationCheck implements NormalCheck {
    private static final double SIGNIFICANT_YAW_CHANGE = 35.0;
@@ -15,9 +15,9 @@ public class ScaffoldRotationCheck implements NormalCheck {
 
    @Override
    public void onUpdate(PlayerData playerData) {
-      class_1657 player = playerData.getPlayer();
-      int tick = player.field_6012;
-      float currentYaw = player.method_36454();
+      PlayerEntity player = playerData.getPlayer();
+      int tick = player.age;
+      float currentYaw = player.getYaw();
       LinkedList<Float> yawHistory = playerData.getScaffoldYawHistory();
       yawHistory.addLast(currentYaw);
       if (yawHistory.size() > 10) {

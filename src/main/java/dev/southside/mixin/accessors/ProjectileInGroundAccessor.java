@@ -1,11 +1,11 @@
 package dev.southside.mixin.accessors;
 
-import net.minecraft.class_1665;
+import net.minecraft.entity.projectile.PersistentProjectileEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Invoker;
 
-@Mixin({class_1665.class})
+@Mixin({PersistentProjectileEntity.class})
 public interface ProjectileInGroundAccessor {
-   @Invoker("method_65059")
+   @Invoker("isInGround")
    boolean invokeIsInGround();
 }

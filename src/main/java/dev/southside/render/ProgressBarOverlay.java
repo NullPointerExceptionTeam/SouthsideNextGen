@@ -12,10 +12,10 @@ import java.awt.Color;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import net.minecraft.class_2561;
-import net.minecraft.class_327;
-import net.minecraft.class_332;
-import net.minecraft.class_3532;
+import net.minecraft.text.Text;
+import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.util.math.MathHelper;
 import org.jetbrains.annotations.Nullable;
 
 public class ProgressBarOverlay implements MinecraftAccessor {
@@ -72,7 +72,7 @@ public class ProgressBarOverlay implements MinecraftAccessor {
    private synchronized void setStep(long sessionId, int step) {
       ProgressBarOverlay.ProgressEntry entry = this.entries.get(sessionId);
       if (entry != null) {
-         entry.currentStep = class_3532.method_15340(step, 0, entry.totalSteps);
+         entry.currentStep = MathHelper.clamp(step, 0, entry.totalSteps);
          if (entry.currentStep >= entry.totalSteps) {
             entry.completionTimestamp = System.currentTimeMillis();
          } else {
@@ -115,19 +115,19 @@ public class ProgressBarOverlay implements MinecraftAccessor {
          float entryAlpha = 1.0F;
          long age = now - entry.creationTimestamp;
          if (age < 350L) {
-            entryAlpha = class_3532.method_15363((float)age / 350.0F, 0.0F, 1.0F);
+            entryAlpha = MathHelper.clamp((float)age / 350.0F, 0.0F, 1.0F);
          }
 
          if (entry.completionTimestamp > 0L) {
             long fadeAge = now - entry.completionTimestamp;
             long fadeStart = 700L;
             if (fadeAge > fadeStart) {
-               entryAlpha = class_3532.method_15363(1.0F - (float)(fadeAge - fadeStart) / 500.0F, 0.0F, 1.0F);
+               entryAlpha = MathHelper.clamp(1.0F - (float)(fadeAge - fadeStart) / 500.0F, 0.0F, 1.0F);
             }
          }
 
          float targetRatio = entry.totalSteps <= 0 ? 0.0F : (float)entry.currentStep / entry.totalSteps;
-         targetRatio = class_3532.method_15363(targetRatio, 0.0F, 1.0F);
+         targetRatio = MathHelper.clamp(targetRatio, 0.0F, 1.0F);
          entry.animatedRatio.update(targetRatio);
          list.add(
             new ProgressBarOverlay.ProgressSnapshot(
@@ -169,18 +169,18 @@ public class ProgressBarOverlay implements MinecraftAccessor {
    }
 
    private static Color withAlpha(Color c, float alpha) {
-      int a = class_3532.method_15340((int)(c.getAlpha() * alpha), 0, 255);
+      int a = MathHelper.clamp((int)(c.getAlpha() * alpha), 0, 255);
       return new Color(c.getRed(), c.getGreen(), c.getBlue(), a);
    }
 
    private static int withAlpha(int argb, float alpha) {
-      int a = class_3532.method_15340((int)((argb >> 24 & 0xFF) * alpha), 0, 255);
+      int a = MathHelper.clamp((int)((argb >> 24 & 0xFF) * alpha), 0, 255);
       return a << 24 | argb & 16777215;
    }
 
    private void renderModern(List<ProgressBarOverlay.ProgressSnapshot> snapshots, float globalAlpha) {
-      int screenWidth = mc.method_22683().method_4486();
-      int screenHeight = mc.method_22683().method_4502();
+      int screenWidth = mc.getWindow().getScaledWidth();
+      int screenHeight = mc.getWindow().getScaledHeight();
       int count = snapshots.size();
       float scale = ClientSettings.progressBarScale.getValue().floatValue();
       float sPADDING = 8.0F * scale;
@@ -269,43 +269,43 @@ public class ProgressBarOverlay implements MinecraftAccessor {
       }
    }
 
-   private void renderClassic(class_332 context, List<ProgressBarOverlay.ProgressSnapshot> snapshots, float globalAlpha) {
-      class_327 textRenderer = mc.field_1772;
-      int screenWidth = mc.method_22683().method_4486();
-      int screenHeight = mc.method_22683().method_4502();
+   private void renderClassic(DrawContext context, List<ProgressBarOverlay.ProgressSnapshot> snapshots, float globalAlpha) {
+      TextRenderer textRenderer = mc.textRenderer;
+      int screenWidth = mc.getWindow().getScaledWidth();
+      int screenHeight = mc.getWindow().getScaledHeight();
 
       for (ProgressBarOverlay.ProgressSnapshot snap : snapshots) {
          float alpha = globalAlpha * snap.entryAlpha;
          if (!(alpha <= 0.01F)) {
-            int contentWidth = Math.max(120, snap.hasTitle ? textRenderer.method_27525(snap.titleText) : 0);
+            int contentWidth = Math.max(120, snap.hasTitle ? textRenderer.getWidth(snap.titleText) : 0);
             int barX = (screenWidth - contentWidth) / 2;
             int barY = screenHeight / 2 + ClientSettings.progressBarOffset.getValue().intValue() + snap.index * 20;
             float ratio = snap.animatedRatio;
             String percentText = (int)(ratio * 100.0F) + "%";
-            int percentWidth = textRenderer.method_1727(percentText);
+            int percentWidth = textRenderer.getWidth(percentText);
             int textY = barY - 12;
             if (snap.hasTitle) {
-               context.method_51439(textRenderer, snap.titleText, barX, textY, withAlpha(-1, alpha), false);
+               context.drawText(textRenderer, snap.titleText, barX, textY, withAlpha(-1, alpha), false);
             }
 
-            context.method_51439(
-               textRenderer, class_2561.method_43470(percentText), barX + contentWidth - percentWidth, textY, withAlpha(-3355444, alpha), false
+            context.drawText(
+               textRenderer, Text.literal(percentText), barX + contentWidth - percentWidth, textY, withAlpha(-3355444, alpha), false
             );
             this.drawClassicBar(context, ratio, barX, barY, contentWidth, alpha);
          }
       }
    }
 
-   private void drawClassicBar(class_332 context, float ratio, int x, int y, int width, float alpha) {
+   private void drawClassicBar(DrawContext context, float ratio, int x, int y, int width, float alpha) {
       int filledWidth = (int)Math.ceil(width * ratio);
       int borderColor = withAlpha(1627389951, alpha);
       int progressColor = withAlpha(-11552513, alpha);
-      context.method_25294(x - 1, y - 1, x + width + 1, y, borderColor);
-      context.method_25294(x - 1, y + 2, x + width + 1, y + 2 + 1, borderColor);
-      context.method_25294(x - 1, y, x, y + 2, borderColor);
-      context.method_25294(x + width, y, x + width + 1, y + 2, borderColor);
+      context.fill(x - 1, y - 1, x + width + 1, y, borderColor);
+      context.fill(x - 1, y + 2, x + width + 1, y + 2 + 1, borderColor);
+      context.fill(x - 1, y, x, y + 2, borderColor);
+      context.fill(x + width, y, x + width + 1, y + 2, borderColor);
       if (filledWidth > 0) {
-         context.method_25294(x, y, x + filledWidth, y + 2, progressColor);
+         context.fill(x, y, x + filledWidth, y + 2, progressColor);
       }
    }
 
@@ -314,7 +314,7 @@ public class ProgressBarOverlay implements MinecraftAccessor {
       final int totalSteps;
       int currentStep;
       final String title;
-      final class_2561 titleText;
+      final Text titleText;
       final boolean hasTitle;
       final long creationTimestamp;
       long completionTimestamp;
@@ -328,11 +328,11 @@ public class ProgressBarOverlay implements MinecraftAccessor {
          this.completionTimestamp = -1L;
          if (title != null && !title.isBlank()) {
             this.title = title.trim();
-            this.titleText = class_2561.method_43470(this.title);
+            this.titleText = Text.literal(this.title);
             this.hasTitle = true;
          } else {
             this.title = "";
-            this.titleText = class_2561.method_43473();
+            this.titleText = Text.empty();
             this.hasTitle = false;
          }
       }
@@ -371,7 +371,7 @@ public class ProgressBarOverlay implements MinecraftAccessor {
    }
 
    private record ProgressSnapshot(
-      long sessionId, int totalSteps, int currentStep, String title, class_2561 titleText, boolean hasTitle, int index, float entryAlpha, float animatedRatio
+      long sessionId, int totalSteps, int currentStep, String title, Text titleText, boolean hasTitle, int index, float entryAlpha, float animatedRatio
    ) {
    }
 }

@@ -4,34 +4,34 @@ import dev.southside.MinecraftAccessor;
 import dev.southside.utils.misc.Pair;
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.class_2189;
-import net.minecraft.class_2246;
-import net.minecraft.class_2248;
-import net.minecraft.class_2281;
-import net.minecraft.class_2338;
-import net.minecraft.class_238;
-import net.minecraft.class_2399;
-import net.minecraft.class_2404;
-import net.minecraft.class_243;
-import net.minecraft.class_2530;
-import net.minecraft.class_2680;
-import net.minecraft.class_310;
-import net.minecraft.class_3865;
+import net.minecraft.block.AirBlock;
+import net.minecraft.block.Blocks;
+import net.minecraft.block.Block;
+import net.minecraft.block.ChestBlock;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
+import net.minecraft.block.LadderBlock;
+import net.minecraft.block.FluidBlock;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.block.TntBlock;
+import net.minecraft.block.BlockState;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.block.FurnaceBlock;
 
 public final class BlockUtils {
    public static boolean isSolidBlockUnder(double height) {
       for (double y = 0.0; y < height; y++) {
-         class_2338 pos = class_2338.method_49637(
-            MinecraftAccessor.mc.field_1724.method_23317(), MinecraftAccessor.mc.field_1724.method_23318() - y, MinecraftAccessor.mc.field_1724.method_23321()
+         BlockPos pos = BlockPos.ofFloored(
+            MinecraftAccessor.mc.player.getX(), MinecraftAccessor.mc.player.getY() - y, MinecraftAccessor.mc.player.getZ()
          );
-         class_2680 state = MinecraftAccessor.mc.field_1687.method_8320(pos);
-         if (!state.method_26215()
+         BlockState state = MinecraftAccessor.mc.world.getBlockState(pos);
+         if (!state.isAir()
             && !MinecraftAccessor.mc
-               .field_1687
-               .method_20812(
-                  MinecraftAccessor.mc.field_1724,
-                  new class_238(
-                     pos.method_10263(), pos.method_10264(), pos.method_10260(), pos.method_10263() + 1, pos.method_10264() + 1, pos.method_10260() + 1
+               .world
+               .getBlockCollisions(
+                  MinecraftAccessor.mc.player,
+                  new Box(
+                     pos.getX(), pos.getY(), pos.getZ(), pos.getX() + 1, pos.getY() + 1, pos.getZ() + 1
                   )
                )
                .iterator()
@@ -43,45 +43,45 @@ public final class BlockUtils {
       return false;
    }
 
-   public static boolean isValidBlock(class_243 block) {
+   public static boolean isValidBlock(Vec3d block) {
       return isValidBlock(
-         MinecraftAccessor.mc.field_1687.method_8320(new class_2338((int)block.field_1352, (int)block.field_1351, (int)block.field_1350)).method_26204()
+         MinecraftAccessor.mc.world.getBlockState(new BlockPos((int)block.x, (int)block.y, (int)block.z)).getBlock()
       );
    }
 
-   public static boolean isValidBlock(class_2248 block) {
-      return !(block instanceof class_2404)
-         && !(block instanceof class_2189)
-         && !(block instanceof class_2281)
-         && !(block instanceof class_3865)
-         && !(block instanceof class_2399)
-         && !(block instanceof class_2530);
+   public static boolean isValidBlock(Block block) {
+      return !(block instanceof FluidBlock)
+         && !(block instanceof AirBlock)
+         && !(block instanceof ChestBlock)
+         && !(block instanceof FurnaceBlock)
+         && !(block instanceof LadderBlock)
+         && !(block instanceof TntBlock);
    }
 
    public static boolean isStandingSafely() {
-      if (MinecraftAccessor.mc.field_1724 != null && MinecraftAccessor.mc.field_1687 != null) {
-         class_243 playerPos = MinecraftAccessor.mc.field_1724.method_19538();
-         class_2338 centralPointBehind = new class_2338(
-            (int)Math.floor(playerPos.field_1352 + Math.sin(Math.toRadians(MinecraftAccessor.mc.field_1724.method_36454())) * 0.8),
-            (int)Math.floor(playerPos.field_1351),
-            (int)Math.floor(playerPos.field_1350 + -Math.cos(Math.toRadians(MinecraftAccessor.mc.field_1724.method_36454())) * 0.8)
+      if (MinecraftAccessor.mc.player != null && MinecraftAccessor.mc.world != null) {
+         Vec3d playerPos = MinecraftAccessor.mc.player.getPos();
+         BlockPos centralPointBehind = new BlockPos(
+            (int)Math.floor(playerPos.x + Math.sin(Math.toRadians(MinecraftAccessor.mc.player.getYaw())) * 0.8),
+            (int)Math.floor(playerPos.y),
+            (int)Math.floor(playerPos.z + -Math.cos(Math.toRadians(MinecraftAccessor.mc.player.getYaw())) * 0.8)
          );
-         if (MinecraftAccessor.mc.field_1687.method_8320(centralPointBehind).method_26204() == class_2246.field_10164) {
+         if (MinecraftAccessor.mc.world.getBlockState(centralPointBehind).getBlock() == Blocks.LAVA) {
             return false;
          } else {
-            class_2338 pos = centralPointBehind.method_10074();
-            class_2680 state = MinecraftAccessor.mc.field_1687.method_8320(pos);
-            if (state.method_26204() == class_2246.field_10164) {
+            BlockPos pos = centralPointBehind.down();
+            BlockState state = MinecraftAccessor.mc.world.getBlockState(pos);
+            if (state.getBlock() == Blocks.LAVA) {
                return false;
             } else {
-               if (state.method_26215()) {
-                  if (pos.method_10264() < MinecraftAccessor.mc.field_1687.method_31607()) {
+               if (state.isAir()) {
+                  if (pos.getY() < MinecraftAccessor.mc.world.getBottomY()) {
                      return false;
                   }
 
-                  if (MinecraftAccessor.mc.field_1687.method_8320(pos.method_10074()).method_26215()) {
-                     return pos.method_10074().method_10264() >= MinecraftAccessor.mc.field_1687.method_31607()
-                        && !MinecraftAccessor.mc.field_1687.method_8320(pos.method_10074().method_10074()).method_26215();
+                  if (MinecraftAccessor.mc.world.getBlockState(pos.down()).isAir()) {
+                     return pos.down().getY() >= MinecraftAccessor.mc.world.getBottomY()
+                        && !MinecraftAccessor.mc.world.getBlockState(pos.down().down()).isAir();
                   }
                }
 
@@ -93,17 +93,17 @@ public final class BlockUtils {
       }
    }
 
-   public static List<Pair<class_2338, class_2248>> getBlocksInRadius(int radius) {
-      ArrayList<Pair<class_2338, class_2248>> blocks = new ArrayList<>();
-      if (class_310.method_1551().field_1687 != null && class_310.method_1551().field_1724 != null) {
+   public static List<Pair<BlockPos, Block>> getBlocksInRadius(int radius) {
+      ArrayList<Pair<BlockPos, Block>> blocks = new ArrayList<>();
+      if (MinecraftClient.getInstance().world != null && MinecraftClient.getInstance().player != null) {
          for (int x = -radius; x <= radius; x++) {
             for (int y = -radius; y <= radius; y++) {
                for (int z = -radius; z <= radius; z++) {
-                  double x1 = class_310.method_1551().field_1724.method_23317();
-                  double y1 = class_310.method_1551().field_1724.method_23318();
-                  double z1 = class_310.method_1551().field_1724.method_23321();
-                  class_2338 blockPos = new class_2338((int)(x + x1), (int)(y + y1), (int)(z + z1));
-                  blocks.add(new Pair<>(blockPos, class_310.method_1551().field_1687.method_8320(blockPos).method_26204()));
+                  double x1 = MinecraftClient.getInstance().player.getX();
+                  double y1 = MinecraftClient.getInstance().player.getY();
+                  double z1 = MinecraftClient.getInstance().player.getZ();
+                  BlockPos blockPos = new BlockPos((int)(x + x1), (int)(y + y1), (int)(z + z1));
+                  blocks.add(new Pair<>(blockPos, MinecraftClient.getInstance().world.getBlockState(blockPos).getBlock()));
                }
             }
          }

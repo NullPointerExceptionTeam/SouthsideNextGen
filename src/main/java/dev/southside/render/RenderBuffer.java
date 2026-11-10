@@ -1,22 +1,22 @@
 package dev.southside.render;
 
-import net.minecraft.class_4587;
-import net.minecraft.class_4597;
-import net.minecraft.class_9799;
-import net.minecraft.class_4597.class_4598;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.util.BufferAllocator;
+import net.minecraft.client.render.VertexConsumerProvider.Immediate;
 import org.joml.Matrix4f;
 
 public class RenderBuffer {
-   private final class_4598 mConsumers;
+   private final Immediate mConsumers;
    private Matrix4f mMatrix = new Matrix4f().identity();
 
    public RenderBuffer(int bufferSize) {
-      class_9799 allocator = new class_9799(bufferSize);
-      this.mConsumers = class_4597.method_22991(allocator);
+      BufferAllocator allocator = new BufferAllocator(bufferSize);
+      this.mConsumers = VertexConsumerProvider.immediate(allocator);
    }
 
-   public RenderBuffer use(class_4587 stack) {
-      return this.use(stack.method_23760().method_23761());
+   public RenderBuffer use(MatrixStack stack) {
+      return this.use(stack.peek().getPositionMatrix());
    }
 
    public RenderBuffer use(Matrix4f mat) {
@@ -28,7 +28,7 @@ public class RenderBuffer {
       return this.mMatrix;
    }
 
-   public class_4598 getVertexConsumer() {
+   public Immediate getVertexConsumer() {
       return this.mConsumers;
    }
 }

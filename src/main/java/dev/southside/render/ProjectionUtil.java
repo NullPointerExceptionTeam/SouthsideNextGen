@@ -5,15 +5,15 @@ import dev.southside.compat.RenderProjection;
 import dev.southside.module.impl.player.Blink;
 import java.util.Arrays;
 import java.util.List;
-import net.minecraft.class_1297;
-import net.minecraft.class_2248;
-import net.minecraft.class_2338;
-import net.minecraft.class_238;
-import net.minecraft.class_241;
-import net.minecraft.class_243;
-import net.minecraft.class_3959;
-import net.minecraft.class_3965;
-import net.minecraft.class_4184;
+import net.minecraft.entity.Entity;
+import net.minecraft.block.Block;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec2f;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.RaycastContext;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.client.render.Camera;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 import org.joml.Vector3d;
@@ -39,86 +39,86 @@ public class ProjectionUtil {
         ProjectionUtil.world.set((Matrix4fc)world);
         ProjectionUtil.model.set((Matrix4fc)model);
         ProjectionUtil.projection.set((Matrix4fc)projection);
-        camera.set((Vector3fc)MinecraftAccessor.mc.field_1773.method_19418().method_19326().method_46409());
+        camera.set((Vector3fc)MinecraftAccessor.mc.gameRenderer.getCamera().getPos().toVector3f());
         cameraNegated.set((Vector3dc)camera);
         cameraNegated.negate();
-        windowScale = MinecraftAccessor.mc.method_22683().method_4495();
+        windowScale = MinecraftAccessor.mc.getWindow().getScaleFactor();
     }
 
-    public static class_241 entityScreenPos(class_1297 entity, float partialTicks) {
-        class_243 pos = entity.method_30950(partialTicks);
-        double width = ((double)entity.method_17681() + 0.2) / 2.0;
-        double height = (double)entity.method_17682() + (entity.method_5715() ? -0.3 : 0.2) + 0.05;
-        return ProjectionUtil.getVec2f(pos.field_1352, pos.field_1351, pos.field_1350, width, height);
+    public static Vec2f entityScreenPos(Entity entity, float partialTicks) {
+        Vec3d pos = entity.getLerpedPos(partialTicks);
+        double width = ((double)entity.getWidth() + 0.2) / 2.0;
+        double height = (double)entity.getHeight() + (entity.isSneaking() ? -0.3 : 0.2) + 0.05;
+        return ProjectionUtil.getVec2f(pos.x, pos.y, pos.z, width, height);
     }
 
-    public static class_241 worldScreenPos(class_243 pos) {
-        double x = pos.field_1352;
-        double y = pos.field_1351;
-        double z = pos.field_1350;
+    public static Vec2f worldScreenPos(Vec3d pos) {
+        double x = pos.x;
+        double y = pos.y;
+        double z = pos.z;
         return ProjectionUtil.getVec2f(x, y, z, 0.0, 0.0);
     }
 
-    private static class_241 getVec2f(double x, double y, double z, double width, double height) {
-        class_238 aabb = new class_238(x - width, y, z - width, x + width, y + height, z + width);
-        List<class_243> vectors = Arrays.asList(new class_243(aabb.field_1323, aabb.field_1322, aabb.field_1321), new class_243(aabb.field_1323, aabb.field_1325, aabb.field_1321), new class_243(aabb.field_1320, aabb.field_1322, aabb.field_1321), new class_243(aabb.field_1320, aabb.field_1325, aabb.field_1321), new class_243(aabb.field_1323, aabb.field_1322, aabb.field_1324), new class_243(aabb.field_1323, aabb.field_1325, aabb.field_1324), new class_243(aabb.field_1320, aabb.field_1322, aabb.field_1324), new class_243(aabb.field_1320, aabb.field_1325, aabb.field_1324));
+    private static Vec2f getVec2f(double x, double y, double z, double width, double height) {
+        Box aabb = new Box(x - width, y, z - width, x + width, y + height, z + width);
+        List<Vec3d> vectors = Arrays.asList(new Vec3d(aabb.minX, aabb.minY, aabb.minZ), new Vec3d(aabb.minX, aabb.maxY, aabb.minZ), new Vec3d(aabb.maxX, aabb.minY, aabb.minZ), new Vec3d(aabb.maxX, aabb.maxY, aabb.minZ), new Vec3d(aabb.minX, aabb.minY, aabb.maxZ), new Vec3d(aabb.minX, aabb.maxY, aabb.maxZ), new Vec3d(aabb.maxX, aabb.minY, aabb.maxZ), new Vec3d(aabb.maxX, aabb.maxY, aabb.maxZ));
         Vector4d position = null;
-        for (class_243 vector : vectors) {
+        for (Vec3d vector : vectors) {
             vector = ProjectionUtil.project(vector);
-            if (!(vector.field_1350 >= 0.0) || !(vector.field_1350 < 1.0)) continue;
+            if (!(vector.z >= 0.0) || !(vector.z < 1.0)) continue;
             if (position == null) {
-                position = new Vector4d(vector.field_1352, vector.field_1351, vector.field_1352, vector.field_1351);
+                position = new Vector4d(vector.x, vector.y, vector.x, vector.y);
             }
-            position = new Vector4d(Math.min(vector.field_1352, position.x()), Math.min(vector.field_1351, position.y()), Math.max(vector.field_1352, position.z()), Math.max(vector.field_1351, position.w()));
+            position = new Vector4d(Math.min(vector.x, position.x()), Math.min(vector.y, position.y()), Math.max(vector.x, position.z()), Math.max(vector.y, position.w()));
         }
         if (position == null) {
             return null;
         }
-        return new class_241((float)(position.x() + (position.z() - position.x()) / 2.0), (float)(position.y() - 2.0));
+        return new Vec2f((float)(position.x() + (position.z() - position.x()) / 2.0), (float)(position.y() - 2.0));
     }
 
-    public static class_243 project(class_243 pos) {
-        class_4184 camera = MinecraftAccessor.mc.method_1561().field_4686;
-        int displayHeight = MinecraftAccessor.mc.method_22683().method_4506();
+    public static Vec3d project(Vec3d pos) {
+        Camera camera = MinecraftAccessor.mc.getEntityRenderDispatcher().camera;
+        int displayHeight = MinecraftAccessor.mc.getWindow().getFramebufferHeight();
         int[] viewport = new int[4];
         GL11.glGetIntegerv((int)2978, (int[])viewport);
         Vector3f target = new Vector3f();
-        double deltaX = pos.field_1352 - camera.method_19326().field_1352;
-        double deltaY = pos.field_1351 - camera.method_19326().field_1351;
-        double deltaZ = pos.field_1350 - camera.method_19326().field_1350;
+        double deltaX = pos.x - camera.getPos().x;
+        double deltaY = pos.y - camera.getPos().y;
+        double deltaZ = pos.z - camera.getPos().z;
         Vector4f transformedCoordinates = new Vector4f((float)deltaX, (float)deltaY, (float)deltaZ, 1.0f).mul((Matrix4fc)world);
         Matrix4f matrixProj = new Matrix4f((Matrix4fc)projection);
         Matrix4f matrixModel = new Matrix4f((Matrix4fc)model);
         RenderProjection.projectVisible(matrixProj.mul((Matrix4fc)matrixModel), transformedCoordinates.x(), transformedCoordinates.y(), transformedCoordinates.z(), viewport, target);
-        return new class_243((double)target.x / windowScale, (double)((float)displayHeight - target.y) / windowScale, (double)target.z);
+        return new Vec3d((double)target.x / windowScale, (double)((float)displayHeight - target.y) / windowScale, (double)target.z);
     }
 
-    public static boolean predictBox(double posX, double posY, double posZ, double motionX, double motionY, double motionZ, double motionSlowdown, double size, double gravity, List<class_243> pos, float boxWidth, float boxHeight) {
-        class_3965 landingPosition = null;
+    public static boolean predictBox(double posX, double posY, double posZ, double motionX, double motionY, double motionZ, double motionSlowdown, double size, double gravity, List<Vec3d> pos, float boxWidth, float boxHeight) {
+        BlockHitResult landingPosition = null;
         boolean hasLanded = false;
         int ticks = 0;
         int ticksReleased = 0;
         int posCount = pos.size();
         while (!hasLanded && posY > -60.0 && ticks < pos.size()) {
-            class_243 posBefore = new class_243(posX, posY, posZ);
-            class_243 posAfter = new class_243(posX + motionX, posY + motionY, posZ + motionZ);
-            class_3959 raycastContext = new class_3959(posBefore, posAfter, class_3959.class_3960.field_17558, class_3959.class_242.field_1348, (class_1297)MinecraftAccessor.mc.field_1724);
-            if (MinecraftAccessor.mc.field_1687 != null) {
-                landingPosition = MinecraftAccessor.mc.field_1687.method_17742(raycastContext);
+            Vec3d posBefore = new Vec3d(posX, posY, posZ);
+            Vec3d posAfter = new Vec3d(posX + motionX, posY + motionY, posZ + motionZ);
+            RaycastContext raycastContext = new RaycastContext(posBefore, posAfter, RaycastContext.ShapeType.COLLIDER, RaycastContext.FluidHandling.NONE, (Entity)MinecraftAccessor.mc.player);
+            if (MinecraftAccessor.mc.world != null) {
+                landingPosition = MinecraftAccessor.mc.world.raycast(raycastContext);
             }
-            posBefore = new class_243(posX, posY, posZ);
-            posAfter = new class_243(posX + motionX, posY + motionY, posZ + motionZ);
+            posBefore = new Vec3d(posX, posY, posZ);
+            posAfter = new Vec3d(posX + motionX, posY + motionY, posZ + motionZ);
             if (landingPosition != null) {
                 return false;
             }
-            class_238 arrowBox = new class_238(posX - size, posY - size, posZ - size, posX + size, posY + size, posZ + size);
-            class_243 vec = pos.get(ticksReleased);
-            if (arrowBox.method_994(new class_238(vec.field_1352 - (double)boxWidth, vec.field_1351 - (double)(boxHeight / 2.0f), vec.field_1350 - (double)boxWidth, vec.field_1352 + (double)boxWidth, vec.field_1351 + (double)boxHeight, vec.field_1350 + (double)boxWidth))) {
+            Box arrowBox = new Box(posX - size, posY - size, posZ - size, posX + size, posY + size, posZ + size);
+            Vec3d vec = pos.get(ticksReleased);
+            if (arrowBox.intersects(new Box(vec.x - (double)boxWidth, vec.y - (double)(boxHeight / 2.0f), vec.z - (double)boxWidth, vec.x + (double)boxWidth, vec.y + (double)boxHeight, vec.z + (double)boxWidth))) {
                 return true;
             }
-            class_2338 var35 = new class_2338((int)(posX += motionX), (int)(posY += motionY), (int)(posZ += motionZ));
-            class_2248 var36 = MinecraftAccessor.mc.field_1687.method_8320(var35).method_26204();
-            if (var36.method_9564().method_51176()) {
+            BlockPos var35 = new BlockPos((int)(posX += motionX), (int)(posY += motionY), (int)(posZ += motionZ));
+            Block var36 = MinecraftAccessor.mc.world.getBlockState(var35).getBlock();
+            if (var36.getDefaultState().isLiquid()) {
                 motionX *= 0.6;
                 motionY *= 0.6;
                 motionZ *= 0.6;

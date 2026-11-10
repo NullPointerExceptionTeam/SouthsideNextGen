@@ -2,16 +2,16 @@ package dev.southside.mixin.render;
 
 import dev.southside.Southside;
 import dev.southside.module.impl.render.ViewClip;
-import net.minecraft.class_4184;
+import net.minecraft.client.render.Camera;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin({class_4184.class})
+@Mixin({Camera.class})
 public class MixinCamera {
    @Inject(
-      method = {"method_19318(F)F"},
+      method = {"clipToSpace(F)F"},
       at = {@At("HEAD")},
       cancellable = true
    )

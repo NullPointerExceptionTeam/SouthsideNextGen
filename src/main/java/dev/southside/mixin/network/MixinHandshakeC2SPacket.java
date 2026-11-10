@@ -1,8 +1,8 @@
 package dev.southside.mixin.network;
 
-import net.minecraft.class_2889;
+import net.minecraft.network.packet.c2s.handshake.HandshakeC2SPacket;
 import org.spongepowered.asm.mixin.Mixin;
 
-@Mixin({class_2889.class})
+@Mixin({HandshakeC2SPacket.class})
 public abstract class MixinHandshakeC2SPacket {
 }

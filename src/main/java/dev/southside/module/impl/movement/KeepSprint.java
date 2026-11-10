@@ -4,8 +4,8 @@ import dev.southside.Southside;
 import dev.southside.module.Category;
 import dev.southside.module.Module;
 import dev.southside.utils.player.EnchantmentUtils;
-import net.minecraft.class_1893;
-import net.minecraft.class_310;
+import net.minecraft.enchantment.Enchantments;
+import net.minecraft.client.MinecraftClient;
 
 public class KeepSprint extends Module {
    public KeepSprint() {
@@ -13,9 +13,9 @@ public class KeepSprint extends Module {
    }
 
    public static boolean canKeepSprint() {
-      return mc.field_1724 != null
+      return mc.player != null
          && Southside.INSTANCE.getModuleManager().get(KeepSprint.class).isEnabled()
-         && EnchantmentUtils.getLevel(class_1893.field_9121, class_310.method_1551().field_1724.method_6047()) <= 0
-         && EnchantmentUtils.getLevel(class_1893.field_9121, class_310.method_1551().field_1724.method_6079()) <= 0;
+         && EnchantmentUtils.getLevel(Enchantments.KNOCKBACK, MinecraftClient.getInstance().player.getMainHandStack()) <= 0
+         && EnchantmentUtils.getLevel(Enchantments.KNOCKBACK, MinecraftClient.getInstance().player.getOffHandStack()) <= 0;
    }
 }

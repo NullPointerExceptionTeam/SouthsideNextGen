@@ -3,12 +3,12 @@ package cc.polyfrost.oneconfig.platform.impl;
 import cc.polyfrost.oneconfig.libs.universal.UMinecraft;
 import cc.polyfrost.oneconfig.libs.universal.UScreen;
 import cc.polyfrost.oneconfig.platform.GuiPlatform;
-import net.minecraft.class_1102;
-import net.minecraft.class_3417;
-import net.minecraft.class_3419;
-import net.minecraft.class_408;
-import net.minecraft.class_437;
-import net.minecraft.class_5819;
+import net.minecraft.client.sound.AbstractSoundInstance;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.client.gui.screen.ChatScreen;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.util.math.random.Random;
 
 public class GuiPlatformImpl implements GuiPlatform {
    @Override
@@ -18,22 +18,22 @@ public class GuiPlatformImpl implements GuiPlatform {
 
    @Override
    public void setCurrentScreen(Object screen) {
-      UScreen.displayScreen((class_437)screen);
+      UScreen.displayScreen((Screen)screen);
    }
 
    @Override
    public boolean isInChat() {
-      return this.getCurrentScreen() instanceof class_408;
+      return this.getCurrentScreen() instanceof ChatScreen;
    }
 
    @Override
    public boolean isInDebug() {
-      return (Boolean)UMinecraft.getSettings().method_42442().method_41753();
+      return (Boolean)UMinecraft.getSettings().getReducedDebugInfo().getValue();
    }
 
    @Override
    public void playClickSound() {
-      var soundInstance = new class_1102(class_3417.field_14791, class_3419.field_15248, class_5819.method_43049(114514L)) {};
-      UMinecraft.getMinecraft().method_1483().method_4873(soundInstance);
+      var soundInstance = new AbstractSoundInstance(SoundEvents.BLOCK_STONE_BUTTON_CLICK_ON, SoundCategory.PLAYERS, Random.create(114514L)) {};
+      UMinecraft.getMinecraft().getSoundManager().play(soundInstance);
    }
 }

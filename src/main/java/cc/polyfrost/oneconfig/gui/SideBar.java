@@ -18,7 +18,7 @@ import cc.polyfrost.oneconfig.utils.color.ColorPalette;
 import cc.polyfrost.oneconfig.utils.gui.GuiUtils;
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.class_437;
+import net.minecraft.client.gui.screen.Screen;
 
 public class SideBar {
    private final List<BasicButton> buttons = new ArrayList<BasicButton>() {
@@ -52,7 +52,7 @@ public class SideBar {
       }
 
       this.buttons.get(8).setClickAction(new ModConfigPage(Preferences.getInstance().mod.defaultPage, true));
-      this.hudButton.setClickAction(() -> GuiUtils.displayScreen((class_437)(new HudGui())));
+      this.hudButton.setClickAction(() -> GuiUtils.displayScreen((Screen)(new HudGui())));
       this.closeButton.setClickAction(GuiUtils::closeScreen);
 
       for (BasicButton button : this.buttons) {

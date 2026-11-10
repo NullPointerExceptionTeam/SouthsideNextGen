@@ -7,32 +7,32 @@ import dev.southside.event.events.TickEvent;
 import dev.southside.orbit.EventHandler;
 import dev.southside.utils.misc.ClientUtils;
 import java.util.Optional;
-import net.minecraft.class_243;
-import net.minecraft.class_2596;
-import net.minecraft.class_2664;
-import net.minecraft.class_2743;
-import net.minecraft.class_310;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.s2c.play.ExplosionS2CPacket;
+import net.minecraft.network.packet.s2c.play.EntityVelocityUpdateS2CPacket;
+import net.minecraft.client.MinecraftClient;
 
 public final class MovementUtils {
    public static final MovementUtils INSTANCE = new MovementUtils();
    private static int noMoveTicks = 0;
    public static boolean cancelMove = false;
-   public static class_243 motion;
+   public static Vec3d motion;
    private static float fallDistance = 0.0F;
    private static int cancelTicks = 0;
-   private static class_310 mc = class_310.method_1551();
+   private static MinecraftClient mc = MinecraftClient.getInstance();
    static boolean shouldRelease;
    private static boolean holdInputRequested = false;
 
    public static void cancelMove() {
       if (!ClientUtils.nullCheck()) {
-         if (mc.field_1724.method_18798() != null) {
+         if (mc.player.getVelocity() != null) {
             if (!shouldRelease) {
-               if (mc.field_1724 != null) {
+               if (mc.player != null) {
                   if (!cancelMove) {
                      cancelMove = true;
-                     motion = mc.field_1724.method_18798();
-                     fallDistance = mc.field_1724.field_6017;
+                     motion = mc.player.getVelocity();
+                     fallDistance = mc.player.fallDistance;
                   }
                }
             }
@@ -47,23 +47,23 @@ public final class MovementUtils {
    }
 
    public static double direction() {
-      float rotationYaw = mc.field_1724.method_36454();
-      if (mc.field_1724.field_6250 < 0.0F) {
+      float rotationYaw = mc.player.getYaw();
+      if (mc.player.forwardSpeed < 0.0F) {
          rotationYaw += 180.0F;
       }
 
       float forward = 1.0F;
-      if (mc.field_1724.field_6250 < 0.0F) {
+      if (mc.player.forwardSpeed < 0.0F) {
          forward = -0.5F;
-      } else if (mc.field_1724.field_6250 > 0.0F) {
+      } else if (mc.player.forwardSpeed > 0.0F) {
          forward = 0.5F;
       }
 
-      if (mc.field_1724.field_6212 > 0.0F) {
+      if (mc.player.sidewaysSpeed > 0.0F) {
          rotationYaw -= 70.0F * forward;
       }
 
-      if (mc.field_1724.field_6212 < 0.0F) {
+      if (mc.player.sidewaysSpeed < 0.0F) {
          rotationYaw += 70.0F * forward;
       }
 
@@ -72,12 +72,12 @@ public final class MovementUtils {
 
    public static void resetMove() {
       if (!ClientUtils.nullCheck()) {
-         if (mc.field_1724.method_18798() != null && motion != null) {
+         if (mc.player.getVelocity() != null && motion != null) {
             cancelMove = false;
             noMoveTicks = 0;
-            mc.field_1724.method_18799(motion);
+            mc.player.setVelocity(motion);
             motion = null;
-            mc.field_1724.field_6017 = fallDistance;
+            mc.player.fallDistance = fallDistance;
          }
       }
    }
@@ -95,15 +95,15 @@ public final class MovementUtils {
    @EventHandler
    public void onUpdate(PlayerUpdateEvent event) {
       if (!ClientUtils.nullCheck()) {
-         if (mc.field_1724.method_18798() != null) {
+         if (mc.player.getVelocity() != null) {
             if (cancelTicks > 0) {
                cancelTicks--;
                cancelMove();
             }
 
             if (cancelMove) {
-               mc.field_1724.method_18799(motion);
-               mc.field_1724.field_6017 = fallDistance;
+               mc.player.setVelocity(motion);
+               mc.player.fallDistance = fallDistance;
             }
          }
       }
@@ -112,14 +112,14 @@ public final class MovementUtils {
    @EventHandler
    public void onTick(TickEvent event) {
       if (!ClientUtils.nullCheck()) {
-         if (mc.field_1724.method_18798() != null) {
+         if (mc.player.getVelocity() != null) {
             if (event.getState() == Stage.PRE) {
                shouldRelease = false;
                resetMove();
             } else {
                if (cancelMove) {
-                  mc.field_1724.method_18799(motion);
-                  mc.field_1724.field_6017 = fallDistance;
+                  mc.player.setVelocity(motion);
+                  mc.player.fallDistance = fallDistance;
                }
             }
          }
@@ -129,7 +129,7 @@ public final class MovementUtils {
    @EventHandler
    public void onMove(EntityMoveEvent event) {
       if (!ClientUtils.nullCheck()) {
-         if (mc.field_1724.method_18798() != null) {
+         if (mc.player.getVelocity() != null) {
             if (cancelMove) {
                event.setCancelled(true);
             }
@@ -137,16 +137,16 @@ public final class MovementUtils {
       }
    }
 
-   public static void onPacketRec(class_2596 rec) {
+   public static void onPacketRec(Packet rec) {
       if (!ClientUtils.nullCheck()) {
-         if (mc.field_1724.method_18798() != null) {
-            if (rec instanceof class_2743 packet && cancelMove && mc.field_1724.method_5628() == packet.method_11818()) {
-               motion = new class_243(packet.method_11815() / 8000.0, packet.method_11816() / 8000.0, packet.method_11819() / 8000.0);
+         if (mc.player.getVelocity() != null) {
+            if (rec instanceof EntityVelocityUpdateS2CPacket packet && cancelMove && mc.player.getId() == packet.getEntityId()) {
+               motion = new Vec3d(packet.getVelocityX() / 8000.0, packet.getVelocityY() / 8000.0, packet.getVelocityZ() / 8000.0);
             }
 
-            if (rec instanceof class_2664 packet && cancelMove) {
-               Optional<class_243> velo = packet.comp_2884();
-               velo.ifPresent(vec3d -> motion.method_1031(vec3d.field_1352, vec3d.field_1351, vec3d.field_1350));
+            if (rec instanceof ExplosionS2CPacket packet && cancelMove) {
+               Optional<Vec3d> velo = packet.playerKnockback();
+               velo.ifPresent(vec3d -> motion.add(vec3d.x, vec3d.y, vec3d.z));
             }
          }
       }

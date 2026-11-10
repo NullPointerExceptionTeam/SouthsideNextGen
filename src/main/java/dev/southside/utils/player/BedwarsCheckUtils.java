@@ -4,16 +4,16 @@ import dev.southside.event.Stage;
 import dev.southside.event.events.TickEvent;
 import dev.southside.event.events.WorldEvent;
 import dev.southside.orbit.EventHandler;
-import net.minecraft.class_1802;
-import net.minecraft.class_2244;
-import net.minecraft.class_2338;
-import net.minecraft.class_310;
+import net.minecraft.item.Items;
+import net.minecraft.block.BedBlock;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.client.MinecraftClient;
 
 public class BedwarsCheckUtils {
    public static final BedwarsCheckUtils INSTANCE = new BedwarsCheckUtils();
-   private static final class_310 mc = class_310.method_1551();
+   private static final MinecraftClient mc = MinecraftClient.getInstance();
    private static final int SCAN_RADIUS = 20;
-   private class_2338 selfBed = null;
+   private BlockPos selfBed = null;
 
    private BedwarsCheckUtils() {
    }
@@ -21,25 +21,25 @@ public class BedwarsCheckUtils {
    @EventHandler
    private void onTick(TickEvent event) {
       if (event.getState() == Stage.PRE) {
-         if (mc.field_1724 != null && mc.field_1687 != null) {
+         if (mc.player != null && mc.world != null) {
             if (this.selfBed == null) {
                boolean hasWoodenSword = false;
 
                for (int i = 0; i < 9; i++) {
-                  if (mc.field_1724.method_31548().method_5438(i).method_7909() == class_1802.field_8091) {
+                  if (mc.player.getInventory().getStack(i).getItem() == Items.WOODEN_SWORD) {
                      hasWoodenSword = true;
                      break;
                   }
                }
 
                if (hasWoodenSword) {
-                  class_2338 playerPos = mc.field_1724.method_24515();
+                  BlockPos playerPos = mc.player.getBlockPos();
 
                   for (int x = -20; x <= 20; x++) {
                      for (int y = -20; y <= 20; y++) {
                         for (int z = -20; z <= 20; z++) {
-                           class_2338 pos = playerPos.method_10069(x, y, z);
-                           if (mc.field_1687.method_8320(pos).method_26204() instanceof class_2244) {
+                           BlockPos pos = playerPos.add(x, y, z);
+                           if (mc.world.getBlockState(pos).getBlock() instanceof BedBlock) {
                               this.selfBed = pos;
                               return;
                            }
@@ -61,7 +61,7 @@ public class BedwarsCheckUtils {
       return this.selfBed != null;
    }
 
-   public class_2338 getSelfBed() {
+   public BlockPos getSelfBed() {
       return this.selfBed;
    }
 }

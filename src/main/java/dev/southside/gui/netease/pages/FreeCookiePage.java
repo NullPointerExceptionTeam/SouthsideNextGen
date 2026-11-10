@@ -74,8 +74,8 @@ public class FreeCookiePage extends AbsPage {
    private void copyToClipboard(String value, String successMessage) {
       String statusText = "";
       if (value != null && !value.isEmpty()) {
-         if (MinecraftAccessor.mc != null && MinecraftAccessor.mc.field_1774 != null) {
-            MinecraftAccessor.mc.field_1774.method_1455(value);
+         if (MinecraftAccessor.mc != null && MinecraftAccessor.mc.keyboard != null) {
+            MinecraftAccessor.mc.keyboard.setClipboard(value);
             statusText = successMessage;
          }
 

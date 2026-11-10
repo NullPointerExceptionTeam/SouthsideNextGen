@@ -2,14 +2,14 @@ package dev.southside.utils.player;
 
 import dev.southside.utils.rotation.RotationUtils;
 import dev.southside.utils.types.Rotation;
-import net.minecraft.class_2338;
-import net.minecraft.class_2350;
-import net.minecraft.class_238;
-import net.minecraft.class_243;
-import net.minecraft.class_3965;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.hit.BlockHitResult;
 
 public class BoundBoxUtils {
-   public static class_243 getMinDistanceVec3dByBox(class_243 eyePosition, class_238 box) {
+   public static Vec3d getMinDistanceVec3dByBox(Vec3d eyePosition, Box box) {
       return RotationUtils.getClosestPoint(eyePosition, box);
    }
 
@@ -17,15 +17,15 @@ public class BoundBoxUtils {
       return target <= min ? min : Math.min(target, max);
    }
 
-   public static class_3965 calculateIntercept(class_238 targetBox, class_243 eyesPos, Rotation rotation, double range) {
-      class_243 rotationVec = rotation.getRotationVec();
-      class_243 hitVec = eyesPos.method_1031(rotationVec.field_1352 * range, rotationVec.field_1351 * range, rotationVec.field_1350 * range);
-      class_243 vec3 = getIntermediateWithXValue(eyesPos, hitVec, targetBox.field_1323);
-      class_243 vec31 = getIntermediateWithXValue(eyesPos, hitVec, targetBox.field_1320);
-      class_243 vec32 = getIntermediateWithYValue(eyesPos, hitVec, targetBox.field_1322);
-      class_243 vec33 = getIntermediateWithYValue(eyesPos, hitVec, targetBox.field_1325);
-      class_243 vec34 = getIntermediateWithZValue(eyesPos, hitVec, targetBox.field_1321);
-      class_243 vec35 = getIntermediateWithZValue(eyesPos, hitVec, targetBox.field_1324);
+   public static BlockHitResult calculateIntercept(Box targetBox, Vec3d eyesPos, Rotation rotation, double range) {
+      Vec3d rotationVec = rotation.getRotationVec();
+      Vec3d hitVec = eyesPos.add(rotationVec.x * range, rotationVec.y * range, rotationVec.z * range);
+      Vec3d vec3 = getIntermediateWithXValue(eyesPos, hitVec, targetBox.minX);
+      Vec3d vec31 = getIntermediateWithXValue(eyesPos, hitVec, targetBox.maxX);
+      Vec3d vec32 = getIntermediateWithYValue(eyesPos, hitVec, targetBox.minY);
+      Vec3d vec33 = getIntermediateWithYValue(eyesPos, hitVec, targetBox.maxY);
+      Vec3d vec34 = getIntermediateWithZValue(eyesPos, hitVec, targetBox.minZ);
+      Vec3d vec35 = getIntermediateWithZValue(eyesPos, hitVec, targetBox.maxZ);
       if (!isVecInYZ(targetBox, vec3)) {
          vec3 = null;
       }
@@ -50,104 +50,104 @@ public class BoundBoxUtils {
          vec35 = null;
       }
 
-      class_243 vec36 = null;
+      Vec3d vec36 = null;
       if (vec3 != null) {
          vec36 = vec3;
       }
 
-      if (vec31 != null && (vec36 == null || eyesPos.method_1025(vec31) < eyesPos.method_1025(vec36))) {
+      if (vec31 != null && (vec36 == null || eyesPos.squaredDistanceTo(vec31) < eyesPos.squaredDistanceTo(vec36))) {
          vec36 = vec31;
       }
 
-      if (vec32 != null && (vec36 == null || eyesPos.method_1025(vec32) < eyesPos.method_1025(vec36))) {
+      if (vec32 != null && (vec36 == null || eyesPos.squaredDistanceTo(vec32) < eyesPos.squaredDistanceTo(vec36))) {
          vec36 = vec32;
       }
 
-      if (vec33 != null && (vec36 == null || eyesPos.method_1025(vec33) < eyesPos.method_1025(vec36))) {
+      if (vec33 != null && (vec36 == null || eyesPos.squaredDistanceTo(vec33) < eyesPos.squaredDistanceTo(vec36))) {
          vec36 = vec33;
       }
 
-      if (vec34 != null && (vec36 == null || eyesPos.method_1025(vec34) < eyesPos.method_1025(vec36))) {
+      if (vec34 != null && (vec36 == null || eyesPos.squaredDistanceTo(vec34) < eyesPos.squaredDistanceTo(vec36))) {
          vec36 = vec34;
       }
 
-      if (vec35 != null && (vec36 == null || eyesPos.method_1025(vec35) < eyesPos.method_1025(vec36))) {
+      if (vec35 != null && (vec36 == null || eyesPos.squaredDistanceTo(vec35) < eyesPos.squaredDistanceTo(vec36))) {
          vec36 = vec35;
       }
 
       if (vec36 == null) {
          return null;
       } else {
-         class_2350 enumfacing = null;
+         Direction enumfacing = null;
          if (vec36 == vec3) {
-            enumfacing = class_2350.field_11039;
+            enumfacing = Direction.WEST;
          } else if (vec36 == vec31) {
-            enumfacing = class_2350.field_11034;
+            enumfacing = Direction.EAST;
          } else if (vec36 == vec32) {
-            enumfacing = class_2350.field_11033;
+            enumfacing = Direction.DOWN;
          } else if (vec36 == vec33) {
-            enumfacing = class_2350.field_11036;
+            enumfacing = Direction.UP;
          } else if (vec36 == vec34) {
-            enumfacing = class_2350.field_11043;
+            enumfacing = Direction.NORTH;
          } else {
-            enumfacing = class_2350.field_11035;
+            enumfacing = Direction.SOUTH;
          }
 
-         return new class_3965(vec36, enumfacing, class_2338.field_10980, false);
+         return new BlockHitResult(vec36, enumfacing, BlockPos.ORIGIN, false);
       }
    }
 
-   private static class_243 getIntermediateWithXValue(class_243 target, class_243 vec, double x) {
-      double d0 = vec.field_1352 - target.field_1352;
-      double d1 = vec.field_1351 - target.field_1351;
-      double d2 = vec.field_1350 - target.field_1350;
+   private static Vec3d getIntermediateWithXValue(Vec3d target, Vec3d vec, double x) {
+      double d0 = vec.x - target.x;
+      double d1 = vec.y - target.y;
+      double d2 = vec.z - target.z;
       if (d0 * d0 < 1.0E-7F) {
          return null;
       } else {
-         double d3 = (x - target.field_1352) / d0;
-         return d3 >= 0.0 && d3 <= 1.0 ? new class_243(target.field_1352 + d0 * d3, target.field_1351 + d1 * d3, target.field_1350 + d2 * d3) : null;
+         double d3 = (x - target.x) / d0;
+         return d3 >= 0.0 && d3 <= 1.0 ? new Vec3d(target.x + d0 * d3, target.y + d1 * d3, target.z + d2 * d3) : null;
       }
    }
 
-   private static class_243 getIntermediateWithYValue(class_243 target, class_243 vec, double y) {
-      double d0 = vec.field_1352 - target.field_1352;
-      double d1 = vec.field_1351 - target.field_1351;
-      double d2 = vec.field_1350 - target.field_1350;
+   private static Vec3d getIntermediateWithYValue(Vec3d target, Vec3d vec, double y) {
+      double d0 = vec.x - target.x;
+      double d1 = vec.y - target.y;
+      double d2 = vec.z - target.z;
       if (d1 * d1 < 1.0E-7F) {
          return null;
       } else {
-         double d3 = (y - target.field_1351) / d1;
-         return d3 >= 0.0 && d3 <= 1.0 ? new class_243(target.field_1352 + d0 * d3, target.field_1351 + d1 * d3, target.field_1350 + d2 * d3) : null;
+         double d3 = (y - target.y) / d1;
+         return d3 >= 0.0 && d3 <= 1.0 ? new Vec3d(target.x + d0 * d3, target.y + d1 * d3, target.z + d2 * d3) : null;
       }
    }
 
-   private static class_243 getIntermediateWithZValue(class_243 target, class_243 vec, double z) {
-      double d0 = vec.field_1352 - target.field_1352;
-      double d1 = vec.field_1351 - target.field_1351;
-      double d2 = vec.field_1350 - target.field_1350;
+   private static Vec3d getIntermediateWithZValue(Vec3d target, Vec3d vec, double z) {
+      double d0 = vec.x - target.x;
+      double d1 = vec.y - target.y;
+      double d2 = vec.z - target.z;
       if (d2 * d2 < 1.0E-7F) {
          return null;
       } else {
-         double d3 = (z - target.field_1350) / d2;
-         return d3 >= 0.0 && d3 <= 1.0 ? new class_243(target.field_1352 + d0 * d3, target.field_1351 + d1 * d3, target.field_1350 + d2 * d3) : null;
+         double d3 = (z - target.z) / d2;
+         return d3 >= 0.0 && d3 <= 1.0 ? new Vec3d(target.x + d0 * d3, target.y + d1 * d3, target.z + d2 * d3) : null;
       }
    }
 
-   public static boolean isVecInYZ(class_238 box, class_243 vec) {
+   public static boolean isVecInYZ(Box box, Vec3d vec) {
       return vec == null
          ? false
-         : vec.field_1351 >= box.field_1322 && vec.field_1351 <= box.field_1325 && vec.field_1350 >= box.field_1321 && vec.field_1350 <= box.field_1324;
+         : vec.y >= box.minY && vec.y <= box.maxY && vec.z >= box.minZ && vec.z <= box.maxZ;
    }
 
-   public static boolean isVecInXZ(class_238 box, class_243 vec) {
+   public static boolean isVecInXZ(Box box, Vec3d vec) {
       return vec == null
          ? false
-         : vec.field_1352 >= box.field_1323 && vec.field_1352 <= box.field_1320 && vec.field_1350 >= box.field_1321 && vec.field_1350 <= box.field_1324;
+         : vec.x >= box.minX && vec.x <= box.maxX && vec.z >= box.minZ && vec.z <= box.maxZ;
    }
 
-   public static boolean isVecInXY(class_238 box, class_243 vec) {
+   public static boolean isVecInXY(Box box, Vec3d vec) {
       return vec == null
          ? false
-         : vec.field_1352 >= box.field_1323 && vec.field_1352 <= box.field_1320 && vec.field_1351 >= box.field_1322 && vec.field_1351 <= box.field_1325;
+         : vec.x >= box.minX && vec.x <= box.maxX && vec.y >= box.minY && vec.y <= box.maxY;
    }
 }

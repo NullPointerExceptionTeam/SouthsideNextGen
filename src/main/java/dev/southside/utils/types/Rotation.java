@@ -2,29 +2,29 @@ package dev.southside.utils.types;
 
 import dev.southside.MinecraftAccessor;
 import lombok.Generated;
-import net.minecraft.class_243;
-import net.minecraft.class_3532;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.math.MathHelper;
 
 public final class Rotation {
    public float yaw;
    public float pitch;
 
-   public static Rotation from(class_243 origin, class_243 target) {
-      double dx = target.field_1352 - origin.field_1352;
-      double dy = target.field_1351 - origin.field_1351;
-      double dz = target.field_1350 - origin.field_1350;
+   public static Rotation from(Vec3d origin, Vec3d target) {
+      double dx = target.x - origin.x;
+      double dy = target.y - origin.y;
+      double dz = target.z - origin.z;
       double distXZ = Math.sqrt(dx * dx + dz * dz);
       float yaw = (float)Math.toDegrees(Math.atan2(dz, dx)) - 90.0F;
       float pitch = (float)(-Math.toDegrees(Math.atan2(dy, distXZ)));
       return new Rotation(yaw, pitch);
    }
 
-   public class_243 getRotationVec() {
-      float yawCos = class_3532.method_15362(-this.yaw * (float) (Math.PI / 180.0));
-      float yawSin = class_3532.method_15374(-this.yaw * (float) (Math.PI / 180.0));
-      float pitchCos = class_3532.method_15362(this.pitch * (float) (Math.PI / 180.0));
-      float pitchSin = class_3532.method_15374(this.pitch * (float) (Math.PI / 180.0));
-      return new class_243(yawSin * pitchCos, -pitchSin, yawCos * pitchCos);
+   public Vec3d getRotationVec() {
+      float yawCos = MathHelper.cos(-this.yaw * (float) (Math.PI / 180.0));
+      float yawSin = MathHelper.sin(-this.yaw * (float) (Math.PI / 180.0));
+      float pitchCos = MathHelper.cos(this.pitch * (float) (Math.PI / 180.0));
+      float pitchSin = MathHelper.sin(this.pitch * (float) (Math.PI / 180.0));
+      return new Vec3d(yawSin * pitchCos, -pitchSin, yawCos * pitchCos);
    }
 
    public float distance(Rotation other) {
@@ -40,8 +40,8 @@ public final class Rotation {
    }
 
    public void apply() {
-      MinecraftAccessor.mc.field_1724.method_36456(this.yaw);
-      MinecraftAccessor.mc.field_1724.method_36457(this.pitch);
+      MinecraftAccessor.mc.player.setYaw(this.yaw);
+      MinecraftAccessor.mc.player.setPitch(this.pitch);
    }
 
    public void fixPitch() {

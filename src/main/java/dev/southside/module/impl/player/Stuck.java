@@ -10,8 +10,8 @@ import dev.southside.orbit.EventHandler;
 import dev.southside.utils.misc.ClientUtils;
 import dev.southside.utils.network.PacketUtils;
 import dev.southside.utils.player.MovementUtils;
-import net.minecraft.class_2848;
-import net.minecraft.class_2848.class_2849;
+import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket;
+import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket.Mode;
 
 public class Stuck extends Module {
    public final Switch offScaffold = new Switch("Disable Scaffold", false);
@@ -41,7 +41,7 @@ public class Stuck extends Module {
 
          if (this.infnite.getValue()) {
             if (PacketUtils.noMovePackets % 60 == 0) {
-               mc.method_1562().method_52787(new class_2848(mc.field_1724, class_2849.field_12982));
+               mc.getNetworkHandler().sendPacket(new ClientCommandC2SPacket(mc.player, Mode.START_FALL_FLYING));
             }
 
             MovementUtils.cancelMove();

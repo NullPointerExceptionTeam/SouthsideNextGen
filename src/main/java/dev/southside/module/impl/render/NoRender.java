@@ -5,10 +5,10 @@ import dev.southside.event.events.MotionEvent;
 import dev.southside.module.Category;
 import dev.southside.module.Module;
 import dev.southside.orbit.EventHandler;
-import net.minecraft.class_1297;
-import net.minecraft.class_1531;
-import net.minecraft.class_1686;
-import net.minecraft.class_1297.class_5529;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.decoration.ArmorStandEntity;
+import net.minecraft.entity.projectile.thrown.PotionEntity;
+import net.minecraft.entity.Entity.RemovalReason;
 
 public class NoRender extends Module {
    public final Switch potions = new Switch("Potions", false);
@@ -30,14 +30,14 @@ public class NoRender extends Module {
 
    @EventHandler
    public void onMotion(MotionEvent event) {
-      if (mc.field_1724 != null && mc.field_1687 != null) {
-         for (class_1297 ent : mc.field_1687.method_18112()) {
-            if (ent instanceof class_1686 && this.potions.getValue()) {
-               mc.field_1687.method_2945(ent.method_5628(), class_5529.field_26998);
+      if (mc.player != null && mc.world != null) {
+         for (Entity ent : mc.world.getEntities()) {
+            if (ent instanceof PotionEntity && this.potions.getValue()) {
+               mc.world.removeEntity(ent.getId(), RemovalReason.KILLED);
             }
 
-            if (ent instanceof class_1531 && this.noArmorStands.getValue()) {
-               mc.field_1687.method_2945(ent.method_5628(), class_5529.field_26998);
+            if (ent instanceof ArmorStandEntity && this.noArmorStands.getValue()) {
+               mc.world.removeEntity(ent.getId(), RemovalReason.KILLED);
             }
          }
       }

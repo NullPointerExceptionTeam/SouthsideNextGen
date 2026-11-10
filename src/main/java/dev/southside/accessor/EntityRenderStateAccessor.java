@@ -1,9 +1,9 @@
 package dev.southside.accessor;
 
-import net.minecraft.class_1297;
+import net.minecraft.entity.Entity;
 
 public interface EntityRenderStateAccessor {
-   class_1297 southside$getEntity();
+   Entity southside$getEntity();
 
-   void southside$setEntity(class_1297 var1);
+   void southside$setEntity(Entity var1);
 }

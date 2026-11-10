@@ -8,7 +8,7 @@ import dev.southside.module.Category;
 import dev.southside.module.Module;
 import dev.southside.orbit.EventHandler;
 import dev.southside.utils.render.animation.TimerUtil;
-import net.minecraft.class_1747;
+import net.minecraft.item.BlockItem;
 import org.apache.commons.lang3.RandomUtils;
 
 public class AutoClicker extends Module {
@@ -38,11 +38,11 @@ public class AutoClicker extends Module {
 
    @EventHandler
    public void onRender3D(Render3DEvent event) {
-      if (mc.field_1724 != null) {
+      if (mc.player != null) {
          if (this.leftClick.getValue()
             && this.leftTimer.hasReached(this.nextLeftDelay)
-            && mc.field_1690.field_1886.method_1434()
-            && (!this.stopWhileBreak.getValue() || !mc.field_1761.method_2923())) {
+            && mc.options.attackKey.isPressed()
+            && (!this.stopWhileBreak.getValue() || !mc.interactionManager.isBreakingBlock())) {
             this.leftTimer.reset();
             ((IMinecraftClient)mc).setAttackCooldown(0);
             ((IMinecraftClient)mc).leftClick();
@@ -51,11 +51,11 @@ public class AutoClicker extends Module {
 
          if (this.rightClick.getValue()
             && this.rightTimer.hasReached(this.nextRightDelay)
-            && mc.field_1690.field_1904.method_1434()
+            && mc.options.useKey.isPressed()
             && (
                !this.onlyBlocks.getValue()
-                  || mc.field_1724.method_6047().method_7909() instanceof class_1747
-                  || mc.field_1724.method_6079().method_7909() instanceof class_1747
+                  || mc.player.getMainHandStack().getItem() instanceof BlockItem
+                  || mc.player.getOffHandStack().getItem() instanceof BlockItem
             )) {
             this.rightTimer.reset();
             ((IMinecraftClient)mc).rightClick();

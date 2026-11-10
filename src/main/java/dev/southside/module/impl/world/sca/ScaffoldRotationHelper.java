@@ -1,42 +1,42 @@
 package dev.southside.module.impl.world.sca;
 
 import dev.southside.utils.types.Rotation;
-import net.minecraft.class_2338;
-import net.minecraft.class_2350;
-import net.minecraft.class_243;
-import net.minecraft.class_310;
-import net.minecraft.class_3532;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.util.math.MathHelper;
 
 public class ScaffoldRotationHelper {
-   private static final class_310 mc = class_310.method_1551();
+   private static final MinecraftClient mc = MinecraftClient.getInstance();
    private static final float SMOOTH_FACTOR = 0.15F;
    private static final float MIN_ANGLE_DIFF = 0.1F;
    private static Rotation targetRotation = null;
    private static Rotation currentRotation = null;
    private static boolean isRotating = false;
 
-   public static Rotation getRotation(class_2338 pos, class_2350 face) {
-      if (mc.field_1724 == null) {
+   public static Rotation getRotation(BlockPos pos, Direction face) {
+      if (mc.player == null) {
          return null;
       } else {
-         class_243 targetPos = class_243.method_24953(pos).method_1031(face.method_10148() * 0.501, face.method_10164() * 0.501, face.method_10165() * 0.501);
-         class_243 playerPos = mc.field_1724.method_33571();
+         Vec3d targetPos = Vec3d.ofCenter(pos).add(face.getOffsetX() * 0.501, face.getOffsetY() * 0.501, face.getOffsetZ() * 0.501);
+         Vec3d playerPos = mc.player.getEyePos();
          return Rotation.from(playerPos, targetPos);
       }
    }
 
-   public static Rotation getRotationDown(class_2338 pos, class_2350 face) {
-      if (mc.field_1724 == null) {
+   public static Rotation getRotationDown(BlockPos pos, Direction face) {
+      if (mc.player == null) {
          return null;
       } else {
-         class_243 targetPos = class_243.method_24953(pos).method_1031(face.method_10148() * 0.501, face.method_10164() * 0.301, face.method_10165() * 0.501);
-         class_243 playerPos = mc.field_1724.method_33571();
+         Vec3d targetPos = Vec3d.ofCenter(pos).add(face.getOffsetX() * 0.501, face.getOffsetY() * 0.301, face.getOffsetZ() * 0.501);
+         Vec3d playerPos = mc.player.getEyePos();
          return Rotation.from(playerPos, targetPos);
       }
    }
 
-   public static Rotation getSmoothRotation(class_2338 pos, class_2350 face, Rotation current) {
-      if (mc.field_1724 == null) {
+   public static Rotation getSmoothRotation(BlockPos pos, Direction face, Rotation current) {
+      if (mc.player == null) {
          return null;
       } else {
          Rotation target = getRotation(pos, face);
@@ -44,8 +44,8 @@ public class ScaffoldRotationHelper {
       }
    }
 
-   public static Rotation getSmoothRotation(class_2338 pos, class_2350 face, Rotation current, float smoothFactor) {
-      if (mc.field_1724 == null) {
+   public static Rotation getSmoothRotation(BlockPos pos, Direction face, Rotation current, float smoothFactor) {
+      if (mc.player == null) {
          return null;
       } else {
          Rotation target = getRotation(pos, face);
@@ -53,8 +53,8 @@ public class ScaffoldRotationHelper {
       }
    }
 
-   public static Rotation getSmoothRotationDown(class_2338 pos, class_2350 face, Rotation current, float smoothFactor) {
-      if (mc.field_1724 == null) {
+   public static Rotation getSmoothRotationDown(BlockPos pos, Direction face, Rotation current, float smoothFactor) {
+      if (mc.player == null) {
          return null;
       } else {
          Rotation target = getRotationDown(pos, face);
@@ -62,8 +62,8 @@ public class ScaffoldRotationHelper {
       }
    }
 
-   public static Rotation getSmoothRotationDown1(class_2338 pos, class_2350 face, Rotation current, float smoothFactor) {
-      if (mc.field_1724 == null) {
+   public static Rotation getSmoothRotationDown1(BlockPos pos, Direction face, Rotation current, float smoothFactor) {
+      if (mc.player == null) {
          return null;
       } else {
          Rotation target = getRotationDown1(pos, face);
@@ -71,17 +71,17 @@ public class ScaffoldRotationHelper {
       }
    }
 
-   public static Rotation getRotationDown1(class_2338 pos, class_2350 face) {
-      if (mc.field_1724 == null) {
+   public static Rotation getRotationDown1(BlockPos pos, Direction face) {
+      if (mc.player == null) {
          return null;
       } else {
-         class_243 targetPos = class_243.method_24953(pos).method_1031(face.method_10148() * 0.5, face.method_10164() * 0.5, face.method_10165() * 0.5);
-         class_243 playerPos = mc.field_1724.method_33571();
-         class_243 direction = targetPos.method_1020(playerPos);
-         float currentYaw = mc.field_1724.method_36454();
+         Vec3d targetPos = Vec3d.ofCenter(pos).add(face.getOffsetX() * 0.5, face.getOffsetY() * 0.5, face.getOffsetZ() * 0.5);
+         Vec3d playerPos = mc.player.getEyePos();
+         Vec3d direction = targetPos.subtract(playerPos);
+         float currentYaw = mc.player.getYaw();
          double yawRadians = Math.toRadians(currentYaw);
-         double horizontalDistance = direction.field_1352 * -Math.sin(yawRadians) + direction.field_1350 * Math.cos(yawRadians);
-         float pitch = (float)Math.toDegrees(-Math.atan2(direction.field_1351, Math.abs(horizontalDistance)));
+         double horizontalDistance = direction.x * -Math.sin(yawRadians) + direction.z * Math.cos(yawRadians);
+         float pitch = (float)Math.toDegrees(-Math.atan2(direction.y, Math.abs(horizontalDistance)));
          return new Rotation(currentYaw, pitch);
       }
    }
@@ -94,21 +94,21 @@ public class ScaffoldRotationHelper {
       } else {
          float newYaw = current.getYaw() + yawDiff * factor;
          float newPitch = current.getPitch() + pitchDiff * factor;
-         newPitch = class_3532.method_15363(newPitch, -90.0F, 90.0F);
+         newPitch = MathHelper.clamp(newPitch, -90.0F, 90.0F);
          return new Rotation(newYaw, newPitch);
       }
    }
 
-   public static void startSmoothRotation(class_2338 pos, class_2350 face) {
-      if (mc.field_1724 != null) {
+   public static void startSmoothRotation(BlockPos pos, Direction face) {
+      if (mc.player != null) {
          targetRotation = getRotation(pos, face);
-         currentRotation = new Rotation(mc.field_1724.method_36454(), mc.field_1724.method_36455());
+         currentRotation = new Rotation(mc.player.getYaw(), mc.player.getPitch());
          isRotating = true;
       }
    }
 
    public static Rotation updateRotation(Rotation current) {
-      if (isRotating && mc.field_1724 != null && targetRotation != null) {
+      if (isRotating && mc.player != null && targetRotation != null) {
          currentRotation = current;
          Rotation smoothed = smoothRotation(currentRotation, targetRotation, 0.15F);
          if (smoothed.distance(targetRotation) < 0.1F) {
@@ -122,21 +122,21 @@ public class ScaffoldRotationHelper {
       }
    }
 
-   public static Rotation getConstrainedRotation(class_2338 pos, class_2350 face, float maxYawChange, float maxPitchChange) {
-      if (mc.field_1724 == null) {
+   public static Rotation getConstrainedRotation(BlockPos pos, Direction face, float maxYawChange, float maxPitchChange) {
+      if (mc.player == null) {
          return null;
       } else {
          Rotation target = getRotation(pos, face);
          if (target == null) {
             return null;
          } else {
-            Rotation current = new Rotation(mc.field_1724.method_36454(), mc.field_1724.method_36455());
+            Rotation current = new Rotation(mc.player.getYaw(), mc.player.getPitch());
             float yawDiff = wrapDegrees(target.getYaw() - current.getYaw());
             float pitchDiff = target.getPitch() - current.getPitch();
-            yawDiff = class_3532.method_15363(yawDiff, -maxYawChange, maxYawChange);
-            pitchDiff = class_3532.method_15363(pitchDiff, -maxPitchChange, maxPitchChange);
+            yawDiff = MathHelper.clamp(yawDiff, -maxYawChange, maxYawChange);
+            pitchDiff = MathHelper.clamp(pitchDiff, -maxPitchChange, maxPitchChange);
             float newYaw = current.getYaw() + yawDiff;
-            float newPitch = class_3532.method_15363(current.getPitch() + pitchDiff, -90.0F, 90.0F);
+            float newPitch = MathHelper.clamp(current.getPitch() + pitchDiff, -90.0F, 90.0F);
             return new Rotation(newYaw, newPitch);
          }
       }

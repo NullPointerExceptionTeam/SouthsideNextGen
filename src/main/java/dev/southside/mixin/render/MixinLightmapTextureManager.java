@@ -2,19 +2,19 @@ package dev.southside.mixin.render;
 
 import dev.southside.Southside;
 import dev.southside.module.impl.render.FullBright;
-import net.minecraft.class_765;
+import net.minecraft.client.render.LightmapTextureManager;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArgs;
 import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
-@Mixin({class_765.class})
+@Mixin({LightmapTextureManager.class})
 public abstract class MixinLightmapTextureManager {
    @ModifyArgs(
-      method = {"method_3313(F)V"},
+      method = {"update(F)V"},
       at = @At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_278;method_1251(F)V",
+         target = "Lnet/minecraft/client/gl/Uniform;set(F)V",
          ordinal = 6
       )
    )

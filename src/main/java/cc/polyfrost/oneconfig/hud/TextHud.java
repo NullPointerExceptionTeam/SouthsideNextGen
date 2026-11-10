@@ -13,7 +13,7 @@ import dev.southside.event.events.TickEvent;
 import dev.southside.orbit.EventHandler;
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.class_332;
+import net.minecraft.client.gui.DrawContext;
 
 public abstract class TextHud extends BasicHud {
    protected transient List<String> lines = new ArrayList<>();
@@ -53,7 +53,7 @@ public abstract class TextHud extends BasicHud {
    }
 
    @Override
-   public void draw(class_332 context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
+   public void draw(DrawContext context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
       if (this.lines != null && this.lines.size() != 0) {
          float textY = y;
 

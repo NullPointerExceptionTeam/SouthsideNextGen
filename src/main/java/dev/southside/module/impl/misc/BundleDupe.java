@@ -8,14 +8,14 @@ import dev.southside.utils.ChatUtils;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import net.minecraft.class_1703;
-import net.minecraft.class_1713;
-import net.minecraft.class_1799;
-import net.minecraft.class_1802;
-import net.minecraft.class_2813;
-import net.minecraft.class_310;
-import net.minecraft.class_3417;
-import net.minecraft.class_746;
+import net.minecraft.screen.ScreenHandler;
+import net.minecraft.screen.slot.SlotActionType;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.network.packet.c2s.play.ClickSlotC2SPacket;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.client.network.ClientPlayerEntity;
 
 public class BundleDupe extends Module {
    private final Slider apDelay = new Slider("AP Delay", 30, 10, 100, 1);
@@ -48,66 +48,66 @@ public class BundleDupe extends Module {
    }
 
    private void startDupe() {
-      class_310 mc = class_310.method_1551();
-      class_746 player = mc.field_1724;
-      class_1703 screenHandler = player.field_7512;
+      MinecraftClient mc = MinecraftClient.getInstance();
+      ClientPlayerEntity player = mc.player;
+      ScreenHandler screenHandler = player.currentScreenHandler;
       if (player != null && screenHandler != null) {
          this.running.set(true);
          this.pitchProgress = 0.8F;
          this.dupeThread = new Thread(
             () -> {
-               Int2ObjectMap<class_1799> stackMap = new Int2ObjectOpenHashMap();
+               Int2ObjectMap<ItemStack> stackMap = new Int2ObjectOpenHashMap();
                ChatUtils.info("Bundle dupe started");
 
-               while (this.running.get() && mc.field_1724 != null) {
+               while (this.running.get() && mc.player != null) {
                   try {
-                     mc.method_1562()
-                        .method_52787(
-                           new class_2813(
-                              screenHandler.field_7763, 0, 36, 1, class_1713.field_7790, player.method_31548().method_5438(0).method_7972(), stackMap
+                     mc.getNetworkHandler()
+                        .sendPacket(
+                           new ClickSlotC2SPacket(
+                              screenHandler.syncId, 0, 36, 1, SlotActionType.PICKUP, player.getInventory().getStack(0).copy(), stackMap
                            )
                         );
 
                      for (int i = 0; i < this.packetCount.getValue().intValue(); i++) {
-                        mc.method_1562()
-                           .method_52787(
-                              new class_2813(
-                                 screenHandler.field_7763, screenHandler.method_37421(), 36, -1, class_1713.field_7790, class_1799.field_8037, stackMap
+                        mc.getNetworkHandler()
+                           .sendPacket(
+                              new ClickSlotC2SPacket(
+                                 screenHandler.syncId, screenHandler.getRevision(), 36, -1, SlotActionType.PICKUP, ItemStack.EMPTY, stackMap
                               )
                            );
                      }
 
                      Thread.sleep(this.apDelay.getValue().intValue());
-                     mc.method_1562()
-                        .method_52787(
-                           new class_2813(
-                              screenHandler.field_7763, 0, 36, 0, class_1713.field_7790, player.method_31548().method_5438(0).method_7972(), stackMap
+                     mc.getNetworkHandler()
+                        .sendPacket(
+                           new ClickSlotC2SPacket(
+                              screenHandler.syncId, 0, 36, 0, SlotActionType.PICKUP, player.getInventory().getStack(0).copy(), stackMap
                            )
                         );
                      Thread.sleep(this.apbDelay.getValue().intValue());
-                     class_1799 firstStack = player.method_31548().method_5438(0);
-                     if (!firstStack.method_31574(class_1802.field_27023) && !firstStack.method_7960()) {
+                     ItemStack firstStack = player.getInventory().getStack(0);
+                     if (!firstStack.isOf(Items.BUNDLE) && !firstStack.isEmpty()) {
                         if (this.enableSounds.getValue()) {
                            mc.execute(() -> {
-                              if (mc.field_1724 != null) {
-                                 mc.field_1724.method_5783(class_3417.field_14627, 1.0F, 1.0F);
+                              if (mc.player != null) {
+                                 mc.player.playSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0F, 1.0F);
                               }
                            });
                            this.pitchProgress = 0.8F;
                         }
 
                         ChatUtils.info("Duping items...");
-                        mc.method_1562()
-                           .method_52787(
-                              new class_2813(
-                                 screenHandler.field_7763, 0, 36, 1, class_1713.field_7790, player.method_31548().method_5438(0).method_7972(), stackMap
+                        mc.getNetworkHandler()
+                           .sendPacket(
+                              new ClickSlotC2SPacket(
+                                 screenHandler.syncId, 0, 36, 1, SlotActionType.PICKUP, player.getInventory().getStack(0).copy(), stackMap
                               )
                            );
                         Thread.sleep(50L);
-                        mc.method_1562()
-                           .method_52787(
-                              new class_2813(
-                                 screenHandler.field_7763, 0, -999, 0, class_1713.field_7790, player.method_31548().method_5438(0).method_7972(), stackMap
+                        mc.getNetworkHandler()
+                           .sendPacket(
+                              new ClickSlotC2SPacket(
+                                 screenHandler.syncId, 0, -999, 0, SlotActionType.PICKUP, player.getInventory().getStack(0).copy(), stackMap
                               )
                            );
                         Thread.sleep(50L);
@@ -146,19 +146,19 @@ public class BundleDupe extends Module {
    }
 
    private boolean checkConditions() {
-      class_310 mc = class_310.method_1551();
-      if (mc.field_1724 == null) {
+      MinecraftClient mc = MinecraftClient.getInstance();
+      if (mc.player == null) {
          ChatUtils.error("Player is null");
          return false;
-      } else if (mc.field_1724.field_7512 == null) {
+      } else if (mc.player.currentScreenHandler == null) {
          ChatUtils.error("Screen handler is null");
          return false;
       } else {
-         class_1799 firstStack = mc.field_1724.method_31548().method_5438(0);
-         if (!firstStack.method_31574(class_1802.field_27023)) {
+         ItemStack firstStack = mc.player.getInventory().getStack(0);
+         if (!firstStack.isOf(Items.BUNDLE)) {
             ChatUtils.error("First item must be a bundle");
             return false;
-         } else if (firstStack.method_7960()) {
+         } else if (firstStack.isEmpty()) {
             ChatUtils.error("Bundle is empty");
             return false;
          } else {

@@ -84,7 +84,7 @@ public class ActiveMods implements MinecraftAccessor {
       float[] height = new float[1];
       nanoVGHelper.setupAndDraw(true, vg -> height[0] = nanoVGHelper.getTextHeight(vg, 20.0F, font));
       int i = 0;
-      float x = (float)((mc.method_22683().method_4486() - this.getWidth()) * mc.method_22683().method_4495() - 10.0);
+      float x = (float)((mc.getWindow().getScaledWidth() - this.getWidth()) * mc.getWindow().getScaleFactor() - 10.0);
       float y = 20.0F;
       float yOffset = 0.0F;
 
@@ -106,7 +106,7 @@ public class ActiveMods implements MinecraftAccessor {
    }
 
    public float getWidth() {
-      return this.modules.get(0).getWidth() / (float)mc.method_22683().method_4495();
+      return this.modules.get(0).getWidth() / (float)mc.getWindow().getScaleFactor();
    }
 
    public float getHeight() {
@@ -114,7 +114,7 @@ public class ActiveMods implements MinecraftAccessor {
       float[] height = new float[1];
       nanoVGHelper.setupAndDraw(true, vg -> height[0] = nanoVGHelper.getTextHeight(vg, 20.0F, font));
       return ((float)this.modules.stream().filter(m -> m.getModule().isEnabled()).count() * (height[0] + 5.0F) + 10.0F)
-         / (float)mc.method_22683().method_4495();
+         / (float)mc.getWindow().getScaleFactor();
    }
 
    @Generated
@@ -150,7 +150,7 @@ public class ActiveMods implements MinecraftAccessor {
             vg -> {
                this.width = nanoVGHelper.getTextWidth(vg, this.module.getName(), 20.0F, ActiveMods.font);
                float height = nanoVGHelper.getTextHeight(vg, 20.0F, ActiveMods.font);
-               float x = this.x + this.parent.getWidth() * (float)MinecraftAccessor.mc.method_22683().method_4495() - this.width;
+               float x = this.x + this.parent.getWidth() * (float)MinecraftAccessor.mc.getWindow().getScaleFactor() - this.width;
                float centerX = x + this.width / 2.0F;
                float realY = this.y + (float)this.animationY.getValue();
                float centerY = realY + height / 2.0F;

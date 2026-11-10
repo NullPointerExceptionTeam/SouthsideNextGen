@@ -19,24 +19,24 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
-import net.minecraft.class_1297;
-import net.minecraft.class_1309;
-import net.minecraft.class_1657;
-import net.minecraft.class_1799;
-import net.minecraft.class_1802;
-import net.minecraft.class_2561;
-import net.minecraft.class_2616;
-import net.minecraft.class_2663;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.text.Text;
+import net.minecraft.network.packet.s2c.play.EntityAnimationS2CPacket;
+import net.minecraft.network.packet.s2c.play.EntityStatusS2CPacket;
 
 public class GodItemDetector extends Module {
    private final Set<UUID> notifiedPlayers = new HashSet<>();
    private final Map<UUID, String> lastItemInfo = new HashMap<>();
-   public static final Set<class_1297> godAxeHolders = ConcurrentHashMap.newKeySet();
-   public static final Set<class_1297> maceHolders = ConcurrentHashMap.newKeySet();
-   public static final Set<class_1297> endCrystalHolders = ConcurrentHashMap.newKeySet();
-   public static final Set<class_1297> eGappleHolders = ConcurrentHashMap.newKeySet();
-   public static final Set<class_1297> kbBallHolders = ConcurrentHashMap.newKeySet();
-   public static final Set<class_1297> totemHolders = ConcurrentHashMap.newKeySet();
+   public static final Set<Entity> godAxeHolders = ConcurrentHashMap.newKeySet();
+   public static final Set<Entity> maceHolders = ConcurrentHashMap.newKeySet();
+   public static final Set<Entity> endCrystalHolders = ConcurrentHashMap.newKeySet();
+   public static final Set<Entity> eGappleHolders = ConcurrentHashMap.newKeySet();
+   public static final Set<Entity> kbBallHolders = ConcurrentHashMap.newKeySet();
+   public static final Set<Entity> totemHolders = ConcurrentHashMap.newKeySet();
    public static final Map<UUID, Long> totemPopTimestamps = new ConcurrentHashMap<>();
    private static final Map<UUID, String> totemPopNames = new ConcurrentHashMap<>();
    private static final long TOTEM_EFFECT_DURATION_MS = 10000L;
@@ -68,48 +68,48 @@ public class GodItemDetector extends Module {
       }
    }
 
-   public static boolean isGodAxe(class_1297 e) {
+   public static boolean isGodAxe(Entity e) {
       GodItemDetector aaa = getInstance();
       return aaa != null && aaa.isEnabled() && godAxeHolders.contains(e);
    }
 
-   public static boolean isMace(class_1297 e) {
+   public static boolean isMace(Entity e) {
       GodItemDetector aaa = getInstance();
       return aaa != null && aaa.isEnabled() && maceHolders.contains(e);
    }
 
-   public static boolean isEndCrystal(class_1297 e) {
+   public static boolean isEndCrystal(Entity e) {
       GodItemDetector aaa = getInstance();
       return aaa != null && aaa.isEnabled() && endCrystalHolders.contains(e);
    }
 
-   public static boolean isEGapple(class_1297 e) {
+   public static boolean isEGapple(Entity e) {
       GodItemDetector aaa = getInstance();
       return aaa != null && aaa.isEnabled() && eGappleHolders.contains(e);
    }
 
-   public static boolean isKBBall(class_1297 e) {
+   public static boolean isKBBall(Entity e) {
       GodItemDetector aaa = getInstance();
       return aaa != null && aaa.isEnabled() && kbBallHolders.contains(e);
    }
 
-   public static boolean isTotem(class_1297 e) {
+   public static boolean isTotem(Entity e) {
       GodItemDetector aaa = getInstance();
       return aaa != null && aaa.isEnabled() && totemHolders.contains(e);
    }
 
-   public static boolean hasTotemPopped(class_1297 e) {
+   public static boolean hasTotemPopped(Entity e) {
       GodItemDetector aaa = getInstance();
       if (aaa != null && aaa.isEnabled()) {
-         Long popTime = totemPopTimestamps.get(e.method_5667());
+         Long popTime = totemPopTimestamps.get(e.getUuid());
          return popTime == null ? false : System.currentTimeMillis() - popTime < 10000L;
       } else {
          return false;
       }
    }
 
-   public static float getTotemRemainingSeconds(class_1297 e) {
-      Long popTime = totemPopTimestamps.get(e.method_5667());
+   public static float getTotemRemainingSeconds(Entity e) {
+      Long popTime = totemPopTimestamps.get(e.getUuid());
       if (popTime == null) {
          return 0.0F;
       } else {
@@ -139,7 +139,7 @@ public class GodItemDetector extends Module {
 
    @EventHandler
    public void onTick(TickEvent event) {
-      if (mc.field_1687 != null && mc.field_1724 != null) {
+      if (mc.world != null && mc.player != null) {
          long now = System.currentTimeMillis();
          totemPopTimestamps.forEach((uuidx, popTime) -> {
             if (now - popTime >= 10000L) {
@@ -147,7 +147,7 @@ public class GodItemDetector extends Module {
                totemPopNames.remove(uuidx);
             }
          });
-         if (!totemPopTimestamps.isEmpty() && mc.field_1705 != null) {
+         if (!totemPopTimestamps.isEmpty() && mc.inGameHud != null) {
             StringBuilder sb = new StringBuilder();
 
             for (Entry<UUID, Long> entry : totemPopTimestamps.entrySet()) {
@@ -164,25 +164,25 @@ public class GodItemDetector extends Module {
             }
 
             if (!sb.isEmpty()) {
-               mc.field_1705.method_1758(class_2561.method_43470(sb.toString()), false);
+               mc.inGameHud.setOverlayMessage(Text.literal(sb.toString()), false);
             }
          }
 
-         godAxeHolders.removeIf(e -> !e.method_5805());
-         maceHolders.removeIf(e -> !e.method_5805());
-         endCrystalHolders.removeIf(e -> !e.method_5805());
-         eGappleHolders.removeIf(e -> !e.method_5805());
-         kbBallHolders.removeIf(e -> !e.method_5805());
-         totemHolders.removeIf(e -> !e.method_5805());
+         godAxeHolders.removeIf(e -> !e.isAlive());
+         maceHolders.removeIf(e -> !e.isAlive());
+         endCrystalHolders.removeIf(e -> !e.isAlive());
+         eGappleHolders.removeIf(e -> !e.isAlive());
+         kbBallHolders.removeIf(e -> !e.isAlive());
+         totemHolders.removeIf(e -> !e.isAlive());
 
-         for (class_1297 entity : mc.field_1687.method_18112()) {
-            if (Targets.check(entity) && entity instanceof class_1309 living && living != mc.field_1724) {
-               UUID uuid = living.method_5667();
-               class_1799 main = living.method_6047();
-               class_1799 off = living.method_6079();
-               String currentInfo = (main.method_7960() ? "" : main.method_7909().toString() + main.method_57353())
+         for (Entity entity : mc.world.getEntities()) {
+            if (Targets.check(entity) && entity instanceof LivingEntity living && living != mc.player) {
+               UUID uuid = living.getUuid();
+               ItemStack main = living.getMainHandStack();
+               ItemStack off = living.getOffHandStack();
+               String currentInfo = (main.isEmpty() ? "" : main.getItem().toString() + main.getComponents())
                   + "|"
-                  + (off.method_7960() ? "" : off.method_7909().toString() + off.method_57353());
+                  + (off.isEmpty() ? "" : off.getItem().toString() + off.getComponents());
                String lastInfo = this.lastItemInfo.get(uuid);
                if (!currentInfo.equals(lastInfo)) {
                   this.notifiedPlayers.remove(uuid);
@@ -196,50 +196,50 @@ public class GodItemDetector extends Module {
       }
    }
 
-   private void checkAndMarkItem(class_1309 entity, class_1799 stack, boolean isOffhand) {
-      UUID uuid = entity.method_5667();
-      if (!stack.method_7960() && !this.notifiedPlayers.contains(uuid)) {
+   private void checkAndMarkItem(LivingEntity entity, ItemStack stack, boolean isOffhand) {
+      UUID uuid = entity.getUuid();
+      if (!stack.isEmpty() && !this.notifiedPlayers.contains(uuid)) {
          String name;
-         if (entity instanceof class_1657 player && player.method_7334() != null && player.method_7334().getName() != null) {
-            name = player.method_7334().getName();
+         if (entity instanceof PlayerEntity player && player.getGameProfile() != null && player.getGameProfile().getName() != null) {
+            name = player.getGameProfile().getName();
          } else {
-            name = entity.method_5476() != null ? entity.method_5476().getString() : "???";
+            name = entity.getDisplayName() != null ? entity.getDisplayName().getString() : "???";
          }
 
          String handStr = isOffhand ? " on offhand" : "";
-         if (stack.method_7909().equals(class_1802.field_8825)) {
-            if (stack.method_57353() != null && stack.method_57353().toString().contains("一刀999!")) {
+         if (stack.getItem().equals(Items.GOLDEN_AXE)) {
+            if (stack.getComponents() != null && stack.getComponents().toString().contains("一刀999!")) {
                godAxeHolders.add(entity);
                this.notifiedPlayers.add(uuid);
                Notification.addNotificationKeepTime(
-                  name + " has " + stack.method_7964().getString() + handStr, "GodAxe Detected!", Notification.NotificationType.WARN, 4.0
+                  name + " has " + stack.getName().getString() + handStr, "GodAxe Detected!", Notification.NotificationType.WARN, 4.0
                );
             }
-         } else if (stack.method_7909().equals(class_1802.field_49814)) {
+         } else if (stack.getItem().equals(Items.MACE)) {
             maceHolders.add(entity);
             this.notifiedPlayers.add(uuid);
             Notification.addNotificationKeepTime(
-               name + " has " + stack.method_7964().getString() + handStr, "Mace Detected!", Notification.NotificationType.WARN, 4.0
+               name + " has " + stack.getName().getString() + handStr, "Mace Detected!", Notification.NotificationType.WARN, 4.0
             );
-         } else if (stack.method_7909().equals(class_1802.field_8367)) {
+         } else if (stack.getItem().equals(Items.ENCHANTED_GOLDEN_APPLE)) {
             eGappleHolders.add(entity);
             this.notifiedPlayers.add(uuid);
             Notification.addNotificationKeepTime(
-               name + " has " + stack.method_7964().getString() + handStr, "AppleCare+ Detected!", Notification.NotificationType.WARN, 4.0
+               name + " has " + stack.getName().getString() + handStr, "AppleCare+ Detected!", Notification.NotificationType.WARN, 4.0
             );
-         } else if (stack.method_7909().equals(class_1802.field_8301)) {
+         } else if (stack.getItem().equals(Items.END_CRYSTAL)) {
             endCrystalHolders.add(entity);
             this.notifiedPlayers.add(uuid);
             Notification.addNotificationKeepTime(
-               name + " has " + stack.method_7964().getString() + handStr, "EndCrystal Detected!", Notification.NotificationType.WARN, 4.0
+               name + " has " + stack.getName().getString() + handStr, "EndCrystal Detected!", Notification.NotificationType.WARN, 4.0
             );
          } else if (InventoryUtils.isKBBall(stack)) {
             kbBallHolders.add(entity);
             this.notifiedPlayers.add(uuid);
             Notification.addNotificationKeepTime(
-               name + " has " + stack.method_7964().getString() + handStr, "KBBall Detected!", Notification.NotificationType.WARN, 4.0
+               name + " has " + stack.getName().getString() + handStr, "KBBall Detected!", Notification.NotificationType.WARN, 4.0
             );
-         } else if (stack.method_7909().equals(class_1802.field_8288)) {
+         } else if (stack.getItem().equals(Items.TOTEM_OF_UNDYING)) {
             totemHolders.add(entity);
             this.notifiedPlayers.add(uuid);
             Notification.addNotificationKeepTime(name + " has Totem" + handStr, "Totem Detected!", Notification.NotificationType.WARN, 4.0);
@@ -250,44 +250,44 @@ public class GodItemDetector extends Module {
    @EventHandler
    public void onPacket(PacketEvent event) {
       if (event.getOrigin() == TransferOrigin.RECEIVE) {
-         if (mc.field_1687 != null) {
-            if (event.getPacket() instanceof class_2616 animation && animation.method_11267() == 0) {
-               class_1297 entity = mc.field_1687.method_8469(animation.method_11269());
+         if (mc.world != null) {
+            if (event.getPacket() instanceof EntityAnimationS2CPacket animation && animation.getAnimationId() == 0) {
+               Entity entity = mc.world.getEntityById(animation.getEntityId());
                if (entity == null || !godAxeHolders.contains(entity)) {
                   return;
                }
 
                godAxeHolders.remove(entity);
-               this.notifiedPlayers.remove(entity.method_5667());
-               this.lastItemInfo.remove(entity.method_5667());
+               this.notifiedPlayers.remove(entity.getUuid());
+               this.lastItemInfo.remove(entity.getUuid());
                String name;
-               if (entity instanceof class_1657 player && player.method_7334() != null && player.method_7334().getName() != null) {
-                  name = player.method_7334().getName();
+               if (entity instanceof PlayerEntity player && player.getGameProfile() != null && player.getGameProfile().getName() != null) {
+                  name = player.getGameProfile().getName();
                } else {
-                  name = entity.method_5476() != null ? entity.method_5476().getString() : "???";
+                  name = entity.getDisplayName() != null ? entity.getDisplayName().getString() : "???";
                }
 
                Notification.addNotificationKeepTime(name + "'s GodAxe has been used up!", "GodAxe Consumed!", Notification.NotificationType.INFO, 4.0);
             }
 
-            if (event.getPacket() instanceof class_2663 statusPacket && statusPacket.method_11470() == 35) {
-               class_1297 entityx = statusPacket.method_11469(mc.field_1687);
+            if (event.getPacket() instanceof EntityStatusS2CPacket statusPacket && statusPacket.getStatus() == 35) {
+               Entity entityx = statusPacket.getEntity(mc.world);
                if (entityx == null) {
                   return;
                }
 
-               if (!(entityx instanceof class_1657 player)) {
+               if (!(entityx instanceof PlayerEntity player)) {
                   return;
                }
 
                String name;
-               if (player.method_7334() != null && player.method_7334().getName() != null) {
-                  name = player.method_7334().getName();
+               if (player.getGameProfile() != null && player.getGameProfile().getName() != null) {
+                  name = player.getGameProfile().getName();
                } else {
-                  name = player.method_5476() != null ? player.method_5476().getString() : "???";
+                  name = player.getDisplayName() != null ? player.getDisplayName().getString() : "???";
                }
 
-               UUID uuid = player.method_5667();
+               UUID uuid = player.getUuid();
                totemPopTimestamps.put(uuid, System.currentTimeMillis());
                totemPopNames.put(uuid, name);
                Notification.addNotificationKeepTime(name + " popped totem! Strength: 10s", "Totem Popped!", Notification.NotificationType.WARN, 4.0);

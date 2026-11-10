@@ -1,18 +1,18 @@
 package dev.southside.mixin.accessors;
 
-import net.minecraft.class_312;
-import net.minecraft.class_9928;
+import net.minecraft.client.Mouse;
+import net.minecraft.client.input.Scroller;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
-@Mixin({class_312.class})
+@Mixin({Mouse.class})
 public interface IMouse {
-   @Accessor("field_52757")
-   class_9928 getScroller();
+   @Accessor("scroller")
+   Scroller getScroller();
 
-   @Accessor("field_1789")
+   @Accessor("cursorDeltaX")
    double getCursorDeltaX();
 
-   @Accessor("field_1787")
+   @Accessor("cursorDeltaY")
    double getCursorDeltaY();
 }

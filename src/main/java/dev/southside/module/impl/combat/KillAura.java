@@ -45,12 +45,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import net.minecraft.class_1268;
-import net.minecraft.class_1297;
-import net.minecraft.class_1309;
-import net.minecraft.class_1657;
-import net.minecraft.class_1802;
-import net.minecraft.class_238;
+import net.minecraft.util.Hand;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.Items;
+import net.minecraft.util.math.Box;
 
 public class KillAura
 extends Module {
@@ -76,8 +76,8 @@ extends Module {
     private final Switch healthCol = new Switch("Health Color", false);
     private final cc.polyfrost.oneconfig.config.options.impl.Color sideColor = new cc.polyfrost.oneconfig.config.options.impl.Color("Side Color", true, new OneColor(255, 10, 10, 70));
     private final cc.polyfrost.oneconfig.config.options.impl.Color lineColor = new cc.polyfrost.oneconfig.config.options.impl.Color("Line Color", true, new OneColor(255, 10, 10, 150));
-    public static List<class_1297> targets;
-    public static Map<class_1297, Rotation> attackableTargets;
+    public static List<Entity> targets;
+    public static Map<Entity, Rotation> attackableTargets;
     private final TimerUtil switchTimer = new TimerUtil();
     public static final MSTimer msTimer;
     public static Rotation rotation;
@@ -86,7 +86,7 @@ extends Module {
     private boolean bypassKS = true;
     public static boolean lastAttackSprint;
     private double cps;
-    public static class_1297 target;
+    public static Entity target;
     public int index = 0;
 
     public KillAura() {
@@ -137,12 +137,12 @@ extends Module {
     @EventHandler
     public void onRender3D(Render3DEvent event) {
         if (target != null) {
-            float f = ((class_1309)target).method_6032();
-            Objects.requireNonNull((class_1309)target);
+            float f = ((LivingEntity)target).getHealth();
+            Objects.requireNonNull((LivingEntity)target);
             Color healthColor = ColorUtils.getHealthColor(f, 20.0f);
-            double moveX = target.method_23317() - KillAura.target.field_6014;
-            double moveY = target.method_23318() - KillAura.target.field_6036;
-            double moveZ = target.method_23321() - KillAura.target.field_5969;
+            double moveX = target.getX() - KillAura.target.prevX;
+            double moveY = target.getY() - KillAura.target.prevY;
+            double moveZ = target.getZ() - KillAura.target.prevZ;
             float tickDelta = event.getTickCounter();
             switch (this.markMode.getMode()) {
                 case "None": {
@@ -167,7 +167,7 @@ extends Module {
                     break;
                 }
                 case "Box": {
-                    class_238 box = target.method_5829().method_1009(0.1, 0.2, 0.1).method_989(-moveX + moveX * (double)tickDelta, -moveY + moveY * (double)tickDelta, -moveZ + moveZ * (double)tickDelta);
+                    Box box = target.getBoundingBox().expand(0.1, 0.2, 0.1).offset(-moveX + moveX * (double)tickDelta, -moveY + moveY * (double)tickDelta, -moveZ + moveZ * (double)tickDelta);
                     Color color1 = (Boolean)this.healthCol.getValue() != false ? new Color(healthColor.getRed(), healthColor.getGreen(), healthColor.getBlue(), 50) : ((OneColor)this.sideColor.getValue()).toJavaColor();
                     Color color2 = (Boolean)this.healthCol.getValue() != false ? new Color(healthColor.getRed(), healthColor.getGreen(), healthColor.getBlue(), 90) : ((OneColor)this.lineColor.getValue()).toJavaColor();
                     Render3D.boxSides(box, color1);
@@ -196,7 +196,7 @@ extends Module {
             return;
         }
         this.updateTarget();
-        if (target == null || !target.method_5805() || !KillAura.mc.field_1724.method_6057(target)) {
+        if (target == null || !target.isAlive() || !KillAura.mc.player.canSee(target)) {
             return;
         }
         this.getRotation();
@@ -211,7 +211,7 @@ extends Module {
         if (this.isHoldingEndCrystal()) {
             return;
         }
-        if (target == null || !target.method_5805() || !KillAura.mc.field_1724.method_6057(target) || ((Boolean)this.rayCast.getValue()).booleanValue() && !this.inRaycast(target) && !this.targetMode.isMode("Multi") || KillAura.mc.field_1724.method_6115()) {
+        if (target == null || !target.isAlive() || !KillAura.mc.player.canSee(target) || ((Boolean)this.rayCast.getValue()).booleanValue() && !this.inRaycast(target) && !this.targetMode.isMode("Multi") || KillAura.mc.player.isUsingItem()) {
             return;
         }
         KBController kbController = Southside.INSTANCE.getModuleManager().get(KBController.class);
@@ -230,7 +230,7 @@ extends Module {
     }
 
     public void getRotation() {
-        if (target == null || KillAura.mc.field_1724 == null) {
+        if (target == null || KillAura.mc.player == null) {
             return;
         }
         Rotation rotation = null;
@@ -245,7 +245,7 @@ extends Module {
         }
         switch (this.rotationMode.getMode()) {
             case "Normal": {
-                rotation = RotationUtils.getRotationByVector(KillAura.mc.field_1724.method_33571(), BoundBoxUtils.getMinDistanceVec3dByBox(KillAura.mc.field_1724.method_33571(), target.method_5829()), (Boolean)this.noise.getValue());
+                rotation = RotationUtils.getRotationByVector(KillAura.mc.player.getEyePos(), BoundBoxUtils.getMinDistanceVec3dByBox(KillAura.mc.player.getEyePos(), target.getBoundingBox()), (Boolean)this.noise.getValue());
                 break;
             }
             case "Legit": {
@@ -257,11 +257,11 @@ extends Module {
                 break;
             }
             case "Smart": {
-                rotation = AimMath.toRotation(AimMath.computeBestAimToEntity(KillAura.mc.field_1724, target, mc.method_61966().method_60637(false)));
+                rotation = AimMath.toRotation(AimMath.computeBestAimToEntity(KillAura.mc.player, target, mc.getRenderTickCounter().getTickDelta(false)));
             }
         }
         if (((Boolean)this.fixRotation.getValue()).booleanValue() && rotation != null) {
-            rotation.fixedSensitivity(((Double)KillAura.mc.field_1690.method_42495().method_41753()).floatValue());
+            rotation.fixedSensitivity(((Double)KillAura.mc.options.getMouseSensitivity().getValue()).floatValue());
         }
         KillAura.rotation = rotation;
         if (((Boolean)this.rotOnlyRay.getValue()).booleanValue() && rotation != null && !ClientRayTraceUtil.didHitEntity(rotation.yaw, rotation.pitch, ((Number)this.range.getValue()).floatValue(), target)) {
@@ -270,30 +270,30 @@ extends Module {
         RotationUtils.setRotation(rotation, this.rotationPriority(), MoveFixMode.Silent);
     }
 
-    public boolean inRaycast(class_1297 entity) {
+    public boolean inRaycast(Entity entity) {
         if (entity == null) {
             return false;
         }
-        return ClientRayTraceUtil.didHitEntity(RotationUtils.getRotationSafely().yaw, RotationUtils.getRotationSafely().pitch, this.range.getDouble(), entity) && KillAura.mc.field_1755 == null;
+        return ClientRayTraceUtil.didHitEntity(RotationUtils.getRotationSafely().yaw, RotationUtils.getRotationSafely().pitch, this.range.getDouble(), entity) && KillAura.mc.currentScreen == null;
     }
 
     public void checkAndAttack() {
-        if (KillAura.mc.field_1724 == null || KillAura.mc.field_1724.method_6115()) {
+        if (KillAura.mc.player == null || KillAura.mc.player.isUsingItem()) {
             return;
         }
         if (this.isHoldingEndCrystal()) {
             return;
         }
-        if (KillAura.mc.field_1724.method_6047().method_7909() == class_1802.field_8634) {
+        if (KillAura.mc.player.getMainHandStack().getItem() == Items.ENDER_PEARL) {
             return;
         }
         if (((Boolean)this.checkRod.getValue()).booleanValue() && Southside.INSTANCE.getModuleManager().get(AutoRod.class).isRodActive) {
             return;
         }
-        if (((Boolean)this.attackCooldown.getValue()).booleanValue() && KillAura.mc.field_1724.method_7261(0.0f) < 1.0f) {
+        if (((Boolean)this.attackCooldown.getValue()).booleanValue() && KillAura.mc.player.getAttackCooldownProgress(0.0f) < 1.0f) {
             return;
         }
-        if (target == null || !target.method_5805()) {
+        if (target == null || !target.isAlive()) {
             return;
         }
         AutoTool autoTool = Southside.INSTANCE.getModuleManager().get(AutoTool.class);
@@ -305,27 +305,27 @@ extends Module {
             if (this.targetMode.isMode("Multi") && !attackableTargets.isEmpty()) {
                 attackableTargets.forEach((entity, targetRotation) -> {
                     PacketUtils.spoofRotation(targetRotation);
-                    this.attack((class_1297)entity);
+                    this.attack((Entity)entity);
                 });
                 msTimer.reset();
                 return;
             }
-            if (!(!((Boolean)keepSprint.getValue()).booleanValue() || this.bypassKS || !KillAura.mc.field_1724.method_5624() || Velocity.attack > 0 || Velocity.gotKB || KillAura.mc.field_1724.method_24828() && KillAura.mc.field_1690.field_1903.method_1434())) {
+            if (!(!((Boolean)keepSprint.getValue()).booleanValue() || this.bypassKS || !KillAura.mc.player.isSprinting() || Velocity.attack > 0 || Velocity.gotKB || KillAura.mc.player.isOnGround() && KillAura.mc.options.jumpKey.isPressed())) {
                 PlayerUtils.stopSprint();
                 return;
             }
             this.attack(target);
             msTimer.reset();
-            lastAttackSprint = KillAura.mc.field_1724.field_3919;
-        } else if (!((Boolean)keepSprint.getValue()).booleanValue() && Southside.INSTANCE.getModuleManager().isEnabled(Criticals.class) && Criticals.mode.isMode("Packet") && !Velocity.gotKB && lastAttackSprint && KillAura.mc.field_1724.field_3919) {
+            lastAttackSprint = KillAura.mc.player.lastSprinting;
+        } else if (!((Boolean)keepSprint.getValue()).booleanValue() && Southside.INSTANCE.getModuleManager().isEnabled(Criticals.class) && Criticals.mode.isMode("Packet") && !Velocity.gotKB && lastAttackSprint && KillAura.mc.player.lastSprinting) {
             PlayerUtils.stopSprint();
         }
     }
 
-    public void attack(class_1297 targetEntity) {
+    public void attack(Entity targetEntity) {
         if (!CPSManager.INSTANCE.cancelAttack(20)) {
-            KillAura.mc.field_1761.method_2918((class_1657)KillAura.mc.field_1724, targetEntity);
-            KillAura.mc.field_1724.method_6104(class_1268.field_5808);
+            KillAura.mc.interactionManager.attackEntity((PlayerEntity)KillAura.mc.player, targetEntity);
+            KillAura.mc.player.swingHand(Hand.MAIN_HAND);
             CPSManager.INSTANCE.click();
         }
         this.bypassKS = false;
@@ -334,11 +334,11 @@ extends Module {
     public void updateTargets() {
         targets.clear();
         if (!this.isExclude()) {
-            for (class_1297 entity : KillAura.mc.field_1687.method_18112()) {
-                if (!TargetUtils.isTarget(entity, true, true) || !(BoundBoxUtils.getMinDistanceVec3dByBox(KillAura.mc.field_1724.method_33571(), entity.method_5829()).method_1022(KillAura.mc.field_1724.method_33571()) <= ((Number)this.range.getValue()).doubleValue() + ((Number)this.discoverOffset.getValue()).doubleValue())) continue;
+            for (Entity entity : KillAura.mc.world.getEntities()) {
+                if (!TargetUtils.isTarget(entity, true, true) || !(BoundBoxUtils.getMinDistanceVec3dByBox(KillAura.mc.player.getEyePos(), entity.getBoundingBox()).distanceTo(KillAura.mc.player.getEyePos()) <= ((Number)this.range.getValue()).doubleValue() + ((Number)this.discoverOffset.getValue()).doubleValue())) continue;
                 targets.add(entity);
                 if (this.targetMode.isMode("Multi")) {
-                    Rotation targetRotation = AimMath.toRotation(AimMath.computeBestAimToEntity(KillAura.mc.field_1724, entity, mc.method_61966().method_60637(false)));
+                    Rotation targetRotation = AimMath.toRotation(AimMath.computeBestAimToEntity(KillAura.mc.player, entity, mc.getRenderTickCounter().getTickDelta(false)));
                     if (!ClientRayTraceUtil.didHitEntity(targetRotation.yaw, targetRotation.pitch, ((Number)this.range.getValue()).doubleValue(), entity)) continue;
                     attackableTargets.put(entity, targetRotation);
                     continue;
@@ -367,31 +367,31 @@ extends Module {
         if (this.index >= targets.size()) {
             this.index = 0;
         }
-        target = BoundBoxUtils.getMinDistanceVec3dByBox(KillAura.mc.field_1724.method_33571(), targets.get(this.index).method_5829()).method_1022(KillAura.mc.field_1724.method_33571()) <= ((Number)this.range.getValue()).doubleValue() ? targets.get(this.index) : targets.getFirst();
+        target = BoundBoxUtils.getMinDistanceVec3dByBox(KillAura.mc.player.getEyePos(), targets.get(this.index).getBoundingBox()).distanceTo(KillAura.mc.player.getEyePos()) <= ((Number)this.range.getValue()).doubleValue() ? targets.get(this.index) : targets.getFirst();
         if (targets.size() > 1 && this.targetMode.getMode().equals("Switch") && this.switchTimer.hasReached(((Number)this.switchDelay.getValue()).doubleValue())) {
             ++this.index;
             this.switchTimer.reset();
         }
         if (targets.size() > 1 && this.targetMode.getMode().equals("Single")) {
-            if (BoundBoxUtils.getMinDistanceVec3dByBox(KillAura.mc.field_1724.method_33571(), target.method_5829()).method_1022(KillAura.mc.field_1724.method_33571()) > ((Number)this.range.getValue()).doubleValue() + ((Number)this.discoverOffset.getValue()).doubleValue()) {
+            if (BoundBoxUtils.getMinDistanceVec3dByBox(KillAura.mc.player.getEyePos(), target.getBoundingBox()).distanceTo(KillAura.mc.player.getEyePos()) > ((Number)this.range.getValue()).doubleValue() + ((Number)this.discoverOffset.getValue()).doubleValue()) {
                 ++this.index;
-            } else if (!target.method_5805()) {
+            } else if (!target.isAlive()) {
                 ++this.index;
             }
         }
     }
 
-    private double getEntitySortValue(class_1297 entity) {
-        if (KillAura.mc.field_1724 == null) {
+    private double getEntitySortValue(Entity entity) {
+        if (KillAura.mc.player == null) {
             return Double.MAX_VALUE;
         }
-        if (entity instanceof class_1309) {
-            class_1309 livingEntity = (class_1309)entity;
+        if (entity instanceof LivingEntity) {
+            LivingEntity livingEntity = (LivingEntity)entity;
             return switch (this.sortingMode.getMode()) {
-                case "Lowest Health" -> livingEntity.method_6032();
-                case "Lowest Armor" -> livingEntity.method_6096();
-                case "Closest Distance" -> KillAura.mc.field_1724.method_5739(entity);
-                default -> KillAura.mc.field_1724.method_5739(entity);
+                case "Lowest Health" -> livingEntity.getHealth();
+                case "Lowest Armor" -> livingEntity.getArmor();
+                case "Closest Distance" -> KillAura.mc.player.distanceTo(entity);
+                default -> KillAura.mc.player.distanceTo(entity);
             };
         }
         return Double.MAX_VALUE;
@@ -399,7 +399,7 @@ extends Module {
 
     @EventHandler
     public void onTick(TickEvent event) {
-        if (KillAura.mc.field_1724 == null || KillAura.mc.field_1687 == null) {
+        if (KillAura.mc.player == null || KillAura.mc.world == null) {
             return;
         }
         if (this.isHoldingEndCrystal()) {
@@ -408,12 +408,12 @@ extends Module {
             attackableTargets.clear();
             this.waitAttack = false;
         }
-        if (((Boolean)this.auto_disable.getValue()).booleanValue() && KillAura.mc.field_1687 != null) {
-            if (!KillAura.mc.field_1724.method_5805()) {
+        if (((Boolean)this.auto_disable.getValue()).booleanValue() && KillAura.mc.world != null) {
+            if (!KillAura.mc.player.isAlive()) {
                 this.setEnable(false);
                 return;
             }
-            if (KillAura.mc.field_1724.field_6012 <= 1) {
+            if (KillAura.mc.player.age <= 1) {
                 this.setEnable(false);
             }
         }
@@ -425,13 +425,13 @@ extends Module {
     }
 
     private boolean isHoldingEndCrystal() {
-        return KillAura.mc.field_1724 != null && (KillAura.mc.field_1724.method_6047().method_31574(class_1802.field_8301) || KillAura.mc.field_1724.method_6079().method_31574(class_1802.field_8301));
+        return KillAura.mc.player != null && (KillAura.mc.player.getMainHandStack().isOf(Items.END_CRYSTAL) || KillAura.mc.player.getOffHandStack().isOf(Items.END_CRYSTAL));
     }
 
     static {
         keepSprint = new Switch("Keep Sprint", false);
-        targets = new ArrayList<class_1297>();
-        attackableTargets = new HashMap<class_1297, Rotation>();
+        targets = new ArrayList<Entity>();
+        attackableTargets = new HashMap<Entity, Rotation>();
         msTimer = new MSTimer();
         rotation = new Rotation(0.0f, 0.0f);
         lastAttackSprint = false;

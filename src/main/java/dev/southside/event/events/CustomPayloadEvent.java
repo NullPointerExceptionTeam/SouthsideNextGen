@@ -1,18 +1,18 @@
 package dev.southside.event.events;
 
 import lombok.Generated;
-import net.minecraft.class_8710;
+import net.minecraft.network.packet.CustomPayload;
 
 public class CustomPayloadEvent {
-   private final class_8710 payload;
+   private final CustomPayload payload;
 
    @Generated
-   public CustomPayloadEvent(class_8710 payload) {
+   public CustomPayloadEvent(CustomPayload payload) {
       this.payload = payload;
    }
 
    @Generated
-   public class_8710 getPayload() {
+   public CustomPayload getPayload() {
       return this.payload;
    }
 }

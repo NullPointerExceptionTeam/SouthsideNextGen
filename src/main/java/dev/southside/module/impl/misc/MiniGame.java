@@ -11,7 +11,7 @@ public class MiniGame extends Module {
 
    @Override
    public void onEnable() {
-      mc.method_1507(new GobangScreen());
+      mc.setScreen(new GobangScreen());
       this.setEnable(false);
       super.onEnable();
    }

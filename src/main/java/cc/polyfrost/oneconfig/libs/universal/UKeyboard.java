@@ -1,7 +1,7 @@
 package cc.polyfrost.oneconfig.libs.universal;
 
-import net.minecraft.class_3675;
-import net.minecraft.class_437;
+import net.minecraft.client.util.InputUtil;
+import net.minecraft.client.gui.screen.Screen;
 import org.lwjgl.glfw.GLFW;
 
 public final class UKeyboard {
@@ -22,20 +22,20 @@ public final class UKeyboard {
          int mouseButton = key - -100;
          return GLFW.glfwGetMouseButton(UMinecraft.getWindowHandle(), mouseButton) == 1;
       } else {
-         return class_3675.method_15987(UMinecraft.getWindowHandle(), key);
+         return InputUtil.isKeyPressed(UMinecraft.getWindowHandle(), key);
       }
    }
 
    public static boolean isCtrlKeyDown() {
-      return class_437.method_25441();
+      return Screen.hasControlDown();
    }
 
    public static boolean isShiftKeyDown() {
-      return class_437.method_25442();
+      return Screen.hasShiftDown();
    }
 
    public static boolean isAltKeyDown() {
-      return class_437.method_25443();
+      return Screen.hasAltDown();
    }
 
    public static boolean isKeyComboCtrlA(int key) {
@@ -77,7 +77,7 @@ public final class UKeyboard {
             default -> "Mouse " + (mouseButton + 1);
          };
       } else {
-         return class_3675.method_15985(keyCode, scanCode).method_27445().getString();
+         return InputUtil.fromKeyCode(keyCode, scanCode).getLocalizedText().getString();
       }
    }
 }

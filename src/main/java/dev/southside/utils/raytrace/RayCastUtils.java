@@ -6,77 +6,77 @@ import dev.southside.utils.types.Rotation;
 import dev.southside.utils.vector.Vector2f;
 import java.util.List;
 import java.util.Optional;
-import net.minecraft.class_1297;
-import net.minecraft.class_1301;
-import net.minecraft.class_1657;
-import net.minecraft.class_1675;
-import net.minecraft.class_1937;
-import net.minecraft.class_2338;
-import net.minecraft.class_2350;
-import net.minecraft.class_238;
-import net.minecraft.class_239;
-import net.minecraft.class_243;
-import net.minecraft.class_2680;
-import net.minecraft.class_3532;
-import net.minecraft.class_3726;
-import net.minecraft.class_3959;
-import net.minecraft.class_3965;
-import net.minecraft.class_3966;
-import net.minecraft.class_239.class_240;
-import net.minecraft.class_3959.class_242;
-import net.minecraft.class_3959.class_3960;
+import net.minecraft.entity.Entity;
+import net.minecraft.predicate.entity.EntityPredicates;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.projectile.ProjectileUtil;
+import net.minecraft.world.World;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.block.BlockState;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.block.ShapeContext;
+import net.minecraft.world.RaycastContext;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.EntityHitResult;
+import net.minecraft.util.hit.HitResult.Type;
+import net.minecraft.world.RaycastContext.FluidHandling;
+import net.minecraft.world.RaycastContext.ShapeType;
 
 public class RayCastUtils implements MinecraftAccessor {
-   public static class_3965 rayTraceCollidingBlocks(class_243 start, class_243 end) {
-      class_3965 result = mc.field_1687.method_17742(new class_3959(start, end, class_3960.field_17558, class_242.field_1347, mc.field_1724));
-      return result != null && result.method_17783() == class_240.field_1332 ? result : null;
+   public static BlockHitResult rayTraceCollidingBlocks(Vec3d start, Vec3d end) {
+      BlockHitResult result = mc.world.raycast(new RaycastContext(start, end, ShapeType.COLLIDER, FluidHandling.ANY, mc.player));
+      return result != null && result.getType() == Type.BLOCK ? result : null;
    }
 
-   public static class_239 rayCast(double range, float partialTicks, boolean hitFluids, Vector2f rotations) {
-      class_239 objectMouseOver = null;
-      class_1297 entity = mc.method_1560();
-      if (entity != null && mc.field_1687 != null) {
+   public static HitResult rayCast(double range, float partialTicks, boolean hitFluids, Vector2f rotations) {
+      HitResult objectMouseOver = null;
+      Entity entity = mc.getCameraEntity();
+      if (entity != null && mc.world != null) {
          objectMouseOver = pick(range, partialTicks, hitFluids, rotations.getX(), rotations.getY());
       }
 
       return objectMouseOver;
    }
 
-   public static class_239 rayCast(Rotation rotation, double range) {
+   public static HitResult rayCast(Rotation rotation, double range) {
       return rayCast(rotation, range, 0.0F);
    }
 
-   public static class_239 rayCast(Rotation rotation, double range, float expand) {
-      return rayCast(rotation, range, expand, mc.field_1724);
+   public static HitResult rayCast(Rotation rotation, double range, float expand) {
+      return rayCast(rotation, range, expand, mc.player);
    }
 
-   public static class_239 rayCast(Rotation rotation, double range, float expand, class_1297 entity) {
-      if (entity != null && mc.field_1687 != null) {
-         float partialTicks = mc.method_61966().method_60637(false);
-         class_243 eyePosition = entity.method_5836(partialTicks);
-         class_243 lookVector = RotationUtils.getVFR(rotation);
-         class_243 targetVec = eyePosition.method_1031(lookVector.field_1352 * range, lookVector.field_1351 * range, lookVector.field_1350 * range);
+   public static HitResult rayCast(Rotation rotation, double range, float expand, Entity entity) {
+      if (entity != null && mc.world != null) {
+         float partialTicks = mc.getRenderTickCounter().getTickDelta(false);
+         Vec3d eyePosition = entity.getCameraPosVec(partialTicks);
+         Vec3d lookVector = RotationUtils.getVFR(rotation);
+         Vec3d targetVec = eyePosition.add(lookVector.x * range, lookVector.y * range, lookVector.z * range);
          double expandedRange = range + expand;
-         class_238 searchBox = new class_238(
-            eyePosition.field_1352 - expandedRange,
-            eyePosition.field_1351 - expandedRange,
-            eyePosition.field_1350 - expandedRange,
-            eyePosition.field_1352 + expandedRange,
-            eyePosition.field_1351 + expandedRange,
-            eyePosition.field_1350 + expandedRange
+         Box searchBox = new Box(
+            eyePosition.x - expandedRange,
+            eyePosition.y - expandedRange,
+            eyePosition.z - expandedRange,
+            eyePosition.x + expandedRange,
+            eyePosition.y + expandedRange,
+            eyePosition.z + expandedRange
          );
-         List<class_1297> entities = mc.field_1687
-            .method_8390(class_1297.class, searchBox, ex -> ex != entity && class_1301.field_6155.test(ex) && ex.method_5863());
-         class_1297 pointedEntity = null;
-         class_243 hitVec = null;
+         List<Entity> entities = mc.world
+            .getEntitiesByClass(Entity.class, searchBox, ex -> ex != entity && EntityPredicates.EXCEPT_SPECTATOR.test(ex) && ex.canHit());
+         Entity pointedEntity = null;
+         Vec3d hitVec = null;
          double closestDistance = range * range;
 
-         for (class_1297 e : entities) {
-            class_238 entityBox = e.method_5829().method_1014(expand);
-            Optional<class_243> intercept = entityBox.method_992(eyePosition, targetVec);
+         for (Entity e : entities) {
+            Box entityBox = e.getBoundingBox().expand(expand);
+            Optional<Vec3d> intercept = entityBox.raycast(eyePosition, targetVec);
             if (intercept.isPresent()) {
-               class_243 interceptPoint = intercept.get();
-               double distSq = eyePosition.method_1025(interceptPoint);
+               Vec3d interceptPoint = intercept.get();
+               double distSq = eyePosition.squaredDistanceTo(interceptPoint);
                if (distSq < closestDistance) {
                   closestDistance = distSq;
                   pointedEntity = e;
@@ -85,99 +85,99 @@ public class RayCastUtils implements MinecraftAccessor {
             }
          }
 
-         return (class_239)(pointedEntity != null
-            ? new class_3966(pointedEntity, hitVec)
-            : mc.field_1687.method_17742(new class_3959(eyePosition, targetVec, class_3960.field_17559, class_242.field_1348, entity)));
+         return (HitResult)(pointedEntity != null
+            ? new EntityHitResult(pointedEntity, hitVec)
+            : mc.world.raycast(new RaycastContext(eyePosition, targetVec, ShapeType.OUTLINE, FluidHandling.NONE, entity)));
       } else {
          return null;
       }
    }
 
-   public static class_243 calculateViewVector(float pXRot, float pYRot) {
+   public static Vec3d calculateViewVector(float pXRot, float pYRot) {
       float f = pXRot * (float) (Math.PI / 180.0);
       float f1 = -pYRot * (float) (Math.PI / 180.0);
-      float f2 = class_3532.method_15362(f1);
-      float f3 = class_3532.method_15374(f1);
-      float f4 = class_3532.method_15362(f);
-      float f5 = class_3532.method_15374(f);
-      return new class_243(f3 * f4, -f5, f2 * f4);
+      float f2 = MathHelper.cos(f1);
+      float f3 = MathHelper.sin(f1);
+      float f4 = MathHelper.cos(f);
+      float f5 = MathHelper.sin(f);
+      return new Vec3d(f3 * f4, -f5, f2 * f4);
    }
 
-   public static class_239 pick(double pHitDistance, float pPartialTicks, boolean pHitFluids, float pYRot, float pXRot) {
-      class_243 vec3 = new class_243(mc.field_1724.method_23317(), mc.field_1724.method_23320(), mc.field_1724.method_23321());
-      class_243 vec31 = calculateViewVector(pXRot, pYRot);
-      class_243 vec32 = vec3.method_1031(vec31.field_1352 * pHitDistance, vec31.field_1351 * pHitDistance, vec31.field_1350 * pHitDistance);
-      return mc.field_1687
-         .method_17742(new class_3959(vec3, vec32, class_3960.field_17559, pHitFluids ? class_242.field_1347 : class_242.field_1348, mc.field_1724));
+   public static HitResult pick(double pHitDistance, float pPartialTicks, boolean pHitFluids, float pYRot, float pXRot) {
+      Vec3d vec3 = new Vec3d(mc.player.getX(), mc.player.getEyeY(), mc.player.getZ());
+      Vec3d vec31 = calculateViewVector(pXRot, pYRot);
+      Vec3d vec32 = vec3.add(vec31.x * pHitDistance, vec31.y * pHitDistance, vec31.z * pHitDistance);
+      return mc.world
+         .raycast(new RaycastContext(vec3, vec32, ShapeType.OUTLINE, pHitFluids ? FluidHandling.ANY : FluidHandling.NONE, mc.player));
    }
 
-   public static class_239 rayCast(double blockReachDistance, float yaw, float pitch) {
-      if (mc.field_1724 != null && mc.field_1687 != null) {
-         class_243 start = mc.field_1724.method_5836(1.0F);
-         class_243 lookVec = RotationUtils.getVectorForRotation(new Rotation(yaw, pitch));
-         class_243 end = start.method_1031(
-            lookVec.field_1352 * blockReachDistance, lookVec.field_1351 * blockReachDistance, lookVec.field_1350 * blockReachDistance
+   public static HitResult rayCast(double blockReachDistance, float yaw, float pitch) {
+      if (mc.player != null && mc.world != null) {
+         Vec3d start = mc.player.getCameraPosVec(1.0F);
+         Vec3d lookVec = RotationUtils.getVectorForRotation(new Rotation(yaw, pitch));
+         Vec3d end = start.add(
+            lookVec.x * blockReachDistance, lookVec.y * blockReachDistance, lookVec.z * blockReachDistance
          );
-         return mc.field_1687.method_17742(new class_3959(start, end, class_3960.field_17559, class_242.field_1348, mc.field_1724));
+         return mc.world.raycast(new RaycastContext(start, end, ShapeType.OUTLINE, FluidHandling.NONE, mc.player));
       } else {
          return null;
       }
    }
 
-   public static class_239 rayCast(Rotation rotation, double range, float expand, class_1297 entity, boolean throughWall, float predict, float predictPlayer) {
-      if (entity != null && mc.field_1687 != null) {
-         class_239 objectMouseOver = rayTraceCustom(entity, range, rotation.getYaw(), rotation.getPitch(), predictPlayer);
+   public static HitResult rayCast(Rotation rotation, double range, float expand, Entity entity, boolean throughWall, float predict, float predictPlayer) {
+      if (entity != null && mc.world != null) {
+         HitResult objectMouseOver = rayTraceCustom(entity, range, rotation.getYaw(), rotation.getPitch(), predictPlayer);
          double d1 = range;
-         class_243 vec3 = entity.method_5836(predictPlayer);
-         if (objectMouseOver != null && objectMouseOver.method_17783() == class_240.field_1332 && !throughWall) {
-            d1 = objectMouseOver.method_17784().method_1022(vec3);
+         Vec3d vec3 = entity.getCameraPosVec(predictPlayer);
+         if (objectMouseOver != null && objectMouseOver.getType() == Type.BLOCK && !throughWall) {
+            d1 = objectMouseOver.getPos().distanceTo(vec3);
          }
 
-         class_243 vec31 = RotationUtils.getRotationVec(rotation.getPitch(), rotation.getYaw());
-         class_243 vec32 = vec3.method_1031(vec31.field_1352 * range, vec31.field_1351 * range, vec31.field_1350 * range);
-         class_1297 pointedEntity = null;
-         class_243 vec33 = null;
+         Vec3d vec31 = RotationUtils.getRotationVec(rotation.getPitch(), rotation.getYaw());
+         Vec3d vec32 = vec3.add(vec31.x * range, vec31.y * range, vec31.z * range);
+         Entity pointedEntity = null;
+         Vec3d vec33 = null;
          float f = 1.0F;
-         List<class_1297> list = mc.field_1687
-            .method_8333(
+         List<Entity> list = mc.world
+            .getOtherEntities(
                entity,
-               entity.method_5829().method_1012(vec31.field_1352 * range, vec31.field_1351 * range, vec31.field_1350 * range).method_1014(1.0),
-               class_1301.field_6156.and(class_1297::method_5863)
+               entity.getBoundingBox().stretch(vec31.x * range, vec31.y * range, vec31.z * range).expand(1.0),
+               EntityPredicates.EXCEPT_CREATIVE_OR_SPECTATOR.and(Entity::canHit)
             );
          double d2 = d1;
 
-         for (class_1297 entity1 : list) {
-            if (!entity1.method_5667().equals(mc.field_1724.method_5667())) {
-               float f1 = entity1.method_5871() + expand;
-               class_238 box = entity1.method_5829().method_1014(f1);
+         for (Entity entity1 : list) {
+            if (!entity1.getUuid().equals(mc.player.getUuid())) {
+               float f1 = entity1.getTargetingMargin() + expand;
+               Box box = entity1.getBoundingBox().expand(f1);
                if (predict != 0.0F) {
-                  box = box.method_989(
-                     (entity1.method_23317() - entity1.field_6014) * predict,
-                     (entity1.method_23318() - entity1.field_6036) * predict,
-                     (entity1.method_23321() - entity1.field_5969) * predict
+                  box = box.offset(
+                     (entity1.getX() - entity1.prevX) * predict,
+                     (entity1.getY() - entity1.prevY) * predict,
+                     (entity1.getZ() - entity1.prevZ) * predict
                   );
                }
 
-               Optional<class_243> optionalHit = box.method_992(vec3, vec32);
-               class_239 movingobjectposition = null;
+               Optional<Vec3d> optionalHit = box.raycast(vec3, vec32);
+               HitResult movingobjectposition = null;
                if (optionalHit.isPresent()) {
-                  class_243 hitPos = optionalHit.get();
-                  movingobjectposition = new class_3965(
-                     hitPos, class_2350.method_10142(vec31.field_1352, vec31.field_1351, vec31.field_1350), class_2338.method_49638(hitPos), false
+                  Vec3d hitPos = optionalHit.get();
+                  movingobjectposition = new BlockHitResult(
+                     hitPos, Direction.getFacing(vec31.x, vec31.y, vec31.z), BlockPos.ofFloored(hitPos), false
                   );
                }
 
-               if (box.method_1006(vec3)) {
+               if (box.contains(vec3)) {
                   if (d2 >= 0.0) {
                      pointedEntity = entity1;
-                     vec33 = movingobjectposition == null ? vec3 : movingobjectposition.method_17784();
+                     vec33 = movingobjectposition == null ? vec3 : movingobjectposition.getPos();
                      d2 = 0.0;
                   }
                } else if (movingobjectposition != null) {
-                  double d3 = vec3.method_1022(movingobjectposition.method_17784());
+                  double d3 = vec3.distanceTo(movingobjectposition.getPos());
                   if (d3 < d2 || d2 == 0.0) {
                      pointedEntity = entity1;
-                     vec33 = movingobjectposition.method_17784();
+                     vec33 = movingobjectposition.getPos();
                      d2 = d3;
                   }
                }
@@ -185,7 +185,7 @@ public class RayCastUtils implements MinecraftAccessor {
          }
 
          if (pointedEntity != null && (d2 < d1 || objectMouseOver == null)) {
-            objectMouseOver = new class_3966(pointedEntity, vec33);
+            objectMouseOver = new EntityHitResult(pointedEntity, vec33);
          }
 
          return objectMouseOver;
@@ -194,99 +194,99 @@ public class RayCastUtils implements MinecraftAccessor {
       }
    }
 
-   private static class_239 rayTraceCustom(class_1297 entity, double blockReachDistance, float yaw, float pitch, float partialTicks) {
-      class_243 vec3 = entity.method_5836(partialTicks);
-      class_243 vec31 = RotationUtils.getRotationVec(pitch, yaw);
-      class_243 vec32 = vec3.method_1031(vec31.field_1352 * blockReachDistance, vec31.field_1351 * blockReachDistance, vec31.field_1350 * blockReachDistance);
-      return entity.method_37908().method_17742(new class_3959(vec3, vec32, class_3960.field_17559, class_242.field_1348, entity));
+   private static HitResult rayTraceCustom(Entity entity, double blockReachDistance, float yaw, float pitch, float partialTicks) {
+      Vec3d vec3 = entity.getCameraPosVec(partialTicks);
+      Vec3d vec31 = RotationUtils.getRotationVec(pitch, yaw);
+      Vec3d vec32 = vec3.add(vec31.x * blockReachDistance, vec31.y * blockReachDistance, vec31.z * blockReachDistance);
+      return entity.getWorld().raycast(new RaycastContext(vec3, vec32, ShapeType.OUTLINE, FluidHandling.NONE, entity));
    }
 
-   public static class_3966 raytraceEntity(double range, Rotation rotation) {
-      class_1297 entity = mc.field_1719;
+   public static EntityHitResult raytraceEntity(double range, Rotation rotation) {
+      Entity entity = mc.cameraEntity;
       if (entity == null) {
          return null;
       } else {
-         class_243 cameraVec = entity.method_33571();
-         class_243 rotationVec = rotation.getRotationVec();
-         class_243 vec3d3 = cameraVec.method_1031(rotationVec.field_1352 * range, rotationVec.field_1351 * range, rotationVec.field_1350 * range);
-         class_238 box = entity.method_5829().method_18804(rotationVec.method_1021(range)).method_1009(1.0, 1.0, 1.0);
-         return class_1675.method_18075(entity, cameraVec, vec3d3, box, e -> !e.method_7325() && e.method_5863(), range * range);
+         Vec3d cameraVec = entity.getEyePos();
+         Vec3d rotationVec = rotation.getRotationVec();
+         Vec3d vec3d3 = cameraVec.add(rotationVec.x * range, rotationVec.y * range, rotationVec.z * range);
+         Box box = entity.getBoundingBox().stretch(rotationVec.multiply(range)).expand(1.0, 1.0, 1.0);
+         return ProjectileUtil.raycast(entity, cameraVec, vec3d3, box, e -> !e.isSpectator() && e.canHit(), range * range);
       }
    }
 
-   public static class_3965 raytraceBlock(double range, Rotation rotation, class_2338 pos, class_2680 state) {
-      class_1297 entity = mc.field_1719;
+   public static BlockHitResult raytraceBlock(double range, Rotation rotation, BlockPos pos, BlockState state) {
+      Entity entity = mc.cameraEntity;
       if (entity == null) {
          return null;
       } else {
-         class_243 start = entity.method_33571();
-         class_243 rotationVec = rotation.getRotationVec();
-         class_243 end = start.method_1031(rotationVec.field_1352 * range, rotationVec.field_1351 * range, rotationVec.field_1350 * range);
-         return mc.field_1687.method_17745(start, end, pos, state.method_26172(mc.field_1687, pos, class_3726.method_16195(mc.field_1724)), state);
+         Vec3d start = entity.getEyePos();
+         Vec3d rotationVec = rotation.getRotationVec();
+         Vec3d end = start.add(rotationVec.x * range, rotationVec.y * range, rotationVec.z * range);
+         return mc.world.raycastBlock(start, end, pos, state.getOutlineShape(mc.world, pos, ShapeContext.of(mc.player)), state);
       }
    }
 
-   public static class_3965 raycast(double range, Rotation rotation, boolean includeFluids, float tickDelta) {
-      class_1297 entity = mc.field_1719;
+   public static BlockHitResult raycast(double range, Rotation rotation, boolean includeFluids, float tickDelta) {
+      Entity entity = mc.cameraEntity;
       if (entity == null) {
          return null;
       } else {
-         class_243 start = mc.field_1724.method_5836(tickDelta);
-         class_243 rotationVec = rotation.getRotationVec();
-         class_243 end = start.method_1031(rotationVec.field_1352 * range, rotationVec.field_1351 * range, rotationVec.field_1350 * range);
-         return mc.field_1687
-            .method_17742(new class_3959(start, end, class_3960.field_17559, includeFluids ? class_242.field_1347 : class_242.field_1348, entity));
+         Vec3d start = mc.player.getCameraPosVec(tickDelta);
+         Vec3d rotationVec = rotation.getRotationVec();
+         Vec3d end = start.add(rotationVec.x * range, rotationVec.y * range, rotationVec.z * range);
+         return mc.world
+            .raycast(new RaycastContext(start, end, ShapeType.OUTLINE, includeFluids ? FluidHandling.ANY : FluidHandling.NONE, entity));
       }
    }
 
-   public static boolean canSeePointFrom(class_243 eyes, class_243 vec3) {
-      return mc.field_1687.method_17742(new class_3959(eyes, vec3, class_3960.field_17559, class_242.field_1348, mc.field_1724)).method_17783()
-         == class_240.field_1333;
+   public static boolean canSeePointFrom(Vec3d eyes, Vec3d vec3) {
+      return mc.world.raycast(new RaycastContext(eyes, vec3, ShapeType.OUTLINE, FluidHandling.NONE, mc.player)).getType()
+         == Type.MISS;
    }
 
-   public static boolean facingEnemy(class_1297 fromEntity, class_1297 toEntity, Rotation rotation, double range, double wallsRange) {
-      class_243 cameraVec = fromEntity.method_33571();
-      class_243 rotationVec = rotation.getRotationVec();
+   public static boolean facingEnemy(Entity fromEntity, Entity toEntity, Rotation rotation, double range, double wallsRange) {
+      Vec3d cameraVec = fromEntity.getEyePos();
+      Vec3d rotationVec = rotation.getRotationVec();
       double rangeSquared = range * range;
       double wallsRangeSquared = wallsRange * wallsRange;
-      class_243 vec3d3 = cameraVec.method_1031(rotationVec.field_1352 * range, rotationVec.field_1351 * range, rotationVec.field_1350 * range);
-      class_238 box = fromEntity.method_5829().method_18804(rotationVec.method_1021(range)).method_1009(1.0, 1.0, 1.0);
-      class_239 entityHitResult = class_1675.method_18075(
-         fromEntity, cameraVec, vec3d3, box, e -> !e.method_7325() && e.method_5863() && e == toEntity, rangeSquared
+      Vec3d vec3d3 = cameraVec.add(rotationVec.x * range, rotationVec.y * range, rotationVec.z * range);
+      Box box = fromEntity.getBoundingBox().stretch(rotationVec.multiply(range)).expand(1.0, 1.0, 1.0);
+      HitResult entityHitResult = ProjectileUtil.raycast(
+         fromEntity, cameraVec, vec3d3, box, e -> !e.isSpectator() && e.canHit() && e == toEntity, rangeSquared
       );
       if (entityHitResult == null) {
          return false;
       } else {
-         double distance = cameraVec.method_1025(entityHitResult.method_17784());
-         return distance <= rangeSquared && canSeePointFrom(cameraVec, entityHitResult.method_17784()) || distance <= wallsRangeSquared;
+         double distance = cameraVec.squaredDistanceTo(entityHitResult.getPos());
+         return distance <= rangeSquared && canSeePointFrom(cameraVec, entityHitResult.getPos()) || distance <= wallsRangeSquared;
       }
    }
 
-   public static boolean facingBlock(class_243 eyes, class_243 vec3, class_2338 blockPos, class_2350 expectedSide, Double expectedMaxRange) {
-      class_3965 searchedPos = mc.field_1687.method_17742(new class_3959(eyes, vec3, class_3960.field_17559, class_242.field_1348, mc.field_1724));
-      if (searchedPos.method_17783() == class_240.field_1332 && (expectedSide == null || searchedPos.method_17780() == expectedSide)) {
-         return expectedMaxRange != null && searchedPos.method_17784().method_1025(eyes) > expectedMaxRange * expectedMaxRange
+   public static boolean facingBlock(Vec3d eyes, Vec3d vec3, BlockPos blockPos, Direction expectedSide, Double expectedMaxRange) {
+      BlockHitResult searchedPos = mc.world.raycast(new RaycastContext(eyes, vec3, ShapeType.OUTLINE, FluidHandling.NONE, mc.player));
+      if (searchedPos.getType() == Type.BLOCK && (expectedSide == null || searchedPos.getSide() == expectedSide)) {
+         return expectedMaxRange != null && searchedPos.getPos().squaredDistanceTo(eyes) > expectedMaxRange * expectedMaxRange
             ? false
-            : searchedPos.method_17777().equals(blockPos);
+            : searchedPos.getBlockPos().equals(blockPos);
       } else {
          return false;
       }
    }
 
-   public static boolean overBlock(class_1937 world, class_1657 player, Rotation rotation, class_2350 direction, class_2338 targetPos, boolean strict) {
-      class_243 start = player.method_5836(1.0F);
-      class_243 directionVec = RotationUtils.getDirectionVector(rotation.getYaw(), rotation.getPitch());
-      class_243 end = start.method_1019(directionVec.method_1021(4.5));
-      class_3965 hitResult = world.method_17742(new class_3959(start, end, class_3960.field_17559, class_242.field_1348, player));
-      if (hitResult == null || hitResult.method_17783() != class_240.field_1332) {
+   public static boolean overBlock(World world, PlayerEntity player, Rotation rotation, Direction direction, BlockPos targetPos, boolean strict) {
+      Vec3d start = player.getCameraPosVec(1.0F);
+      Vec3d directionVec = RotationUtils.getDirectionVector(rotation.getYaw(), rotation.getPitch());
+      Vec3d end = start.add(directionVec.multiply(4.5));
+      BlockHitResult hitResult = world.raycast(new RaycastContext(start, end, ShapeType.OUTLINE, FluidHandling.NONE, player));
+      if (hitResult == null || hitResult.getType() != Type.BLOCK) {
          return false;
       } else {
-         return !hitResult.method_17777().equals(targetPos) ? false : !strict || hitResult.method_17780().equals(direction);
+         return !hitResult.getBlockPos().equals(targetPos) ? false : !strict || hitResult.getSide().equals(direction);
       }
    }
 
    @FunctionalInterface
    public interface EntityFilter {
-      boolean test(class_1297 var1);
+      boolean test(Entity var1);
    }
 }

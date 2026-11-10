@@ -11,26 +11,26 @@ import dev.southside.orbit.EventHandler;
 import java.util.Deque;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import net.minecraft.class_156;
-import net.minecraft.class_437;
+import net.minecraft.util.Util;
+import net.minecraft.client.gui.screen.Screen;
 
 public final class GuiUtils {
    private static long time = -1L;
    private static long deltaTime = 17L;
    private static boolean wasMouseDown = false;
-   private static final Deque<Optional<class_437>> screenQueue = new ConcurrentLinkedDeque<>();
+   private static final Deque<Optional<Screen>> screenQueue = new ConcurrentLinkedDeque<>();
 
    @Deprecated
    public static void displayScreen(Object screen) {
-      displayScreen((class_437)screen);
+      displayScreen((Screen)screen);
    }
 
-   public static void displayScreen(class_437 screen) {
+   public static void displayScreen(Screen screen) {
       displayScreen(screen, screen instanceof OneConfigGui ? 2 : 1);
    }
 
-   public static void displayScreen(class_437 screen, int ticks) {
-      Optional<class_437> optional = screen == null ? Optional.empty() : Optional.of(screen);
+   public static void displayScreen(Screen screen, int ticks) {
+      Optional<Screen> optional = screen == null ? Optional.empty() : Optional.of(screen);
       screenQueue.add(optional);
       new TickDelay(() -> {
          UScreen.displayScreen(optional.orElse(null));
@@ -38,7 +38,7 @@ public final class GuiUtils {
       }, ticks);
    }
 
-   public static Deque<Optional<class_437>> getScreenQueue() {
+   public static Deque<Optional<Screen>> getScreenQueue() {
       return screenQueue;
    }
 
@@ -58,9 +58,9 @@ public final class GuiUtils {
    private void onRenderEvent(GameRendererDrawEvent event) {
       if (event.stage == Stage.PRE) {
          if (time == -1L) {
-            time = class_156.method_658();
+            time = Util.getMeasuringTimeMs();
          } else {
-            long currentTime = class_156.method_658();
+            long currentTime = Util.getMeasuringTimeMs();
             deltaTime = currentTime - time;
             time = currentTime;
          }

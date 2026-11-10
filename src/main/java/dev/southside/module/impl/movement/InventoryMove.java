@@ -11,20 +11,20 @@ import dev.southside.orbit.EventHandler;
 import dev.southside.utils.network.PacketUtils;
 import dev.southside.utils.render.animation.TimerUtil;
 import java.util.concurrent.LinkedBlockingQueue;
-import net.minecraft.class_10185;
-import net.minecraft.class_2596;
-import net.minecraft.class_2813;
-import net.minecraft.class_2815;
-import net.minecraft.class_2851;
-import net.minecraft.class_304;
-import net.minecraft.class_408;
-import net.minecraft.class_437;
-import net.minecraft.class_465;
+import net.minecraft.util.PlayerInput;
+import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.c2s.play.ClickSlotC2SPacket;
+import net.minecraft.network.packet.c2s.play.CloseHandledScreenC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerInputC2SPacket;
+import net.minecraft.client.option.KeyBinding;
+import net.minecraft.client.gui.screen.ChatScreen;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import org.lwjgl.glfw.GLFW;
 
 public class InventoryMove extends Module {
    private boolean wasInContainer = false;
-   private final LinkedBlockingQueue<class_2596<?>> packetQueue = new LinkedBlockingQueue<>();
+   private final LinkedBlockingQueue<Packet<?>> packetQueue = new LinkedBlockingQueue<>();
    private boolean invOpen = false;
    private boolean shouldSuppressInput = false;
    private boolean lastInputSuppression = false;
@@ -34,7 +34,7 @@ public class InventoryMove extends Module {
    private boolean shouldRestoreSprint = false;
    private boolean sprintKeyPressed = false;
    public boolean isReleasing = false;
-   private class_437 screen;
+   private Screen screen;
 
    public InventoryMove() {
       super(Category.Movement, "InventoryMove", "在物品栏中移动");
@@ -66,19 +66,19 @@ public class InventoryMove extends Module {
 
    @EventHandler
    public void onScreen(SetScreenEvent event) {
-      if (mc.field_1755 instanceof class_465 && this.invOpen && event.screen == null) {
+      if (mc.currentScreen instanceof HandledScreen && this.invOpen && event.screen == null) {
          this.handleSprintBeforeClose();
          this.screen = null;
          event.setCancelled(true);
          this.timer3.reset();
          this.lastInputSuppression = true;
-         mc.field_1690.field_1904.method_23481(false);
+         mc.options.useKey.setPressed(false);
       }
    }
 
    @EventHandler
    public void onTick(TickEvent event) {
-      if (mc.field_1755 instanceof class_465) {
+      if (mc.currentScreen instanceof HandledScreen) {
          this.updateKeyBindings();
       }
    }
@@ -87,8 +87,8 @@ public class InventoryMove extends Module {
       priority = 200
    )
    public void onMotion(MotionEvent event) {
-      if (mc.field_1755 != null && !(mc.field_1755 instanceof class_408)) {
-         boolean inContainer = mc.field_1755 instanceof class_465;
+      if (mc.currentScreen != null && !(mc.currentScreen instanceof ChatScreen)) {
+         boolean inContainer = mc.currentScreen instanceof HandledScreen;
          if (event.getState() == Stage.PRE) {
             if (this.wasInContainer && !inContainer) {
                this.wasInContainer = false;
@@ -104,7 +104,7 @@ public class InventoryMove extends Module {
             this.timer3.reset();
             this.lastInputSuppression = false;
             this.invOpen = false;
-            mc.method_1507(this.screen);
+            mc.setScreen(this.screen);
             this.sendNoMovementInput();
             this.releasePackets();
             this.resetState();
@@ -113,38 +113,38 @@ public class InventoryMove extends Module {
    }
 
    private void updateKeyBindings() {
-      if (mc.field_1724 != null) {
-         class_304.method_1416(
-            mc.field_1690.field_1894.method_1429(), GLFW.glfwGetKey(mc.method_22683().method_4490(), mc.field_1690.field_1894.method_1429().method_1444()) == 1
+      if (mc.player != null) {
+         KeyBinding.setKeyPressed(
+            mc.options.forwardKey.getDefaultKey(), GLFW.glfwGetKey(mc.getWindow().getHandle(), mc.options.forwardKey.getDefaultKey().getCode()) == 1
          );
-         class_304.method_1416(
-            mc.field_1690.field_1881.method_1429(), GLFW.glfwGetKey(mc.method_22683().method_4490(), mc.field_1690.field_1881.method_1429().method_1444()) == 1
+         KeyBinding.setKeyPressed(
+            mc.options.backKey.getDefaultKey(), GLFW.glfwGetKey(mc.getWindow().getHandle(), mc.options.backKey.getDefaultKey().getCode()) == 1
          );
-         class_304.method_1416(
-            mc.field_1690.field_1913.method_1429(), GLFW.glfwGetKey(mc.method_22683().method_4490(), mc.field_1690.field_1913.method_1429().method_1444()) == 1
+         KeyBinding.setKeyPressed(
+            mc.options.leftKey.getDefaultKey(), GLFW.glfwGetKey(mc.getWindow().getHandle(), mc.options.leftKey.getDefaultKey().getCode()) == 1
          );
-         class_304.method_1416(
-            mc.field_1690.field_1849.method_1429(), GLFW.glfwGetKey(mc.method_22683().method_4490(), mc.field_1690.field_1849.method_1429().method_1444()) == 1
+         KeyBinding.setKeyPressed(
+            mc.options.rightKey.getDefaultKey(), GLFW.glfwGetKey(mc.getWindow().getHandle(), mc.options.rightKey.getDefaultKey().getCode()) == 1
          );
-         class_304.method_1416(
-            mc.field_1690.field_1903.method_1429(), GLFW.glfwGetKey(mc.method_22683().method_4490(), mc.field_1690.field_1903.method_1429().method_1444()) == 1
+         KeyBinding.setKeyPressed(
+            mc.options.jumpKey.getDefaultKey(), GLFW.glfwGetKey(mc.getWindow().getHandle(), mc.options.jumpKey.getDefaultKey().getCode()) == 1
          );
-         class_304.method_1416(
-            mc.field_1690.field_1867.method_1429(), GLFW.glfwGetKey(mc.method_22683().method_4490(), mc.field_1690.field_1867.method_1429().method_1444()) == 1
+         KeyBinding.setKeyPressed(
+            mc.options.sprintKey.getDefaultKey(), GLFW.glfwGetKey(mc.getWindow().getHandle(), mc.options.sprintKey.getDefaultKey().getCode()) == 1
          );
-         class_304.method_1416(
-            mc.field_1690.field_1904.method_1429(), GLFW.glfwGetKey(mc.method_22683().method_4490(), mc.field_1690.field_1904.method_1429().method_1444()) == 1
+         KeyBinding.setKeyPressed(
+            mc.options.useKey.getDefaultKey(), GLFW.glfwGetKey(mc.getWindow().getHandle(), mc.options.useKey.getDefaultKey().getCode()) == 1
          );
       }
    }
 
    @EventHandler
    public void onPacketSend(PacketEvent event) {
-      class_2596<?> packet = event.getPacket();
-      if (!this.wasInContainer || !(packet instanceof class_2813) && !(packet instanceof class_2815)) {
-         if (this.shouldSuppressInput && packet instanceof class_2851 p) {
-            class_10185 input = p.comp_3139();
-            class_2851 modifiedPacket = new class_2851(new class_10185(false, false, false, false, input.comp_3163(), input.comp_3164(), input.comp_3165()));
+      Packet<?> packet = event.getPacket();
+      if (!this.wasInContainer || !(packet instanceof ClickSlotC2SPacket) && !(packet instanceof CloseHandledScreenC2SPacket)) {
+         if (this.shouldSuppressInput && packet instanceof PlayerInputC2SPacket p) {
+            PlayerInput input = p.input();
+            PlayerInputC2SPacket modifiedPacket = new PlayerInputC2SPacket(new PlayerInput(false, false, false, false, input.jump(), input.sneak(), input.sprint()));
             event.setCancelled(true);
             PacketUtils.sendPacketNoEvent(modifiedPacket);
          }
@@ -155,21 +155,21 @@ public class InventoryMove extends Module {
    }
 
    private void handleSprintBeforeClose() {
-      if (mc.field_1724 != null) {
-         this.sprintKeyPressed = GLFW.glfwGetKey(mc.method_22683().method_4490(), mc.field_1690.field_1867.method_1429().method_1444()) == 1;
-         this.shouldRestoreSprint = mc.field_1724.method_5624() || this.sprintKeyPressed;
-         if (mc.field_1724.method_5624()) {
-            mc.field_1724.method_5728(false);
+      if (mc.player != null) {
+         this.sprintKeyPressed = GLFW.glfwGetKey(mc.getWindow().getHandle(), mc.options.sprintKey.getDefaultKey().getCode()) == 1;
+         this.shouldRestoreSprint = mc.player.isSprinting() || this.sprintKeyPressed;
+         if (mc.player.isSprinting()) {
+            mc.player.setSprinting(false);
          }
 
-         mc.field_1690.field_1867.method_23481(false);
-         mc.field_1690.field_1904.method_23481(false);
+         mc.options.sprintKey.setPressed(false);
+         mc.options.useKey.setPressed(false);
       }
    }
 
    private void sendNoMovementInput() {
       try {
-         class_2851 noMovementPacket = new class_2851(new class_10185(false, false, false, false, false, false, false));
+         PlayerInputC2SPacket noMovementPacket = new PlayerInputC2SPacket(new PlayerInput(false, false, false, false, false, false, false));
          PacketUtils.sendPacketNoEvent(noMovementPacket);
       } catch (Exception var2) {
       }
@@ -182,9 +182,9 @@ public class InventoryMove extends Module {
          boolean closePacketSent = false;
 
          while (!this.packetQueue.isEmpty()) {
-            class_2596<?> packet = this.packetQueue.poll();
+            Packet<?> packet = this.packetQueue.poll();
             if (packet != null) {
-               if (packet instanceof class_2815) {
+               if (packet instanceof CloseHandledScreenC2SPacket) {
                   this.sendNoMovementInput();
                   closePacketSent = true;
                }
@@ -193,33 +193,33 @@ public class InventoryMove extends Module {
             }
          }
 
-         if (closePacketSent && this.shouldRestoreSprint && mc.field_1724 != null) {
+         if (closePacketSent && this.shouldRestoreSprint && mc.player != null) {
             if (!this.timer2.hasTimeElapsed(50L)) {
                return;
             }
 
             this.timer2.reset();
             if (this.canSprint()) {
-               mc.field_1724.method_5728(true);
+               mc.player.setSprinting(true);
             }
 
             if (this.sprintKeyPressed) {
-               mc.field_1690.field_1867.method_23481(true);
+               mc.options.sprintKey.setPressed(true);
             }
          }
 
          this.shouldSuppressInput = false;
-         mc.field_1690.field_1904.method_23481(GLFW.glfwGetKey(mc.method_22683().method_4490(), mc.field_1690.field_1904.method_1429().method_1444()) == 1);
+         mc.options.useKey.setPressed(GLFW.glfwGetKey(mc.getWindow().getHandle(), mc.options.useKey.getDefaultKey().getCode()) == 1);
       }
    }
 
    private boolean canSprint() {
-      return mc.field_1724 == null
+      return mc.player == null
          ? false
-         : !mc.field_1724.method_5715()
-            && !mc.field_1724.method_6115()
-            && !mc.field_1724.field_5976
-            && mc.field_1724.field_3913.field_3905 > 0.0F
-            && GLFW.glfwGetKey(mc.method_22683().method_4490(), mc.field_1690.field_1894.method_1429().method_1444()) == 1;
+         : !mc.player.isSneaking()
+            && !mc.player.isUsingItem()
+            && !mc.player.horizontalCollision
+            && mc.player.input.movementForward > 0.0F
+            && GLFW.glfwGetKey(mc.getWindow().getHandle(), mc.options.forwardKey.getDefaultKey().getCode()) == 1;
    }
 }

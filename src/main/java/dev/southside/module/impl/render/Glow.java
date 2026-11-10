@@ -7,20 +7,20 @@ import cc.polyfrost.oneconfig.config.options.impl.Switch;
 import dev.southside.module.Category;
 import dev.southside.module.Module;
 import dev.southside.module.impl.misc.GodItemDetector;
-import net.minecraft.class_1297;
-import net.minecraft.class_1309;
-import net.minecraft.class_1429;
-import net.minecraft.class_1542;
-import net.minecraft.class_1569;
-import net.minecraft.class_1657;
-import net.minecraft.class_1738;
-import net.minecraft.class_1799;
-import net.minecraft.class_1802;
-import net.minecraft.class_268;
-import net.minecraft.class_270;
-import net.minecraft.class_3489;
-import net.minecraft.class_640;
-import net.minecraft.class_9282;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.passive.AnimalEntity;
+import net.minecraft.entity.ItemEntity;
+import net.minecraft.entity.mob.Monster;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.ArmorItem;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.scoreboard.Team;
+import net.minecraft.scoreboard.AbstractTeam;
+import net.minecraft.registry.tag.ItemTags;
+import net.minecraft.client.network.PlayerListEntry;
+import net.minecraft.component.type.DyedColorComponent;
 import org.jetbrains.annotations.Nullable;
 
 public class Glow extends Module {
@@ -80,34 +80,34 @@ public class Glow extends Module {
       return this.isEnabled() && this.getMode() == Glow.Mode.CUSTOM;
    }
 
-   public boolean shouldGlow(class_1297 entity) {
+   public boolean shouldGlow(Entity entity) {
       if (!this.isEnabled() || entity == null) {
          return false;
-      } else if (mc.field_1724 == null || entity == mc.field_1724) {
+      } else if (mc.player == null || entity == mc.player) {
          return false;
-      } else if (entity instanceof class_1657 player) {
-         return player.method_5805();
-      } else if (this.itemGlow.getValue() && entity instanceof class_1542 itemEntity) {
+      } else if (entity instanceof PlayerEntity player) {
+         return player.isAlive();
+      } else if (this.itemGlow.getValue() && entity instanceof ItemEntity itemEntity) {
          return this.resolveItemColor(itemEntity) != null;
       } else {
-         return !this.isCustomMode() || !(entity instanceof class_1429) && !(entity instanceof class_1569) ? false : ((class_1309)entity).method_5805();
+         return !this.isCustomMode() || !(entity instanceof AnimalEntity) && !(entity instanceof Monster) ? false : ((LivingEntity)entity).isAlive();
       }
    }
 
-   public int resolveOutlineColor(class_1297 entity) {
+   public int resolveOutlineColor(Entity entity) {
       if (entity == null) {
          return -1;
-      } else if (entity instanceof class_1657 && GodItemDetector.hasTotemPopped(entity)) {
+      } else if (entity instanceof PlayerEntity && GodItemDetector.hasTotemPopped(entity)) {
          return -65536;
       } else {
-         if (entity instanceof class_1657 player) {
+         if (entity instanceof PlayerEntity player) {
             java.awt.Color color = this.getPlayerColor(player);
             if (color != null) {
                return color.getRGB();
             }
          }
 
-         if (this.itemGlow.getValue() && entity instanceof class_1542 itemEntity) {
+         if (this.itemGlow.getValue() && entity instanceof ItemEntity itemEntity) {
             java.awt.Color color = this.resolveItemColor(itemEntity);
             if (color != null) {
                return color.getRGB();
@@ -115,11 +115,11 @@ public class Glow extends Module {
          }
 
          if (this.isCustomMode()) {
-            if (entity instanceof class_1429) {
+            if (entity instanceof AnimalEntity) {
                return this.customAnimalColor.getValue().toJavaColor().getRGB();
             }
 
-            if (entity instanceof class_1569) {
+            if (entity instanceof Monster) {
                return this.customMonsterColor.getValue().toJavaColor().getRGB();
             }
          }
@@ -129,8 +129,8 @@ public class Glow extends Module {
    }
 
    @Nullable
-   private java.awt.Color getPlayerColor(class_1657 player) {
-      if (!player.method_5805()) {
+   private java.awt.Color getPlayerColor(PlayerEntity player) {
+      if (!player.isAlive()) {
          return null;
       } else {
          java.awt.Color godColor = this.getGodItemColor(player);
@@ -146,19 +146,19 @@ public class Glow extends Module {
       }
    }
 
-   private boolean isTeamMate(class_1657 player) {
-      if (mc.field_1724 == null) {
+   private boolean isTeamMate(PlayerEntity player) {
+      if (mc.player == null) {
          return false;
       } else {
-         class_268 self = this.getListedTeam(mc.field_1724);
-         class_268 other = this.getListedTeam(player);
+         Team self = this.getListedTeam(mc.player);
+         Team other = this.getListedTeam(player);
          if (self != null && other != null) {
-            if (self.method_1197().equals(other.method_1197())) {
+            if (self.getName().equals(other.getName())) {
                return true;
             }
 
-            Integer selfColor = self.method_1202() != null ? self.method_1202().method_532() : null;
-            Integer otherColor = other.method_1202() != null ? other.method_1202().method_532() : null;
+            Integer selfColor = self.getColor() != null ? self.getColor().getColorValue() : null;
+            Integer otherColor = other.getColor() != null ? other.getColor().getColorValue() : null;
             if (selfColor != null && selfColor.equals(otherColor)) {
                return true;
             }
@@ -169,26 +169,26 @@ public class Glow extends Module {
    }
 
    @Nullable
-   private class_268 getListedTeam(class_1657 player) {
-      if (mc.method_1562() == null) {
+   private Team getListedTeam(PlayerEntity player) {
+      if (mc.getNetworkHandler() == null) {
          return null;
       } else {
-         class_640 entry = mc.method_1562().method_2871(player.method_5667());
-         return entry != null ? entry.method_2955() : null;
+         PlayerListEntry entry = mc.getNetworkHandler().getPlayerListEntry(player.getUuid());
+         return entry != null ? entry.getScoreboardTeam() : null;
       }
    }
 
-   private int fallbackColor(class_1297 entity) {
-      class_270 team = entity.method_5781();
-      return team != null && team.method_1202().method_532() != null ? 0xFF000000 | team.method_1202().method_532() : -1;
+   private int fallbackColor(Entity entity) {
+      AbstractTeam team = entity.getScoreboardTeam();
+      return team != null && team.getColor().getColorValue() != null ? 0xFF000000 | team.getColor().getColorValue() : -1;
    }
 
    @Nullable
-   private java.awt.Color getArmorColor(class_1657 player) {
+   private java.awt.Color getArmorColor(PlayerEntity player) {
       for (int slot = 3; slot >= 2; slot--) {
-         class_1799 stack = player.method_31548().method_7372(slot);
-         if (!stack.method_7960() && stack.method_7909() instanceof class_1738) {
-            int rgb = stack.method_31573(class_3489.field_48803) ? class_9282.method_57470(stack, 0) : 0;
+         ItemStack stack = player.getInventory().getArmorStack(slot);
+         if (!stack.isEmpty() && stack.getItem() instanceof ArmorItem) {
+            int rgb = stack.isIn(ItemTags.DYEABLE) ? DyedColorComponent.getColor(stack, 0) : 0;
             if (rgb != 0) {
                return new java.awt.Color(rgb | 0xFF000000, true);
             }
@@ -199,12 +199,12 @@ public class Glow extends Module {
    }
 
    @Nullable
-   private java.awt.Color resolveItemColor(class_1542 itemEntity) {
+   private java.awt.Color resolveItemColor(ItemEntity itemEntity) {
       if (!this.itemGlow.getValue()) {
          return null;
       } else {
-         class_1799 stack = itemEntity.method_6983();
-         if (stack.method_7960()) {
+         ItemStack stack = itemEntity.getStack();
+         if (stack.isEmpty()) {
             return null;
          } else {
             if (this.godItemGlow.getValue()) {
@@ -215,11 +215,11 @@ public class Glow extends Module {
             }
 
             if (this.bedwarsItemGlow.getValue()) {
-               if (stack.method_31574(class_1802.field_8477)) {
+               if (stack.isOf(Items.DIAMOND)) {
                   return new java.awt.Color(120, 220, 255);
                }
 
-               if (stack.method_31574(class_1802.field_8687)) {
+               if (stack.isOf(Items.EMERALD)) {
                   return new java.awt.Color(0, 210, 80);
                }
             }
@@ -230,27 +230,27 @@ public class Glow extends Module {
    }
 
    @Nullable
-   private java.awt.Color getGodItemColor(class_1309 entity) {
+   private java.awt.Color getGodItemColor(LivingEntity entity) {
       if (this.itemGlow.getValue() && this.godItemGlow.getValue()) {
-         java.awt.Color main = this.getGodItemColor(entity.method_6047());
-         return main != null ? main : this.getGodItemColor(entity.method_6079());
+         java.awt.Color main = this.getGodItemColor(entity.getMainHandStack());
+         return main != null ? main : this.getGodItemColor(entity.getOffHandStack());
       } else {
          return null;
       }
    }
 
    @Nullable
-   private java.awt.Color getGodItemColor(class_1799 stack) {
-      if (stack.method_7960()) {
+   private java.awt.Color getGodItemColor(ItemStack stack) {
+      if (stack.isEmpty()) {
          return null;
-      } else if (stack.method_31574(class_1802.field_8301)) {
+      } else if (stack.isOf(Items.END_CRYSTAL)) {
          return new java.awt.Color(170, 60, 255);
-      } else if (stack.method_31574(class_1802.field_8825) && stack.method_57353().method_57837() && stack.method_57353().toString().contains("一刀999!")) {
+      } else if (stack.isOf(Items.GOLDEN_AXE) && stack.getComponents().isEmpty() && stack.getComponents().toString().contains("一刀999!")) {
          return new java.awt.Color(255, 215, 0);
-      } else if (stack.method_31574(class_1802.field_8288)) {
+      } else if (stack.isOf(Items.TOTEM_OF_UNDYING)) {
          return new java.awt.Color(255, 150, 60);
       } else {
-         return stack.method_31574(class_1802.field_8777) ? new java.awt.Color(90, 255, 120) : null;
+         return stack.isOf(Items.SLIME_BALL) ? new java.awt.Color(90, 255, 120) : null;
       }
    }
 

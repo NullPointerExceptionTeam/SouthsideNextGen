@@ -1,7 +1,7 @@
 package dev.southside;
 
-import net.minecraft.class_310;
+import net.minecraft.client.MinecraftClient;
 
 public interface MinecraftAccessor {
-   class_310 mc = class_310.method_1551();
+   MinecraftClient mc = MinecraftClient.getInstance();
 }

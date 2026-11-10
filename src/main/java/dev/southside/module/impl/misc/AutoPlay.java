@@ -20,13 +20,13 @@ import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import javax.imageio.ImageIO;
-import net.minecraft.class_1268;
-import net.minecraft.class_1799;
-import net.minecraft.class_2561;
-import net.minecraft.class_276;
-import net.minecraft.class_318;
-import net.minecraft.class_5498;
-import net.minecraft.class_5904;
+import net.minecraft.util.Hand;
+import net.minecraft.item.ItemStack;
+import net.minecraft.text.Text;
+import net.minecraft.client.gl.Framebuffer;
+import net.minecraft.client.util.ScreenshotRecorder;
+import net.minecraft.client.option.Perspective;
+import net.minecraft.network.packet.s2c.play.TitleS2CPacket;
 
 public class AutoPlay extends Module {
    public final Switch autoScreenShot = new Switch("AutoScreenShot", true);
@@ -45,13 +45,13 @@ public class AutoPlay extends Module {
 
    @EventHandler
    public void onPacket(PacketEvent event) {
-      if (mc.field_1687 != null) {
-         if (event.getOrigin() == TransferOrigin.RECEIVE && event.packet instanceof class_5904 packet) {
-            class_2561 text = packet.comp_2281();
+      if (mc.world != null) {
+         if (event.getOrigin() == TransferOrigin.RECEIVE && event.packet instanceof TitleS2CPacket packet) {
+            Text text = packet.text();
             if (text.getString().contains("胜利")) {
                if (this.autoScreenShot.getValue()) {
                   if (this.auto3rdPerson.getValue()) {
-                     mc.execute(() -> mc.field_1690.method_31043(class_5498.field_26666));
+                     mc.execute(() -> mc.options.setPerspective(Perspective.THIRD_PERSON_FRONT));
                   }
 
                   this.ScreenshotScheduled = true;
@@ -84,19 +84,19 @@ public class AutoPlay extends Module {
 
    @EventHandler
    public void onUpdate(PlayerUpdateEvent event) {
-      if (mc.field_1724 != null) {
+      if (mc.player != null) {
          if (this.ScreenshotScheduled && this.ScreenshotTimer.hasTimePassed(500L)) {
             mc.execute(() -> {
-               class_276 fb = mc.method_1522();
+               Framebuffer fb = mc.getFramebuffer();
                String filename = "[AutoScreenshot]" + new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss").format(new Date()) + ".jpg";
-               class_318.method_22690(mc.field_1697, filename, fb, message -> {
-                  mc.field_1705.method_1743().method_1812(message);
+               ScreenshotRecorder.saveScreenshot(mc.runDirectory, filename, fb, message -> {
+                  mc.inGameHud.getChatHud().addMessage(message);
                   if (this.screenCopy.getValue()) {
-                     this.copyScreenshotToClipboard(new File(mc.field_1697, "screenshots/" + filename));
+                     this.copyScreenshotToClipboard(new File(mc.runDirectory, "screenshots/" + filename));
                   }
                });
                if (this.auto3rdPerson.getValue()) {
-                  mc.field_1690.method_31043(class_5498.field_26664);
+                  mc.options.setPerspective(Perspective.FIRST_PERSON);
                }
             });
             this.ScreenshotScheduled = false;
@@ -105,10 +105,10 @@ public class AutoPlay extends Module {
          if (this.autoQuit.value && this.waitingNextGame && this.nextGameTimer.hasTimePassed(this.nextGameDelay.getValue().longValue() * 1000L)) {
             int playAgainSlot = this.findPlayAgainSlot();
             if (playAgainSlot != -1) {
-               int previousSlot = mc.field_1724.method_31548().field_7545;
-               mc.field_1724.method_31548().field_7545 = playAgainSlot;
-               mc.field_1761.method_2919(mc.field_1724, class_1268.field_5808);
-               mc.field_1724.method_31548().field_7545 = previousSlot;
+               int previousSlot = mc.player.getInventory().selectedSlot;
+               mc.player.getInventory().selectedSlot = playAgainSlot;
+               mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
+               mc.player.getInventory().selectedSlot = previousSlot;
                Notification.addNotification("Used item to join next game", "AutoPlay", Notification.NotificationType.WARN);
             }
 
@@ -119,12 +119,12 @@ public class AutoPlay extends Module {
    }
 
    private int findPlayAgainSlot() {
-      if (mc.field_1724 == null) {
+      if (mc.player == null) {
          return -1;
       } else {
          for (int i = 0; i < 9; i++) {
-            class_1799 stack = mc.field_1724.method_31548().method_5438(i);
-            if (!stack.method_7960() && stack.method_7964().getString().contains("再来一局")) {
+            ItemStack stack = mc.player.getInventory().getStack(i);
+            if (!stack.isEmpty() && stack.getName().getString().contains("再来一局")) {
                return i;
             }
          }

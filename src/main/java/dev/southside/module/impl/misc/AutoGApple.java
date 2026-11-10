@@ -11,13 +11,13 @@ import dev.southside.orbit.EventHandler;
 import dev.southside.utils.ChatUtils;
 import dev.southside.utils.network.PacketUtils;
 import dev.southside.utils.rotation.RotationUtils;
-import net.minecraft.class_1268;
-import net.minecraft.class_1802;
-import net.minecraft.class_2338;
-import net.minecraft.class_2350;
-import net.minecraft.class_2846;
-import net.minecraft.class_2886;
-import net.minecraft.class_2846.class_2847;
+import net.minecraft.util.Hand;
+import net.minecraft.item.Items;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerInteractItemC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket.Action;
 
 public class AutoGApple extends Module {
    public static boolean eating = false;
@@ -44,23 +44,23 @@ public class AutoGApple extends Module {
 
    @EventHandler
    public void onTick(TickEvent event) {
-      if (event.getState().equals(Stage.PRE) && mc.field_1724 != null && mc.field_1761 != null) {
+      if (event.getState().equals(Stage.PRE) && mc.player != null && mc.interactionManager != null) {
          if (this.swapRequired) {
             this.swapRequired = false;
-            PacketUtils.sendPacket(new class_2846(class_2847.field_12969, new class_2338(0, 0, 0), class_2350.field_11033));
+            PacketUtils.sendPacket(new PlayerActionC2SPacket(Action.SWAP_ITEM_WITH_OFFHAND, new BlockPos(0, 0, 0), Direction.DOWN));
             ChatUtils.info("1swap");
             this.waitSwap = true;
          }
 
-         if (this.waitSwap && mc.field_1724.method_6047().method_7909().equals(class_1802.field_8463)) {
+         if (this.waitSwap && mc.player.getMainHandStack().getItem().equals(Items.GOLDEN_APPLE)) {
             this.waitSwap = false;
             ServerPacketManager.setup();
-            PacketUtils.sendPacket(new class_2846(class_2847.field_12969, new class_2338(0, 0, 0), class_2350.field_11033));
+            PacketUtils.sendPacket(new PlayerActionC2SPacket(Action.SWAP_ITEM_WITH_OFFHAND, new BlockPos(0, 0, 0), Direction.DOWN));
             ChatUtils.info("2swap");
             eating = true;
             PacketUtils.sendSequencedPacket(
-               sequence -> new class_2886(
-                  class_1268.field_5810, sequence, RotationUtils.getRotationSafely().getYaw(), RotationUtils.getRotationSafely().getPitch()
+               sequence -> new PlayerInteractItemC2SPacket(
+                  Hand.OFF_HAND, sequence, RotationUtils.getRotationSafely().getYaw(), RotationUtils.getRotationSafely().getPitch()
                )
             );
             KillAura.msTimer.reset();

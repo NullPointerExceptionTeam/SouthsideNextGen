@@ -26,8 +26,8 @@ public class NoFall extends Module {
 
    @EventHandler
    public void onTick(TickEvent event) {
-      if (mc.field_1724 != null) {
-         double fallDistance = mc.field_1724.field_6017;
+      if (mc.player != null) {
+         double fallDistance = mc.player.fallDistance;
          if (fallDistance > this.distance.getValue().doubleValue()) {
             falling = true;
             this.jump = false;
@@ -39,8 +39,8 @@ public class NoFall extends Module {
 
    @EventHandler
    public void onMotion(MotionEvent event) {
-      if (mc.field_1724 != null) {
-         if (event.getState() == Stage.PRE && falling && mc.field_1724.method_24828()) {
+      if (mc.player != null) {
+         if (event.getState() == Stage.PRE && falling && mc.player.isOnGround()) {
             event.setY(event.getY() + 1.0);
             this.jump = true;
          }
@@ -49,7 +49,7 @@ public class NoFall extends Module {
 
    @EventHandler
    public void onMovementInput(MovementInputEvent event) {
-      if (mc.field_1724 != null) {
+      if (mc.player != null) {
          if (this.jump) {
             event.setJump(true);
             this.jump = false;

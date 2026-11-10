@@ -8,7 +8,7 @@ import cc.polyfrost.oneconfig.config.options.impl.Text;
 import cc.polyfrost.oneconfig.libs.universal.UMatrixStack;
 import cc.polyfrost.oneconfig.renderer.TextRenderer;
 import java.util.List;
-import net.minecraft.class_332;
+import net.minecraft.client.gui.DrawContext;
 
 public abstract class SingleTextHud extends TextHud {
    public Switch brackets = new Switch("Brackets", false);
@@ -65,7 +65,7 @@ public abstract class SingleTextHud extends TextHud {
    }
 
    @Override
-   public void draw(class_332 context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
+   public void draw(DrawContext context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
       float textX = x;
       if (this.brackets.getValue()) {
          this.drawLine("[", x, y, this.bracketsColor.getValue(), scale);

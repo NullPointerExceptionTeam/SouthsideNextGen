@@ -3,7 +3,7 @@ package cc.polyfrost.oneconfig.config.options.impl;
 import cc.polyfrost.oneconfig.config.data.OptionType;
 import cc.polyfrost.oneconfig.config.options.Option;
 import java.util.Arrays;
-import net.minecraft.class_3532;
+import net.minecraft.util.math.MathHelper;
 import org.jetbrains.annotations.NotNull;
 
 public class Dropdown extends Option<Integer> {
@@ -27,7 +27,7 @@ public class Dropdown extends Option<Integer> {
 
    public void setValue(Integer value) {
       if (this.options != null) {
-         super.setValue(class_3532.method_15340(value, 0, this.options.length - 1));
+         super.setValue(MathHelper.clamp(value, 0, this.options.length - 1));
       }
    }
 

@@ -8,18 +8,18 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import lombok.Generated;
-import net.minecraft.class_1657;
-import net.minecraft.class_2338;
-import net.minecraft.class_243;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
 
 public class PlayerData {
-   private class_1657 player;
+   private PlayerEntity player;
    private float vl;
    private boolean firstDectected = true;
    public float lastTickYaw;
    private boolean lastOnGround = true;
-   private class_243 lastPos;
-   private class_243 lastVelocity;
+   private Vec3d lastPos;
+   private Vec3d lastVelocity;
    private int noSlowTicks;
    private int tellyTurnStreak;
    private int lastTellyTurnTick = -1000;
@@ -32,7 +32,7 @@ public class PlayerData {
    private int blinkBurstCount;
    private int blinkLastFlagTick = -1000;
    private int velocityHitTick = -1000;
-   private class_243 velocityPreHitPos;
+   private Vec3d velocityPreHitPos;
    private boolean velocityWaitingCheck;
    private int velocityCheckTick;
    private int velocityFlagCount;
@@ -50,13 +50,13 @@ public class PlayerData {
    private int scaffoldJumpLastFlagTick = -1000;
    private final List<Long> scaffoldPlaceTimes = new ArrayList<>();
    private final List<Boolean> scaffoldPlaceSneaking = new ArrayList<>();
-   private class_2338 scaffoldLastPlacedBlock;
+   private BlockPos scaffoldLastPlacedBlock;
    private int scaffoldLastPlacedY = -1;
    private int scaffoldBatchLastFlagTick = -1000;
 
-   public PlayerData(class_1657 player) {
+   public PlayerData(PlayerEntity player) {
       this.player = player;
-      this.lastPos = player.method_19538();
+      this.lastPos = player.getPos();
    }
 
    public void addVl(float vl) {
@@ -67,16 +67,16 @@ public class PlayerData {
       HackerDetector hackerDetector = Southside.get().getModuleManager().get(HackerDetector.class);
       this.vl += vl;
       if (hackerDetector.logValue.getValue()) {
-         ChatUtils.infof("§7%s §cflagged §7%s §8(+%.1f, VL: %.1f)", this.player.method_5477().getString(), reason, vl, this.vl);
+         ChatUtils.infof("§7%s §cflagged §7%s §8(+%.1f, VL: %.1f)", this.player.getName().getString(), reason, vl, this.vl);
       }
 
       if (hackerDetector.NotificationValue.getValue()) {
-         Notification.addNotificationKeepTime(this.player.method_5477().getString() + " → " + reason, "HackerDetector", Notification.NotificationType.INFO, 3.0);
+         Notification.addNotificationKeepTime(this.player.getName().getString() + " → " + reason, "HackerDetector", Notification.NotificationType.INFO, 3.0);
       }
    }
 
    @Generated
-   public class_1657 getPlayer() {
+   public PlayerEntity getPlayer() {
       return this.player;
    }
 
@@ -101,12 +101,12 @@ public class PlayerData {
    }
 
    @Generated
-   public class_243 getLastPos() {
+   public Vec3d getLastPos() {
       return this.lastPos;
    }
 
    @Generated
-   public class_243 getLastVelocity() {
+   public Vec3d getLastVelocity() {
       return this.lastVelocity;
    }
 
@@ -171,7 +171,7 @@ public class PlayerData {
    }
 
    @Generated
-   public class_243 getVelocityPreHitPos() {
+   public Vec3d getVelocityPreHitPos() {
       return this.velocityPreHitPos;
    }
 
@@ -261,7 +261,7 @@ public class PlayerData {
    }
 
    @Generated
-   public class_2338 getScaffoldLastPlacedBlock() {
+   public BlockPos getScaffoldLastPlacedBlock() {
       return this.scaffoldLastPlacedBlock;
    }
 
@@ -276,7 +276,7 @@ public class PlayerData {
    }
 
    @Generated
-   public void setPlayer(class_1657 player) {
+   public void setPlayer(PlayerEntity player) {
       this.player = player;
    }
 
@@ -301,12 +301,12 @@ public class PlayerData {
    }
 
    @Generated
-   public void setLastPos(class_243 lastPos) {
+   public void setLastPos(Vec3d lastPos) {
       this.lastPos = lastPos;
    }
 
    @Generated
-   public void setLastVelocity(class_243 lastVelocity) {
+   public void setLastVelocity(Vec3d lastVelocity) {
       this.lastVelocity = lastVelocity;
    }
 
@@ -371,7 +371,7 @@ public class PlayerData {
    }
 
    @Generated
-   public void setVelocityPreHitPos(class_243 velocityPreHitPos) {
+   public void setVelocityPreHitPos(Vec3d velocityPreHitPos) {
       this.velocityPreHitPos = velocityPreHitPos;
    }
 
@@ -446,7 +446,7 @@ public class PlayerData {
    }
 
    @Generated
-   public void setScaffoldLastPlacedBlock(class_2338 scaffoldLastPlacedBlock) {
+   public void setScaffoldLastPlacedBlock(BlockPos scaffoldLastPlacedBlock) {
       this.scaffoldLastPlacedBlock = scaffoldLastPlacedBlock;
    }
 

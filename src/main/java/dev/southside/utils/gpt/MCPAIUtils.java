@@ -7,10 +7,10 @@ import dev.southside.utils.misc.AIWalkController;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.class_2338;
-import net.minecraft.class_2561;
-import net.minecraft.class_310;
-import net.minecraft.class_746;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.text.Text;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.network.ClientPlayerEntity;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -39,7 +39,7 @@ public class MCPAIUtils {
             JsonObject json = JsonParser.parseString(reply).getAsJsonObject();
             executeGameAction(json);
          } catch (Exception var3) {
-            class_310.method_1551().execute(() -> class_310.method_1551().field_1724.method_7353(class_2561.method_30163("[AI] " + reply), false));
+            MinecraftClient.getInstance().execute(() -> MinecraftClient.getInstance().player.sendMessage(Text.of("[AI] " + reply), false));
          }
       }
    }
@@ -103,13 +103,13 @@ public class MCPAIUtils {
 
    private static void executeGameAction(JsonObject json) {
       String action = json.has("action") ? json.get("action").getAsString() : "";
-      class_310 mc = class_310.method_1551();
-      class_746 player = mc.field_1724;
+      MinecraftClient mc = MinecraftClient.getInstance();
+      ClientPlayerEntity player = mc.player;
       if (player != null) {
          switch (action) {
             case "chat":
                String msg = json.get("message").getAsString();
-               mc.execute(() -> mc.method_1562().method_45729(msg));
+               mc.execute(() -> mc.getNetworkHandler().sendChatMessage(msg));
                break;
             case "move":
                String direction = json.get("direction").getAsString();
@@ -117,15 +117,15 @@ public class MCPAIUtils {
                mc.execute(() -> movePlayer(player, direction, distance));
                break;
             default:
-               mc.execute(() -> player.method_7353(class_2561.method_30163("[AI-Unknown Action] " + json.toString()), false));
+               mc.execute(() -> player.sendMessage(Text.of("[AI-Unknown Action] " + json.toString()), false));
          }
       }
    }
 
-   private static void movePlayer(class_746 player, String direction, double distance) {
-      double x = player.method_23317();
-      double z = player.method_23321();
-      double yaw = player.method_36454();
+   private static void movePlayer(ClientPlayerEntity player, String direction, double distance) {
+      double x = player.getX();
+      double z = player.getZ();
+      double yaw = player.getYaw();
       String var10 = direction.toLowerCase();
       switch (var10) {
          case "north":
@@ -141,8 +141,8 @@ public class MCPAIUtils {
             x -= distance;
       }
 
-      AIWalkController.walkTo(new class_2338((int)x, (int)player.method_23318(), (int)z));
-      player.method_7353(class_2561.method_30163("[AI] Moved " + distance + " blocks " + direction), false);
+      AIWalkController.walkTo(new BlockPos((int)x, (int)player.getY(), (int)z));
+      player.sendMessage(Text.of("[AI] Moved " + distance + " blocks " + direction), false);
    }
 
    public static class Message {

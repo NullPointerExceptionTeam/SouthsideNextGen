@@ -1,18 +1,18 @@
 package dev.southside.mixin.hud;
 
-import net.minecraft.class_500;
+import net.minecraft.client.gui.screen.multiplayer.MultiplayerScreen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin({class_500.class})
+@Mixin({MultiplayerScreen.class})
 public class MixinMultiplayerScreen {
    @Inject(
-      method = {"method_25426()V"},
+      method = {"init()V"},
       at = {@At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_500;method_20121()V"
+         target = "Lnet/minecraft/client/gui/screen/multiplayer/MultiplayerScreen;updateButtonActivationStates()V"
       )}
    )
    public void multiplayerGuiOpen(CallbackInfo ci) {

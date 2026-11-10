@@ -28,33 +28,33 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.Generated;
-import net.minecraft.class_10055;
-import net.minecraft.class_1297;
-import net.minecraft.class_1309;
-import net.minecraft.class_1511;
-import net.minecraft.class_1675;
-import net.minecraft.class_1922;
-import net.minecraft.class_1937;
-import net.minecraft.class_2338;
-import net.minecraft.class_2350;
-import net.minecraft.class_2374;
-import net.minecraft.class_238;
-import net.minecraft.class_2382;
-import net.minecraft.class_239;
-import net.minecraft.class_243;
-import net.minecraft.class_259;
-import net.minecraft.class_2596;
-import net.minecraft.class_265;
-import net.minecraft.class_2680;
-import net.minecraft.class_2708;
-import net.minecraft.class_2828;
-import net.minecraft.class_310;
-import net.minecraft.class_3532;
-import net.minecraft.class_3726;
-import net.minecraft.class_3959;
-import net.minecraft.class_3965;
-import net.minecraft.class_3966;
-import net.minecraft.class_746;
+import net.minecraft.client.render.entity.state.PlayerEntityRenderState;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.decoration.EndCrystalEntity;
+import net.minecraft.entity.projectile.ProjectileUtil;
+import net.minecraft.world.BlockView;
+import net.minecraft.world.World;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Position;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3i;
+import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.shape.VoxelShapes;
+import net.minecraft.network.packet.Packet;
+import net.minecraft.util.shape.VoxelShape;
+import net.minecraft.block.BlockState;
+import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.block.ShapeContext;
+import net.minecraft.world.RaycastContext;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.EntityHitResult;
+import net.minecraft.client.network.ClientPlayerEntity;
 import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
 public class RotationUtils
@@ -75,13 +75,13 @@ implements MinecraftAccessor {
     }
 
     public static Rotation getRotationSafely() {
-        if (RotationUtils.mc.field_1724 == null && rotation != null) {
+        if (RotationUtils.mc.player == null && rotation != null) {
             return rotation;
         }
-        if (RotationUtils.mc.field_1724 == null && rotation == null) {
+        if (RotationUtils.mc.player == null && rotation == null) {
             return new Rotation(0.0f, 0.0f);
         }
-        return rotation == null ? new Rotation(RotationUtils.mc.field_1724.method_36454(), RotationUtils.mc.field_1724.method_36455()) : rotation;
+        return rotation == null ? new Rotation(RotationUtils.mc.player.getYaw(), RotationUtils.mc.player.getPitch()) : rotation;
     }
 
         public static MoveFixMode getEffectiveMoveFix() {
@@ -104,84 +104,84 @@ implements MinecraftAccessor {
         strafeFixSkipped = skipped;
     }
 
-    public static class_243 getDirectionVector(float yaw, float pitch) {
+    public static Vec3d getDirectionVector(float yaw, float pitch) {
         float yawRad = (float)Math.toRadians(-yaw - 180.0f);
         float pitchRad = (float)Math.toRadians(-pitch);
-        float x = class_3532.method_15362((float)pitchRad) * class_3532.method_15374((float)yawRad);
-        float y = class_3532.method_15374((float)pitchRad);
-        float z = class_3532.method_15362((float)pitchRad) * class_3532.method_15362((float)yawRad);
-        return new class_243((double)x, (double)y, (double)z).method_1029();
+        float x = MathHelper.cos((float)pitchRad) * MathHelper.sin((float)yawRad);
+        float y = MathHelper.sin((float)pitchRad);
+        float z = MathHelper.cos((float)pitchRad) * MathHelper.cos((float)yawRad);
+        return new Vec3d((double)x, (double)y, (double)z).normalize();
     }
 
-    public static double calculateEntityDistance(class_1297 target) {
-        class_238 targetBox = target.method_5829();
-        if (target instanceof class_1511) {
-            class_243 pos = target.method_19538();
-            targetBox = new class_238(pos.field_1352 - 1.0, pos.field_1351, pos.field_1350 - 1.0, pos.field_1352 + 1.0, pos.field_1351 + 2.0, pos.field_1350 + 1.0);
+    public static double calculateEntityDistance(Entity target) {
+        Box targetBox = target.getBoundingBox();
+        if (target instanceof EndCrystalEntity) {
+            Vec3d pos = target.getPos();
+            targetBox = new Box(pos.x - 1.0, pos.y, pos.z - 1.0, pos.x + 1.0, pos.y + 2.0, pos.z + 1.0);
         }
-        targetBox = targetBox.method_1014(0.03);
+        targetBox = targetBox.expand(0.03);
         double maxReach = 3.0;
         double distanceRay = maxReach + 3.0;
         double minDistance = Double.MAX_VALUE;
-        for (class_243 lookVec : List.of(RotationUtils.getRotationVector(RotationUtils.calculate((class_243)target.method_19538()).yaw, RotationUtils.calculate((class_243)target.method_19538()).pitch))) {
-            Iterator<Float> iterator = List.of(Float.valueOf(RotationUtils.mc.field_1724.method_18381(RotationUtils.mc.field_1724.method_18376()))).iterator();
+        for (Vec3d lookVec : List.of(RotationUtils.getRotationVector(RotationUtils.calculate((Vec3d)target.getPos()).yaw, RotationUtils.calculate((Vec3d)target.getPos()).pitch))) {
+            Iterator<Float> iterator = List.of(Float.valueOf(RotationUtils.mc.player.getEyeHeight(RotationUtils.mc.player.getPose()))).iterator();
             while (iterator.hasNext()) {
                 double dist;
                 double eyeOffset = iterator.next().floatValue();
-                class_243 eyePos = new class_243(RotationUtils.mc.field_1724.method_23317(), RotationUtils.mc.field_1724.method_23318() + eyeOffset, RotationUtils.mc.field_1724.method_23321());
-                class_243 endPos = eyePos.method_1019(lookVec.method_1021(distanceRay));
-                if (targetBox.method_1006(eyePos)) {
+                Vec3d eyePos = new Vec3d(RotationUtils.mc.player.getX(), RotationUtils.mc.player.getY() + eyeOffset, RotationUtils.mc.player.getZ());
+                Vec3d endPos = eyePos.add(lookVec.multiply(distanceRay));
+                if (targetBox.contains(eyePos)) {
                     return 0.0;
                 }
-                Optional intercept = targetBox.method_992(eyePos, endPos);
-                if (!intercept.isPresent() || !((dist = eyePos.method_1022((class_243)intercept.get())) < minDistance)) continue;
+                Optional intercept = targetBox.raycast(eyePos, endPos);
+                if (!intercept.isPresent() || !((dist = eyePos.distanceTo((Vec3d)intercept.get())) < minDistance)) continue;
                 minDistance = dist;
             }
         }
         return minDistance;
     }
 
-    public static class_243 getRotationVector(float yaw, float pitch) {
+    public static Vec3d getRotationVector(float yaw, float pitch) {
         double yawRad = Math.toRadians(-yaw);
         double pitchRad = Math.toRadians(-pitch);
         double x = Math.cos(pitchRad) * Math.sin(yawRad);
         double y = Math.sin(pitchRad);
         double z = Math.cos(pitchRad) * Math.cos(yawRad);
-        return new class_243(x, y, z);
+        return new Vec3d(x, y, z);
     }
 
-    private static class_238 getTargetBoundingBox(class_1297 entity) {
-        return entity.method_5829();
+    private static Box getTargetBoundingBox(Entity entity) {
+        return entity.getBoundingBox();
     }
 
-    private static boolean checkHitResult(class_243 eyePos, class_239 result, class_1297 target) {
-        if (result.method_17783() == class_239.class_240.field_1331 && ((class_3966)result).method_17782() == target) {
-            class_243 intercept = result.method_17784();
-            return RotationUtils.isVecInside(RotationUtils.getTargetBoundingBox(target), eyePos) || intercept.method_1022(eyePos) <= 3.0;
+    private static boolean checkHitResult(Vec3d eyePos, HitResult result, Entity target) {
+        if (result.getType() == HitResult.Type.ENTITY && ((EntityHitResult)result).getEntity() == target) {
+            Vec3d intercept = result.getPos();
+            return RotationUtils.isVecInside(RotationUtils.getTargetBoundingBox(target), eyePos) || intercept.distanceTo(eyePos) <= 3.0;
         }
         return false;
     }
 
-    public static boolean isVecInside(class_238 self, class_243 vec) {
-        return vec.field_1352 > self.field_1323 && vec.field_1352 < self.field_1320 && vec.field_1351 > self.field_1322 && vec.field_1351 < self.field_1325 && vec.field_1350 > self.field_1321 && vec.field_1350 < self.field_1324;
+    public static boolean isVecInside(Box self, Vec3d vec) {
+        return vec.x > self.minX && vec.x < self.maxX && vec.y > self.minY && vec.y < self.maxY && vec.z > self.minZ && vec.z < self.maxZ;
     }
 
-    public static float getDistanceToEntity(class_1297 target) {
-        if (RotationUtils.mc.field_1724 == null) {
+    public static float getDistanceToEntity(Entity target) {
+        if (RotationUtils.mc.player == null) {
             return 0.0f;
         }
-        class_243 eyes = RotationUtils.mc.field_1724.method_5836(1.0f);
-        class_243 pos = RotationUtils.getNearestPointBB(eyes, target.method_5829());
-        double xDist = Math.abs(pos.field_1352 - eyes.field_1352);
-        double yDist = Math.abs(pos.field_1351 - eyes.field_1351);
-        double zDist = Math.abs(pos.field_1350 - eyes.field_1350);
+        Vec3d eyes = RotationUtils.mc.player.getCameraPosVec(1.0f);
+        Vec3d pos = RotationUtils.getNearestPointBB(eyes, target.getBoundingBox());
+        double xDist = Math.abs(pos.x - eyes.x);
+        double yDist = Math.abs(pos.y - eyes.y);
+        double zDist = Math.abs(pos.z - eyes.z);
         return (float)Math.sqrt(Math.pow(xDist, 2.0) + Math.pow(yDist, 2.0) + Math.pow(zDist, 2.0));
     }
 
-    public static class_243 getNearestPointBB(class_243 eye, class_238 box) {
-        double[] origin = new double[]{eye.field_1352, eye.field_1351, eye.field_1350};
-        double[] destMinis = new double[]{box.field_1323, box.field_1322, box.field_1321};
-        double[] destMaxis = new double[]{box.field_1320, box.field_1325, box.field_1324};
+    public static Vec3d getNearestPointBB(Vec3d eye, Box box) {
+        double[] origin = new double[]{eye.x, eye.y, eye.z};
+        double[] destMinis = new double[]{box.minX, box.minY, box.minZ};
+        double[] destMaxis = new double[]{box.maxX, box.maxY, box.maxZ};
         for (int i = 0; i < 3; ++i) {
             if (origin[i] > destMaxis[i]) {
                 origin[i] = destMaxis[i];
@@ -190,14 +190,14 @@ implements MinecraftAccessor {
             if (!(origin[i] < destMinis[i])) continue;
             origin[i] = destMinis[i];
         }
-        return new class_243(origin[0], origin[1], origin[2]);
+        return new Vec3d(origin[0], origin[1], origin[2]);
     }
 
-    private static class_239 rayTrace(Vector2f rotations) {
-        class_238 box;
-        double d0 = RotationUtils.mc.field_1724.method_55754();
-        class_239 hitResult = RayCastUtils.rayCast(d0, 1.0f, false, rotations);
-        class_243 vec3 = RotationUtils.mc.field_1724.method_5836(1.0f);
+    private static HitResult rayTrace(Vector2f rotations) {
+        Box box;
+        double d0 = RotationUtils.mc.player.getBlockInteractionRange();
+        HitResult hitResult = RayCastUtils.rayCast(d0, 1.0f, false, rotations);
+        Vec3d vec3 = RotationUtils.mc.player.getCameraPosVec(1.0f);
         boolean flag = false;
         double d1 = d0;
         if (d0 > 3.0) {
@@ -205,16 +205,16 @@ implements MinecraftAccessor {
         }
         d1 *= d1;
         if (hitResult != null) {
-            d1 = hitResult.method_17784().method_1025(vec3);
+            d1 = hitResult.getPos().squaredDistanceTo(vec3);
         }
-        class_243 vec31 = RotationUtils.getLook(rotations.x, rotations.y);
-        class_243 vec32 = vec3.method_1031(vec31.field_1352 * d0, vec31.field_1351 * d0, vec31.field_1350 * d0);
-        class_3966 entityhitresult = class_1675.method_18075((class_1297)RotationUtils.mc.field_1724, (class_243)vec3, (class_243)vec32, (class_238)(box = RotationUtils.mc.field_1724.method_5829().method_18804(vec31.method_1021(d0)).method_1014(1.0)), entity -> !entity.method_7325() && entity.method_30948(), (double)d1);
+        Vec3d vec31 = RotationUtils.getLook(rotations.x, rotations.y);
+        Vec3d vec32 = vec3.add(vec31.x * d0, vec31.y * d0, vec31.z * d0);
+        EntityHitResult entityhitresult = ProjectileUtil.raycast((Entity)RotationUtils.mc.player, (Vec3d)vec3, (Vec3d)vec32, (Box)(box = RotationUtils.mc.player.getBoundingBox().stretch(vec31.multiply(d0)).expand(1.0)), entity -> !entity.isSpectator() && entity.isCollidable(), (double)d1);
         if (entityhitresult != null) {
-            class_243 vec33 = entityhitresult.method_17784();
-            double d2 = vec3.method_1025(vec33);
+            Vec3d vec33 = entityhitresult.getPos();
+            double d2 = vec3.squaredDistanceTo(vec33);
             if (flag && d2 > 9.0) {
-                hitResult = class_3965.method_17778((class_243)vec33, (class_2350)class_2350.method_10142((double)vec31.field_1352, (double)vec31.field_1351, (double)vec31.field_1350), (class_2338)class_2338.method_49638((class_2374)vec33));
+                hitResult = BlockHitResult.createMissed((Vec3d)vec33, (Direction)Direction.getFacing((double)vec31.x, (double)vec31.y, (double)vec31.z), (BlockPos)BlockPos.ofFloored((Position)vec33));
             } else if (d2 < d1 || hitResult == null) {
                 hitResult = entityhitresult;
             }
@@ -222,91 +222,91 @@ implements MinecraftAccessor {
         return hitResult;
     }
 
-    public static class_243 getLook(float yaw, float pitch) {
-        float f = class_3532.method_15362((float)(-yaw * ((float)Math.PI / 180) - (float)Math.PI));
-        float f1 = class_3532.method_15374((float)(-yaw * ((float)Math.PI / 180) - (float)Math.PI));
-        float f2 = -class_3532.method_15362((float)(-pitch * ((float)Math.PI / 180)));
-        float f3 = class_3532.method_15374((float)(-pitch * ((float)Math.PI / 180)));
-        return new class_243((double)(f1 * f2), (double)f3, (double)(f * f2));
+    public static Vec3d getLook(float yaw, float pitch) {
+        float f = MathHelper.cos((float)(-yaw * ((float)Math.PI / 180) - (float)Math.PI));
+        float f1 = MathHelper.sin((float)(-yaw * ((float)Math.PI / 180) - (float)Math.PI));
+        float f2 = -MathHelper.cos((float)(-pitch * ((float)Math.PI / 180)));
+        float f3 = MathHelper.sin((float)(-pitch * ((float)Math.PI / 180)));
+        return new Vec3d((double)(f1 * f2), (double)f3, (double)(f * f2));
     }
 
-    public static Vector2f getRotations(class_243 eye, class_243 target) {
-        double x = target.field_1352 - eye.field_1352;
-        double y = target.field_1351 - eye.field_1351;
-        double z = target.field_1350 - eye.field_1350;
+    public static Vector2f getRotations(Vec3d eye, Vec3d target) {
+        double x = target.x - eye.x;
+        double y = target.y - eye.y;
+        double z = target.z - eye.z;
         double diffXZ = Math.sqrt(x * x + z * z);
         float yaw = (float)Math.toDegrees(Math.atan2(z, x)) - 90.0f;
         float pitch = (float)(-Math.toDegrees(Math.atan2(y, diffXZ)));
-        return new Vector2f(class_3532.method_15393((float)yaw), class_3532.method_15393((float)pitch));
+        return new Vector2f(MathHelper.wrapDegrees((float)yaw), MathHelper.wrapDegrees((float)pitch));
     }
 
-    public static Rotation getBetterRotationCustom(class_1297 from, class_1297 target, double range) {
-        class_310 mc = class_310.method_1551();
-        if (mc.field_1687 == null || from == null || target == null) {
+    public static Rotation getBetterRotationCustom(Entity from, Entity target, double range) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.world == null || from == null || target == null) {
             return null;
         }
-        class_243 eyePos = from.method_33571();
-        class_238 box = target.method_5829();
-        List<class_243> points = RotationUtils.getSamplePoints(box);
+        Vec3d eyePos = from.getEyePos();
+        Box box = target.getBoundingBox();
+        List<Vec3d> points = RotationUtils.getSamplePoints(box);
         Rotation bestRot = null;
         double bestDist = Double.MAX_VALUE;
-        for (class_243 point : points) {
+        for (Vec3d point : points) {
             double dist;
-            if (eyePos.method_1022(point) > range || !RotationUtils.isUnobstructed(eyePos, point) || !((dist = eyePos.method_1022(point)) < bestDist)) continue;
+            if (eyePos.distanceTo(point) > range || !RotationUtils.isUnobstructed(eyePos, point) || !((dist = eyePos.distanceTo(point)) < bestDist)) continue;
             bestDist = dist;
             bestRot = Rotation.from(eyePos, point);
         }
         return bestRot;
     }
 
-    public static Rotation getBetterRotation(class_1297 target, double range) {
-        return RotationUtils.getBetterRotationCustom((class_1297)RotationUtils.mc.field_1724, target, range);
+    public static Rotation getBetterRotation(Entity target, double range) {
+        return RotationUtils.getBetterRotationCustom((Entity)RotationUtils.mc.player, target, range);
     }
 
-    private static List<class_243> getSamplePoints(class_238 box) {
-        ArrayList<class_243> list = new ArrayList<class_243>();
-        list.add(box.method_1005());
-        list.add(new class_243(box.method_1005().field_1352, box.field_1325, box.method_1005().field_1350));
-        list.add(new class_243(box.method_1005().field_1352, box.field_1322, box.method_1005().field_1350));
-        for (double x : new double[]{box.field_1323, box.field_1320}) {
-            for (double y : new double[]{box.field_1322, box.field_1325}) {
-                for (double z : new double[]{box.field_1321, box.field_1324}) {
-                    list.add(new class_243(x, y, z));
+    private static List<Vec3d> getSamplePoints(Box box) {
+        ArrayList<Vec3d> list = new ArrayList<Vec3d>();
+        list.add(box.getCenter());
+        list.add(new Vec3d(box.getCenter().x, box.maxY, box.getCenter().z));
+        list.add(new Vec3d(box.getCenter().x, box.minY, box.getCenter().z));
+        for (double x : new double[]{box.minX, box.maxX}) {
+            for (double y : new double[]{box.minY, box.maxY}) {
+                for (double z : new double[]{box.minZ, box.maxZ}) {
+                    list.add(new Vec3d(x, y, z));
                 }
             }
         }
         for (int i = 0; i < 10; ++i) {
-            double rx = box.field_1323 + Math.random() * (box.field_1320 - box.field_1323);
-            double ry = box.field_1322 + Math.random() * (box.field_1325 - box.field_1322);
-            double rz = box.field_1321 + Math.random() * (box.field_1324 - box.field_1321);
-            list.add(new class_243(rx, ry, rz));
+            double rx = box.minX + Math.random() * (box.maxX - box.minX);
+            double ry = box.minY + Math.random() * (box.maxY - box.minY);
+            double rz = box.minZ + Math.random() * (box.maxZ - box.minZ);
+            list.add(new Vec3d(rx, ry, rz));
         }
         return list;
     }
 
-    private static boolean isUnobstructed(class_243 from, class_243 to) {
-        class_310 mc = class_310.method_1551();
-        class_3965 result = mc.field_1687.method_17742(new class_3959(from, to, class_3959.class_3960.field_17558, class_3959.class_242.field_1348, (class_1297)mc.field_1724));
-        return result.method_17783() == class_239.class_240.field_1333 || RotationUtils.squaredDistanceTo((class_239)result, from) >= from.method_1025(to) - 0.01;
+    private static boolean isUnobstructed(Vec3d from, Vec3d to) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        BlockHitResult result = mc.world.raycast(new RaycastContext(from, to, RaycastContext.ShapeType.COLLIDER, RaycastContext.FluidHandling.NONE, (Entity)mc.player));
+        return result.getType() == HitResult.Type.MISS || RotationUtils.squaredDistanceTo((HitResult)result, from) >= from.squaredDistanceTo(to) - 0.01;
     }
 
-    public static double squaredDistanceTo(class_239 result, class_243 vec3d) {
-        class_243 entity = result.method_17784();
-        double d = vec3d.field_1352 - entity.method_10216();
-        double e = vec3d.field_1351 - entity.method_10214();
-        double f = vec3d.field_1350 - entity.method_10215();
+    public static double squaredDistanceTo(HitResult result, Vec3d vec3d) {
+        Vec3d entity = result.getPos();
+        double d = vec3d.x - entity.getX();
+        double e = vec3d.y - entity.getY();
+        double f = vec3d.z - entity.getZ();
         return d * d + e * e + f * f;
     }
 
-    public static Rotation calculateRotation(class_243 cameraPos, class_243 aimPoint) {
-        double dx = aimPoint.field_1352 - cameraPos.field_1352;
-        double dy = aimPoint.field_1351 - cameraPos.field_1351;
-        double dz = aimPoint.field_1350 - cameraPos.field_1350;
+    public static Rotation calculateRotation(Vec3d cameraPos, Vec3d aimPoint) {
+        double dx = aimPoint.x - cameraPos.x;
+        double dy = aimPoint.y - cameraPos.y;
+        double dz = aimPoint.z - cameraPos.z;
         double distXZ = Math.sqrt(dx * dx + dz * dz);
         float yaw = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0);
         float pitch = (float)(-Math.toDegrees(Math.atan2(dy, distXZ)));
         yaw = RotationUtils.wrapDegrees(yaw);
-        pitch = class_3532.method_15363((float)pitch, (float)-90.0f, (float)90.0f);
+        pitch = MathHelper.clamp((float)pitch, (float)-90.0f, (float)90.0f);
         return new Rotation(yaw, pitch);
     }
 
@@ -321,8 +321,8 @@ implements MinecraftAccessor {
     }
 
     public static float[] fixMouseSensitivity(float yaw1, float pitch2, float yaw, float pitch) {
-        class_310 mc = class_310.method_1551();
-        float sensitivity = ((Double)mc.field_1690.method_42495().method_41753()).floatValue();
+        MinecraftClient mc = MinecraftClient.getInstance();
+        float sensitivity = ((Double)mc.options.getMouseSensitivity().getValue()).floatValue();
         float f = sensitivity * 0.6f + 0.2f;
         float gcd = f * f * f * 1.2f;
         float deltaYaw = yaw1 - yaw;
@@ -341,7 +341,7 @@ implements MinecraftAccessor {
     }
 
     public static void choose() {
-        if (RotationUtils.mc.field_1724 != null) {
+        if (RotationUtils.mc.player != null) {
             rotationEvent.setDisableRotation(false);
             Southside.INSTANCE.getEventBus().call(rotationEvent);
             if (rotationList.isEmpty()) {
@@ -388,11 +388,11 @@ implements MinecraftAccessor {
         RotationUtils.setRotation(angles, 0, Southside.INSTANCE.getModuleManager().get(StrafeFix.class).getMode());
     }
 
-    public static class_243 getClosestPoint(class_243 eyePos, class_238 box) {
-        double closestX = class_3532.method_15350((double)eyePos.field_1352, (double)box.field_1323, (double)box.field_1320);
-        double closestY = class_3532.method_15350((double)eyePos.field_1351, (double)box.field_1322, (double)box.field_1325);
-        double closestZ = class_3532.method_15350((double)eyePos.field_1350, (double)box.field_1321, (double)box.field_1324);
-        return new class_243(closestX, closestY, closestZ);
+    public static Vec3d getClosestPoint(Vec3d eyePos, Box box) {
+        double closestX = MathHelper.clamp((double)eyePos.x, (double)box.minX, (double)box.maxX);
+        double closestY = MathHelper.clamp((double)eyePos.y, (double)box.minY, (double)box.maxY);
+        double closestZ = MathHelper.clamp((double)eyePos.z, (double)box.minZ, (double)box.maxZ);
+        return new Vec3d(closestX, closestY, closestZ);
     }
 
     public static float getRawDirectionRotation(float yaw, float pStrafe, float pForward) {
@@ -416,30 +416,30 @@ implements MinecraftAccessor {
     }
 
     public static float getRawDirection() {
-        return RotationUtils.getRawDirectionRotation(RotationUtils.mc.field_1724.method_36454(), RotationUtils.mc.field_1724.field_6212, RotationUtils.mc.field_1724.field_6250);
+        return RotationUtils.getRawDirectionRotation(RotationUtils.mc.player.getYaw(), RotationUtils.mc.player.sidewaysSpeed, RotationUtils.mc.player.forwardSpeed);
     }
 
-    public static float[] getRotations(class_243 vec) {
-        return RotationUtils.getRotations(vec.field_1352, vec.field_1351, vec.field_1350);
+    public static float[] getRotations(Vec3d vec) {
+        return RotationUtils.getRotations(vec.x, vec.y, vec.z);
     }
 
     public static float[] getRotations(double x, double y, double z) {
-        double deltaX = x - RotationUtils.mc.field_1724.method_23317();
-        double deltaY = y - RotationUtils.mc.field_1724.method_23318() - (double)RotationUtils.mc.field_1724.method_18381(RotationUtils.mc.field_1724.method_18376());
-        double deltaZ = z - RotationUtils.mc.field_1724.method_23321();
+        double deltaX = x - RotationUtils.mc.player.getX();
+        double deltaY = y - RotationUtils.mc.player.getY() - (double)RotationUtils.mc.player.getEyeHeight(RotationUtils.mc.player.getPose());
+        double deltaZ = z - RotationUtils.mc.player.getZ();
         double horizontalDistance = Math.sqrt(deltaX * deltaX + deltaZ * deltaZ);
         float yaw = (float)Math.toDegrees(-Math.atan2(deltaX, deltaZ));
         float pitch = (float)Math.toDegrees(-Math.atan2(deltaY, horizontalDistance));
         return new float[]{yaw, pitch};
     }
 
-    public static float[] getRotations(class_1297 entity) {
-        double pX = RotationUtils.mc.field_1724.method_23317();
-        double pY = RotationUtils.mc.field_1724.method_23318() + (double)RotationUtils.mc.field_1724.method_18381(RotationUtils.mc.field_1724.method_18376());
-        double pZ = RotationUtils.mc.field_1724.method_23321();
-        double eX = entity.method_23317();
-        double eY = entity.method_23318() + (double)(entity.method_17682() / 2.0f);
-        double eZ = entity.method_23321();
+    public static float[] getRotations(Entity entity) {
+        double pX = RotationUtils.mc.player.getX();
+        double pY = RotationUtils.mc.player.getY() + (double)RotationUtils.mc.player.getEyeHeight(RotationUtils.mc.player.getPose());
+        double pZ = RotationUtils.mc.player.getZ();
+        double eX = entity.getX();
+        double eY = entity.getY() + (double)(entity.getHeight() / 2.0f);
+        double eZ = entity.getZ();
         double dX = pX - eX;
         double dY = pY - eY;
         double dZ = pZ - eZ;
@@ -449,39 +449,39 @@ implements MinecraftAccessor {
         return new float[]{(float)yaw, (float)(90.0 - pitch)};
     }
 
-    public static Rotation toRotation(class_243 vec, float partialTicks) {
-        class_243 eyesPos = new class_243(RotationUtils.mc.field_1724.method_23317(), RotationUtils.mc.field_1724.method_23318() + (double)RotationUtils.mc.field_1724.method_18381(RotationUtils.mc.field_1724.method_18376()), RotationUtils.mc.field_1724.method_23321()).method_1019(RotationUtils.mc.field_1724.method_18798().method_1021((double)partialTicks));
-        class_243 diff = vec.method_1020(eyesPos);
-        double diffX = diff.field_1352;
-        double diffZ = diff.field_1350;
+    public static Rotation toRotation(Vec3d vec, float partialTicks) {
+        Vec3d eyesPos = new Vec3d(RotationUtils.mc.player.getX(), RotationUtils.mc.player.getY() + (double)RotationUtils.mc.player.getEyeHeight(RotationUtils.mc.player.getPose()), RotationUtils.mc.player.getZ()).add(RotationUtils.mc.player.getVelocity().multiply((double)partialTicks));
+        Vec3d diff = vec.subtract(eyesPos);
+        double diffX = diff.x;
+        double diffZ = diff.z;
         double horizontalDistance = Math.sqrt(diffX * diffX + diffZ * diffZ);
         float yaw = (float)Math.toDegrees(Math.atan2(diffZ, diffX)) - 90.0f;
-        float pitch = (float)(-Math.toDegrees(Math.atan2(diff.field_1351, horizontalDistance)));
+        float pitch = (float)(-Math.toDegrees(Math.atan2(diff.y, horizontalDistance)));
         return new Rotation(yaw, pitch);
     }
 
-    public static Rotation getAngles(class_1297 entity) {
-        if (entity == null || RotationUtils.mc.field_1724 == null) {
+    public static Rotation getAngles(Entity entity) {
+        if (entity == null || RotationUtils.mc.player == null) {
             return null;
         }
-        double diffX = entity.method_23317() - RotationUtils.mc.field_1724.method_23317();
-        double diffZ = entity.method_23321() - RotationUtils.mc.field_1724.method_23321();
-        double entityEyeHeight = entity.method_18381(entity.method_18376());
-        double playerEyeHeight = RotationUtils.mc.field_1724.method_18381(RotationUtils.mc.field_1724.method_18376());
-        double diffY = entity.method_23318() + entityEyeHeight * 0.9 - (RotationUtils.mc.field_1724.method_23318() + playerEyeHeight);
+        double diffX = entity.getX() - RotationUtils.mc.player.getX();
+        double diffZ = entity.getZ() - RotationUtils.mc.player.getZ();
+        double entityEyeHeight = entity.getEyeHeight(entity.getPose());
+        double playerEyeHeight = RotationUtils.mc.player.getEyeHeight(RotationUtils.mc.player.getPose());
+        double diffY = entity.getY() + entityEyeHeight * 0.9 - (RotationUtils.mc.player.getY() + playerEyeHeight);
         double dist = Math.sqrt(diffX * diffX + diffZ * diffZ);
         float yaw = (float)Math.toDegrees(Math.atan2(diffZ, diffX)) - 90.0f;
         float pitch = (float)(-Math.toDegrees(Math.atan2(diffY, dist)));
-        return new Rotation(RotationUtils.mc.field_1724.method_36454() + class_3532.method_15393((float)(yaw - RotationUtils.mc.field_1724.method_36454())), RotationUtils.mc.field_1724.method_36455() + class_3532.method_15393((float)(pitch - RotationUtils.mc.field_1724.method_36455())));
+        return new Rotation(RotationUtils.mc.player.getYaw() + MathHelper.wrapDegrees((float)(yaw - RotationUtils.mc.player.getYaw())), RotationUtils.mc.player.getPitch() + MathHelper.wrapDegrees((float)(pitch - RotationUtils.mc.player.getPitch())));
     }
 
-    public static Rotation getRotationToBlock(class_2338 blockPos, class_2350 direction) {
-        double centerX = (double)blockPos.method_10263() + 0.5 + (double)direction.method_10148() * 0.5;
-        double centerY = (double)blockPos.method_10264() + 0.5 + (double)direction.method_10164() * 0.5;
-        double centerZ = (double)blockPos.method_10260() + 0.5 + (double)direction.method_10165() * 0.5;
-        double playerX = RotationUtils.mc.field_1724.method_23317();
-        double playerY = RotationUtils.mc.field_1724.method_23318() + (double)RotationUtils.mc.field_1724.method_18381(RotationUtils.mc.field_1724.method_18376());
-        double playerZ = RotationUtils.mc.field_1724.method_23321();
+    public static Rotation getRotationToBlock(BlockPos blockPos, Direction direction) {
+        double centerX = (double)blockPos.getX() + 0.5 + (double)direction.getOffsetX() * 0.5;
+        double centerY = (double)blockPos.getY() + 0.5 + (double)direction.getOffsetY() * 0.5;
+        double centerZ = (double)blockPos.getZ() + 0.5 + (double)direction.getOffsetZ() * 0.5;
+        double playerX = RotationUtils.mc.player.getX();
+        double playerY = RotationUtils.mc.player.getY() + (double)RotationUtils.mc.player.getEyeHeight(RotationUtils.mc.player.getPose());
+        double playerZ = RotationUtils.mc.player.getZ();
         double deltaX = centerX - playerX;
         double deltaY = centerY - playerY;
         double deltaZ = centerZ - playerZ;
@@ -491,7 +491,7 @@ implements MinecraftAccessor {
         return new Rotation(yaw, pitch);
     }
 
-    public static VecRotation faceBlock(class_2338 blockPos) {
+    public static VecRotation faceBlock(BlockPos blockPos) {
         if (blockPos == null) {
             return null;
         }
@@ -499,18 +499,18 @@ implements MinecraftAccessor {
         for (double xSearch = 0.1; xSearch < 0.9; xSearch += 0.1) {
             for (double ySearch = 0.1; ySearch < 0.9; ySearch += 0.1) {
                 for (double zSearch = 0.1; zSearch < 0.9; zSearch += 0.1) {
-                    class_243 eyesPos = new class_243(RotationUtils.mc.field_1724.method_23317(), RotationUtils.mc.field_1724.method_5829().field_1322 + (double)RotationUtils.mc.field_1724.method_18381(RotationUtils.mc.field_1724.method_18376()), RotationUtils.mc.field_1724.method_23321());
-                    class_243 posVec = new class_243((double)blockPos.method_10263() + xSearch, (double)blockPos.method_10264() + ySearch, (double)blockPos.method_10260() + zSearch);
-                    double dist = eyesPos.method_1022(posVec);
-                    double diffX = posVec.field_1352 - eyesPos.field_1352;
-                    double diffY = posVec.field_1351 - eyesPos.field_1351;
-                    double diffZ = posVec.field_1350 - eyesPos.field_1350;
+                    Vec3d eyesPos = new Vec3d(RotationUtils.mc.player.getX(), RotationUtils.mc.player.getBoundingBox().minY + (double)RotationUtils.mc.player.getEyeHeight(RotationUtils.mc.player.getPose()), RotationUtils.mc.player.getZ());
+                    Vec3d posVec = new Vec3d((double)blockPos.getX() + xSearch, (double)blockPos.getY() + ySearch, (double)blockPos.getZ() + zSearch);
+                    double dist = eyesPos.distanceTo(posVec);
+                    double diffX = posVec.x - eyesPos.x;
+                    double diffY = posVec.y - eyesPos.y;
+                    double diffZ = posVec.z - eyesPos.z;
                     double diffXZ = Math.sqrt(diffX * diffX + diffZ * diffZ);
-                    Rotation rotation = new Rotation(class_3532.method_15393((float)((float)Math.toDegrees(Math.atan2(diffZ, diffX)) - 90.0f)), class_3532.method_15393((float)((float)(-Math.toDegrees(Math.atan2(diffY, diffXZ))))));
-                    class_243 rotationVector = RotationUtils.getRotationVec(rotation);
-                    class_243 vector = eyesPos.method_1031(rotationVector.field_1352 * dist, rotationVector.field_1351 * dist, rotationVector.field_1350 * dist);
-                    class_3965 obj = RotationUtils.mc.field_1687.method_17742(new class_3959(eyesPos, vector, class_3959.class_3960.field_17558, class_3959.class_242.field_1348, (class_1297)RotationUtils.mc.field_1724));
-                    if (obj.method_17783() != class_239.class_240.field_1332) continue;
+                    Rotation rotation = new Rotation(MathHelper.wrapDegrees((float)((float)Math.toDegrees(Math.atan2(diffZ, diffX)) - 90.0f)), MathHelper.wrapDegrees((float)((float)(-Math.toDegrees(Math.atan2(diffY, diffXZ))))));
+                    Vec3d rotationVector = RotationUtils.getRotationVec(rotation);
+                    Vec3d vector = eyesPos.add(rotationVector.x * dist, rotationVector.y * dist, rotationVector.z * dist);
+                    BlockHitResult obj = RotationUtils.mc.world.raycast(new RaycastContext(eyesPos, vector, RaycastContext.ShapeType.COLLIDER, RaycastContext.FluidHandling.NONE, (Entity)RotationUtils.mc.player));
+                    if (obj.getType() != HitResult.Type.BLOCK) continue;
                     VecRotation currentVec = new VecRotation(posVec, rotation);
                     if (vecRotation != null && !(RotationUtils.getRotationDifference(currentVec.rotation()) < RotationUtils.getRotationDifference(vecRotation.rotation()))) continue;
                     vecRotation = currentVec;
@@ -528,26 +528,26 @@ implements MinecraftAccessor {
         return Math.hypot(RotationUtils.getAngleDifference(a.yaw, b.getPitch()), a.pitch - b.getYaw());
     }
 
-    public static class_243 getRotationVec(Rotation rot) {
+    public static Vec3d getRotationVec(Rotation rot) {
         return RotationUtils.getRotationVec(rot.yaw, rot.pitch);
     }
 
-    public static class_243 getRotationVec(float yaw, float pitch) {
+    public static Vec3d getRotationVec(float yaw, float pitch) {
         float f = pitch * ((float)Math.PI / 180);
         float g = -yaw * ((float)Math.PI / 180);
-        float h = class_3532.method_15362((float)g);
-        float i = class_3532.method_15374((float)g);
-        float j = class_3532.method_15362((float)f);
-        float k = class_3532.method_15374((float)f);
-        return new class_243((double)(i * j), (double)(-k), (double)(h * j));
+        float h = MathHelper.cos((float)g);
+        float i = MathHelper.sin((float)g);
+        float j = MathHelper.cos((float)f);
+        float k = MathHelper.sin((float)f);
+        return new Vec3d((double)(i * j), (double)(-k), (double)(h * j));
     }
 
-    public static Rotation getRotationBlock(class_2338 pos, float predict) {
-        return RotationUtils.getRotationByVector(RotationUtils.mc.field_1724.method_33571(), new class_243((double)pos.method_10263() + 0.5, (double)pos.method_10264() + 0.5, (double)pos.method_10260() + 0.5), false);
+    public static Rotation getRotationBlock(BlockPos pos, float predict) {
+        return RotationUtils.getRotationByVector(RotationUtils.mc.player.getEyePos(), new Vec3d((double)pos.getX() + 0.5, (double)pos.getY() + 0.5, (double)pos.getZ() + 0.5), false);
     }
 
-    public static Rotation getRotationBlock(class_2338 pos, class_2350 direction, float predict) {
-        return RotationUtils.getRotationByVector(RotationUtils.mc.field_1724.method_33571(), new class_243((double)pos.method_10263() + 0.5, (double)pos.method_10264() + 0.5, (double)pos.method_10260() + 0.5).method_1019(class_243.method_24954((class_2382)direction.method_62675()).method_1021(0.5)), false);
+    public static Rotation getRotationBlock(BlockPos pos, Direction direction, float predict) {
+        return RotationUtils.getRotationByVector(RotationUtils.mc.player.getEyePos(), new Vec3d((double)pos.getX() + 0.5, (double)pos.getY() + 0.5, (double)pos.getZ() + 0.5).add(Vec3d.of((Vec3i)direction.getVector()).multiply(0.5)), false);
     }
 
     public static double direction(float rotationYaw, double moveForward, double moveStrafing) {
@@ -591,17 +591,17 @@ implements MinecraftAccessor {
 
     @EventHandler(priority=-1145144)
     public void onHighLevelPacket(HighLevelPacketEvent event) {
-        class_2828 wrapper;
-        class_2596<?> packet = event.packet;
-        if (packet instanceof class_2828) {
-            wrapper = (class_2828)packet;
-            if (wrapper.field_12888) {
-                serverRotation = new Rotation(wrapper.method_12271(RotationUtils.mc.field_1724.method_36454()), wrapper.method_12270(RotationUtils.mc.field_1724.method_36455()));
+        PlayerMoveC2SPacket wrapper;
+        Packet<?> packet = event.packet;
+        if (packet instanceof PlayerMoveC2SPacket) {
+            wrapper = (PlayerMoveC2SPacket)packet;
+            if (wrapper.changeLook) {
+                serverRotation = new Rotation(wrapper.getYaw(RotationUtils.mc.player.getYaw()), wrapper.getPitch(RotationUtils.mc.player.getPitch()));
             }
         }
-        if (packet instanceof class_2708) {
-            class_2708 correction = (class_2708)packet;
-            serverRotation = new Rotation(correction.comp_3228().comp_3150(), correction.comp_3228().comp_3151());
+        if (packet instanceof PlayerPositionLookS2CPacket) {
+            PlayerPositionLookS2CPacket correction = (PlayerPositionLookS2CPacket)packet;
+            serverRotation = new Rotation(correction.change().yaw(), correction.change().pitch());
         }
     }
 
@@ -621,39 +621,39 @@ implements MinecraftAccessor {
         event.setYaw(rotation.getYaw());
     }
 
-    public static void setHeadYaw(class_10055 state, float delta) {
+    public static void setHeadYaw(PlayerEntityRenderState state, float delta) {
         RotationUtils.setBodyYaw(state, delta);
     }
 
-    public static void setBodyYaw(class_10055 state, float delta) {
+    public static void setBodyYaw(PlayerEntityRenderState state, float delta) {
         if (rotation == null || lastRotation == null) {
             return;
         }
-        float yaw = class_3532.method_17821((float)delta, (float)RotationUtils.lastRotation.yaw, (float)RotationUtils.rotation.yaw);
-        state.field_53446 = RotationUtils.clampBodyYaw((class_1309)RotationUtils.mc.field_1724, yaw, delta);
-        state.field_53447 = class_3532.method_15393((float)(yaw - state.field_53446));
+        float yaw = MathHelper.lerpAngleDegrees((float)delta, (float)RotationUtils.lastRotation.yaw, (float)RotationUtils.rotation.yaw);
+        state.bodyYaw = RotationUtils.clampBodyYaw((LivingEntity)RotationUtils.mc.player, yaw, delta);
+        state.yawDegrees = MathHelper.wrapDegrees((float)(yaw - state.bodyYaw));
     }
 
-    public static void setPitch(class_10055 state, float delta) {
+    public static void setPitch(PlayerEntityRenderState state, float delta) {
         if (rotation == null || lastRotation == null) {
             return;
         }
-        state.field_53448 = class_3532.method_17821((float)delta, (float)RotationUtils.lastRotation.pitch, (float)RotationUtils.rotation.pitch);
+        state.pitch = MathHelper.lerpAngleDegrees((float)delta, (float)RotationUtils.lastRotation.pitch, (float)RotationUtils.rotation.pitch);
     }
 
-    private static float clampBodyYaw(class_1309 entity, float degrees, float tickDelta) {
-        class_1297 vehicle = entity.method_5854();
-        if (vehicle instanceof class_1309) {
-            class_1309 living = (class_1309)vehicle;
-            float lerped = class_3532.method_17821((float)tickDelta, (float)living.field_6220, (float)living.field_6283);
-            float clamped = class_3532.method_15363((float)class_3532.method_15393((float)(degrees - lerped)), (float)-85.0f, (float)85.0f);
+    private static float clampBodyYaw(LivingEntity entity, float degrees, float tickDelta) {
+        Entity vehicle = entity.getVehicle();
+        if (vehicle instanceof LivingEntity) {
+            LivingEntity living = (LivingEntity)vehicle;
+            float lerped = MathHelper.lerpAngleDegrees((float)tickDelta, (float)living.prevBodyYaw, (float)living.bodyYaw);
+            float clamped = MathHelper.clamp((float)MathHelper.wrapDegrees((float)(degrees - lerped)), (float)-85.0f, (float)85.0f);
             lerped = degrees - clamped;
             if (Math.abs(clamped) > 50.0f) {
                 lerped += clamped * 0.2f;
             }
             return lerped;
         }
-        return class_3532.method_17821((float)tickDelta, (float)entity.field_6220, (float)entity.field_6283);
+        return MathHelper.lerpAngleDegrees((float)tickDelta, (float)entity.prevBodyYaw, (float)entity.bodyYaw);
     }
 
     public static void setHeadYaw(Args args) {
@@ -676,13 +676,13 @@ implements MinecraftAccessor {
         args.set(2, (Object)Float.valueOf(RotationUtils.rotation.pitch));
     }
 
-    public static Rotation getPlayerRotations(class_1297 entity) {
-        double distanceToEnt = RotationUtils.mc.field_1724.method_5739(entity);
-        double predictX = entity.method_23317() + (entity.method_23317() - entity.field_6038) * (distanceToEnt * 0.8);
-        double predictZ = entity.method_23321() + (entity.method_23321() - entity.field_5989) * (distanceToEnt * 0.8);
-        double x = predictX - RotationUtils.mc.field_1724.method_23317();
-        double z = predictZ - RotationUtils.mc.field_1724.method_23321();
-        double h = entity.method_23318() + 1.0 - (RotationUtils.mc.field_1724.method_23318() + (double)RotationUtils.mc.field_1724.method_18381(RotationUtils.mc.field_1724.method_18376()));
+    public static Rotation getPlayerRotations(Entity entity) {
+        double distanceToEnt = RotationUtils.mc.player.distanceTo(entity);
+        double predictX = entity.getX() + (entity.getX() - entity.lastRenderX) * (distanceToEnt * 0.8);
+        double predictZ = entity.getZ() + (entity.getZ() - entity.lastRenderZ) * (distanceToEnt * 0.8);
+        double x = predictX - RotationUtils.mc.player.getX();
+        double z = predictZ - RotationUtils.mc.player.getZ();
+        double h = entity.getY() + 1.0 - (RotationUtils.mc.player.getY() + (double)RotationUtils.mc.player.getEyeHeight(RotationUtils.mc.player.getPose()));
         double h1 = Math.sqrt(x * x + z * z);
         float yaw = (float)(Math.atan2(z, x) * 180.0 / Math.PI) - 90.0f;
         float pitch = -RotationUtils.getTrajAngleSolutionLow((float)h1, (float)h, 1.0f);
@@ -695,91 +695,91 @@ implements MinecraftAccessor {
         return (float)Math.toDegrees(Math.atan(((double)(velocity * velocity) - Math.sqrt(sqrt)) / (double)(g * d3)));
     }
 
-    public static Rotation calculate(class_1297 entity, double range, double wallRange, float predict, float predictPlayer) {
-        if (RotationUtils.mc.field_1724 == null) {
+    public static Rotation calculate(Entity entity, double range, double wallRange, float predict, float predictPlayer) {
+        if (RotationUtils.mc.player == null) {
             return null;
         }
-        class_243 entityPos = entity.method_33571();
-        Rotation normalRotations = RotationUtils.getRotationByVector(RotationUtils.mc.field_1724.method_33571(), new class_243(entityPos.field_1352, MathUtils.clamp(RotationUtils.mc.field_1724.method_33571().field_1351, entity.method_5829().field_1322, entity.method_5829().field_1325), entityPos.field_1350), false);
-        class_3966 normalResult = RayCastUtils.raytraceEntity(range, normalRotations);
-        if (normalResult != null && normalResult.method_17783() == class_239.class_240.field_1331) {
+        Vec3d entityPos = entity.getEyePos();
+        Rotation normalRotations = RotationUtils.getRotationByVector(RotationUtils.mc.player.getEyePos(), new Vec3d(entityPos.x, MathUtils.clamp(RotationUtils.mc.player.getEyePos().y, entity.getBoundingBox().minY, entity.getBoundingBox().maxY), entityPos.z), false);
+        EntityHitResult normalResult = RayCastUtils.raytraceEntity(range, normalRotations);
+        if (normalResult != null && normalResult.getType() == HitResult.Type.ENTITY) {
             return normalRotations;
         }
         return RotationUtils.calculateSimple(entity, range, wallRange, predict, predictPlayer);
     }
 
-    public static Rotation calculate(class_243 from, class_243 to) {
-        class_243 diff = to.method_1020(from);
-        double horizontalDistance = class_3532.method_39241((double)diff.field_1352, (double)diff.field_1350);
-        float yaw = (float)(class_3532.method_15349((double)diff.field_1350, (double)diff.field_1352) * 57.29577951308232) - 90.0f;
-        float pitch = (float)(-(class_3532.method_15349((double)diff.field_1351, (double)horizontalDistance) * 57.29577951308232));
+    public static Rotation calculate(Vec3d from, Vec3d to) {
+        Vec3d diff = to.subtract(from);
+        double horizontalDistance = MathHelper.hypot((double)diff.x, (double)diff.z);
+        float yaw = (float)(MathHelper.atan2((double)diff.z, (double)diff.x) * 57.29577951308232) - 90.0f;
+        float pitch = (float)(-(MathHelper.atan2((double)diff.y, (double)horizontalDistance) * 57.29577951308232));
         return new Rotation(yaw, pitch);
     }
 
-    public static Rotation calculate(class_243 to) {
-        class_310 client = class_310.method_1551();
-        class_746 player = client.field_1724;
+    public static Rotation calculate(Vec3d to) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        ClientPlayerEntity player = client.player;
         if (player == null) {
             return new Rotation(0.0f, 0.0f);
         }
-        class_243 from = new class_243(player.method_23317(), player.method_23320(), player.method_23321());
+        Vec3d from = new Vec3d(player.getX(), player.getEyeY(), player.getZ());
         return RotationUtils.calculate(from, to);
     }
 
-    public static Rotation calculate(class_243 position, class_2350 direction) {
-        double x = position.field_1352 + 0.5;
-        double y = position.field_1351 + 0.5;
-        double z = position.field_1350 + 0.5;
-        class_2382 offset = direction.method_62675();
-        return RotationUtils.calculate(new class_243(x += (double)offset.method_10263() * 0.5, y += (double)offset.method_10264() * 0.5, z += (double)offset.method_10260() * 0.5));
+    public static Rotation calculate(Vec3d position, Direction direction) {
+        double x = position.x + 0.5;
+        double y = position.y + 0.5;
+        double z = position.z + 0.5;
+        Vec3i offset = direction.getVector();
+        return RotationUtils.calculate(new Vec3d(x += (double)offset.getX() * 0.5, y += (double)offset.getY() * 0.5, z += (double)offset.getZ() * 0.5));
     }
 
     public static float getAngleDifference(float a, float b) {
         return ((a - b) % 360.0f + 540.0f) % 360.0f - 180.0f;
     }
 
-    public static Rotation calculateSimple(class_1297 entity, double range, double wallRange, float predict, float predictPlayer) {
-        class_238 aabb = entity.method_5829();
+    public static Rotation calculateSimple(Entity entity, double range, double wallRange, float predict, float predictPlayer) {
+        Box aabb = entity.getBoundingBox();
         if (predict != 0.0f) {
-            aabb = aabb.method_989((entity.method_23317() - entity.field_6038) * (double)predict, (entity.method_23318() - entity.field_5971) * (double)predict, (entity.method_23321() - entity.field_5989) * (double)predict);
+            aabb = aabb.offset((entity.getX() - entity.lastRenderX) * (double)predict, (entity.getY() - entity.lastRenderY) * (double)predict, (entity.getZ() - entity.lastRenderZ) * (double)predict);
         }
-        class_243 eyePos = null;
-        if (RotationUtils.mc.field_1724 != null) {
-            eyePos = RotationUtils.mc.field_1724.method_33571();
+        Vec3d eyePos = null;
+        if (RotationUtils.mc.player != null) {
+            eyePos = RotationUtils.mc.player.getEyePos();
         }
-        class_243 nearest = null;
+        Vec3d nearest = null;
         if (eyePos != null) {
-            nearest = new class_243(MathUtils.clamp(eyePos.field_1352, aabb.field_1323, aabb.field_1320), MathUtils.clamp(eyePos.field_1351, aabb.field_1322, aabb.field_1325), MathUtils.clamp(eyePos.field_1350, aabb.field_1321, aabb.field_1324));
+            nearest = new Vec3d(MathUtils.clamp(eyePos.x, aabb.minX, aabb.maxX), MathUtils.clamp(eyePos.y, aabb.minY, aabb.maxY), MathUtils.clamp(eyePos.z, aabb.minZ, aabb.maxZ));
         }
         Rotation rotation = null;
         if (nearest != null) {
-            rotation = RotationUtils.getRotationByVector(RotationUtils.mc.field_1724.method_33571(), nearest, false);
+            rotation = RotationUtils.getRotationByVector(RotationUtils.mc.player.getEyePos(), nearest, false);
         }
-        if (nearest != null && nearest.method_1020(eyePos).method_1027() <= wallRange * wallRange) {
+        if (nearest != null && nearest.subtract(eyePos).lengthSquared() <= wallRange * wallRange) {
             return rotation;
         }
-        class_3966 result = RayCastUtils.raytraceEntity(range, rotation);
+        EntityHitResult result = RayCastUtils.raytraceEntity(range, rotation);
         double maxRange = Math.max(wallRange, range);
-        if (result != null && result.method_17782() == entity && result.method_17784().method_1020(eyePos).method_1027() <= maxRange * maxRange) {
+        if (result != null && result.getEntity() == entity && result.getPos().subtract(eyePos).lengthSquared() <= maxRange * maxRange) {
             return rotation;
         }
         return null;
     }
 
-    public static Rotation getRotationTo(class_243 start, class_243 end) {
-        double diffX = end.method_10216() - start.field_1352;
-        double diffY = end.method_10214() - start.field_1351;
-        double diffZ = end.method_10215() - start.field_1350;
+    public static Rotation getRotationTo(Vec3d start, Vec3d end) {
+        double diffX = end.getX() - start.x;
+        double diffY = end.getY() - start.y;
+        double diffZ = end.getZ() - start.z;
         double dist = Math.sqrt(diffX * diffX + diffZ * diffZ);
         float yaw = (float)(Math.atan2(diffZ, diffX) * 180.0 / Math.PI) - 90.0f;
         float pitch = (float)(-(Math.atan2(diffY, dist) * 180.0 / Math.PI));
         return new Rotation(yaw, pitch);
     }
 
-    public static Rotation getRotationByVector(class_243 eyePos, class_243 vec, boolean noise) {
-        class_243 diff = vec.method_1020(eyePos);
-        float yaw = class_3532.method_15393((float)((float)Math.toDegrees(Math.atan2(diff.field_1350, diff.field_1352)) - 90.0f));
-        float pitch = class_3532.method_15393((float)((float)(-Math.toDegrees(Math.atan2(diff.field_1351, Math.sqrt(diff.field_1352 * diff.field_1352 + diff.field_1350 * diff.field_1350))))));
+    public static Rotation getRotationByVector(Vec3d eyePos, Vec3d vec, boolean noise) {
+        Vec3d diff = vec.subtract(eyePos);
+        float yaw = MathHelper.wrapDegrees((float)((float)Math.toDegrees(Math.atan2(diff.z, diff.x)) - 90.0f));
+        float pitch = MathHelper.wrapDegrees((float)((float)(-Math.toDegrees(Math.atan2(diff.y, Math.sqrt(diff.x * diff.x + diff.z * diff.z))))));
         float noiseYaw = yaw + (noise ? (float)ThreadLocalRandom.current().nextGaussian() * 5.0f : 0.0f);
         float noisePitch = pitch + (noise ? (float)ThreadLocalRandom.current().nextGaussian() * 2.0f : 0.0f);
         return new Rotation(noiseYaw, noisePitch);
@@ -798,85 +798,85 @@ implements MinecraftAccessor {
         return null;
     }
 
-    public static double nearestRotation(class_238 bb) {
-        class_243 eyes = RotationUtils.mc.field_1724.method_33571();
-        class_243 vecRotation3d = null;
+    public static double nearestRotation(Box bb) {
+        Vec3d eyes = RotationUtils.mc.player.getEyePos();
+        Vec3d vecRotation3d = null;
         for (double xSearch = 0.0; xSearch <= 1.0; xSearch += 0.05) {
             for (double ySearch = 0.0; ySearch < 1.0; ySearch += 0.05) {
                 for (double zSearch = 0.0; zSearch <= 1.0; zSearch += 0.05) {
-                    class_243 vec3 = new class_243(bb.field_1323 + (bb.field_1320 - bb.field_1323) * xSearch, bb.field_1322 + (bb.field_1325 - bb.field_1322) * ySearch, bb.field_1321 + (bb.field_1324 - bb.field_1321) * zSearch);
-                    double vecDist = eyes.method_1025(vec3);
-                    if (vecRotation3d != null && !(eyes.method_1025(vecRotation3d) > vecDist)) continue;
+                    Vec3d vec3 = new Vec3d(bb.minX + (bb.maxX - bb.minX) * xSearch, bb.minY + (bb.maxY - bb.minY) * ySearch, bb.minZ + (bb.maxZ - bb.minZ) * zSearch);
+                    double vecDist = eyes.squaredDistanceTo(vec3);
+                    if (vecRotation3d != null && !(eyes.squaredDistanceTo(vecRotation3d) > vecDist)) continue;
                     vecRotation3d = vec3;
                 }
             }
         }
-        return vecRotation3d.method_1022(eyes);
+        return vecRotation3d.distanceTo(eyes);
     }
 
-    public static boolean inFoV(class_1297 entity, float fov) {
-        return (Math.abs(RotationUtils.getRotations(entity)[0] - RotationUtils.mc.field_1724.method_36454()) % 360.0f > 180.0f ? 360.0f - Math.abs(RotationUtils.getRotations(entity)[0] - RotationUtils.mc.field_1724.method_36454()) % 360.0f : Math.abs(RotationUtils.getRotations(entity)[0] - RotationUtils.mc.field_1724.method_36454()) % 360.0f) <= fov;
+    public static boolean inFoV(Entity entity, float fov) {
+        return (Math.abs(RotationUtils.getRotations(entity)[0] - RotationUtils.mc.player.getYaw()) % 360.0f > 180.0f ? 360.0f - Math.abs(RotationUtils.getRotations(entity)[0] - RotationUtils.mc.player.getYaw()) % 360.0f : Math.abs(RotationUtils.getRotations(entity)[0] - RotationUtils.mc.player.getYaw()) % 360.0f) <= fov;
     }
 
-    public static float getYawToEntity(class_1297 e) {
-        return Math.abs(RotationUtils.getRotations(e)[0] - RotationUtils.mc.field_1724.method_36454()) % 360.0f > 180.0f ? 360.0f - Math.abs(RotationUtils.getRotations(e)[0] - RotationUtils.mc.field_1724.method_36454()) % 360.0f : Math.abs(RotationUtils.getRotations(e)[0] - RotationUtils.mc.field_1724.method_36454()) % 360.0f;
+    public static float getYawToEntity(Entity e) {
+        return Math.abs(RotationUtils.getRotations(e)[0] - RotationUtils.mc.player.getYaw()) % 360.0f > 180.0f ? 360.0f - Math.abs(RotationUtils.getRotations(e)[0] - RotationUtils.mc.player.getYaw()) % 360.0f : Math.abs(RotationUtils.getRotations(e)[0] - RotationUtils.mc.player.getYaw()) % 360.0f;
     }
 
-    public static class_243 getVFR(Rotation rotation) {
+    public static Vec3d getVFR(Rotation rotation) {
         float yawCos = (float)Math.cos(-rotation.getYaw() * ((float)Math.PI / 180) - (float)Math.PI);
         float yawSin = (float)Math.sin(-rotation.getYaw() * ((float)Math.PI / 180) - (float)Math.PI);
         float pitchCos = (float)(-Math.cos(-rotation.getPitch() * ((float)Math.PI / 180)));
         float pitchSin = (float)Math.sin(-rotation.getPitch() * ((float)Math.PI / 180));
-        return new class_243((double)(yawSin * pitchCos), (double)pitchSin, (double)(yawCos * pitchCos));
+        return new Vec3d((double)(yawSin * pitchCos), (double)pitchSin, (double)(yawCos * pitchCos));
     }
 
-    public static class_243 getVectorForRotation(Rotation rotation) {
+    public static Vec3d getVectorForRotation(Rotation rotation) {
         float yawCos = (float)Math.cos(-rotation.getYaw() * ((float)Math.PI / 180) - (float)Math.PI);
         float yawSin = (float)Math.sin(-rotation.getYaw() * ((float)Math.PI / 180) - (float)Math.PI);
         float pitchCos = (float)(-Math.cos(-rotation.getPitch() * ((float)Math.PI / 180)));
         float pitchSin = (float)Math.sin(-rotation.getPitch() * ((float)Math.PI / 180));
-        return new class_243((double)(yawSin * pitchCos), (double)pitchSin, (double)(yawCos * pitchCos));
+        return new Vec3d((double)(yawSin * pitchCos), (double)pitchSin, (double)(yawCos * pitchCos));
     }
 
-    public static Rotation calculate(Vector3d vector3d, class_2350 enumFacing) {
-        return RotationUtils.calculate(new Vector3d(vector3d.getX() + 0.5 + (double)enumFacing.method_10148() * 0.5, vector3d.getY() + 0.5 + (double)enumFacing.method_10164() * 0.5, vector3d.getZ() + 0.5 + (double)enumFacing.method_10165() * 0.5));
+    public static Rotation calculate(Vector3d vector3d, Direction enumFacing) {
+        return RotationUtils.calculate(new Vector3d(vector3d.getX() + 0.5 + (double)enumFacing.getOffsetX() * 0.5, vector3d.getY() + 0.5 + (double)enumFacing.getOffsetY() * 0.5, vector3d.getZ() + 0.5 + (double)enumFacing.getOffsetZ() * 0.5));
     }
 
     public static Rotation calculate(Vector3d vector3d) {
-        return RotationUtils.calculate(RotationUtils.mc.field_1724.method_19538().method_1031(0.0, (double)RotationUtils.getEyeHeight(), 0.0), vector3d);
+        return RotationUtils.calculate(RotationUtils.mc.player.getPos().add(0.0, (double)RotationUtils.getEyeHeight(), 0.0), vector3d);
     }
 
-    public static Rotation calculate(class_243 vector3d, Vector3d vector3d2) {
-        Vector3d subtract = vector3d2.subtract(new Vector3d(vector3d.field_1352, vector3d.field_1351, vector3d.field_1350));
-        return new Rotation((float)(class_3532.method_15349((double)subtract.getZ(), (double)subtract.getX()) * 57.2957763671875) - 90.0f, (float)(-(class_3532.method_15349((double)subtract.getY(), (double)Math.hypot(subtract.getX(), subtract.getZ())) * 57.2957763671875)));
+    public static Rotation calculate(Vec3d vector3d, Vector3d vector3d2) {
+        Vector3d subtract = vector3d2.subtract(new Vector3d(vector3d.x, vector3d.y, vector3d.z));
+        return new Rotation((float)(MathHelper.atan2((double)subtract.getZ(), (double)subtract.getX()) * 57.2957763671875) - 90.0f, (float)(-(MathHelper.atan2((double)subtract.getY(), (double)Math.hypot(subtract.getX(), subtract.getZ())) * 57.2957763671875)));
     }
 
     public static float getEyeHeight() {
         float f = 1.62f;
-        if (RotationUtils.mc.field_1724.method_6113()) {
+        if (RotationUtils.mc.player.isSleeping()) {
             f = 0.2f;
         }
-        if (RotationUtils.mc.field_1724.method_5715()) {
+        if (RotationUtils.mc.player.isSneaking()) {
             f -= 0.08f;
         }
         return f;
     }
 
-    public static Rotation getRandomRotationTo(class_2338 blockPos, class_2350 facing) {
-        class_746 player = RotationUtils.mc.field_1724;
+    public static Rotation getRandomRotationTo(BlockPos blockPos, Direction facing) {
+        ClientPlayerEntity player = RotationUtils.mc.player;
         if (blockPos == null || facing == null || player == null) {
-            return new Rotation(RotationUtils.mc.field_1724.method_36454(), RotationUtils.mc.field_1724.method_36455());
+            return new Rotation(RotationUtils.mc.player.getYaw(), RotationUtils.mc.player.getPitch());
         }
-        class_243 playerEyePos = player.method_33571();
-        class_243 randomTargetPoint = RotationUtils.getRandomPointOnFace(blockPos, facing);
+        Vec3d playerEyePos = player.getEyePos();
+        Vec3d randomTargetPoint = RotationUtils.getRandomPointOnFace(blockPos, facing);
         return RotationUtils.calculateRotationFromPoints(playerEyePos, randomTargetPoint);
     }
 
-    private static Rotation calculateRotationFromPoints(class_243 start, class_243 target) {
-        class_243 d = target.method_1020(start);
-        double dx = d.field_1352;
-        double dy = d.field_1351;
-        double dz = d.field_1350;
+    private static Rotation calculateRotationFromPoints(Vec3d start, Vec3d target) {
+        Vec3d d = target.subtract(start);
+        double dx = d.x;
+        double dy = d.y;
+        double dz = d.z;
         float yaw = (float)Math.toDegrees(Math.atan2(dz, dx)) - 90.0f;
         float pitch = (float)Math.toDegrees(-Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)));
         return new Rotation(yaw, pitch);
@@ -886,19 +886,19 @@ implements MinecraftAccessor {
         return Math.abs(a - b) <= 1.0E-7;
     }
 
-    private static class_243 getRandomPointOnFace(class_2338 pos, class_2350 face) {
+    private static Vec3d getRandomPointOnFace(BlockPos pos, Direction face) {
         double area;
-        class_3726 ctx;
-        class_1937 world = RotationUtils.mc.field_1724.method_37908();
-        class_2680 state = world.method_8320(pos);
-        class_265 shape = state.method_26172((class_1922)world, pos, ctx = class_3726.method_16195((class_1297)RotationUtils.mc.field_1724));
-        if (shape.method_1110()) {
-            shape = state.method_26194((class_1922)world, pos, ctx);
+        ShapeContext ctx;
+        World world = RotationUtils.mc.player.getWorld();
+        BlockState state = world.getBlockState(pos);
+        VoxelShape shape = state.getOutlineShape((BlockView)world, pos, ctx = ShapeContext.of((Entity)RotationUtils.mc.player));
+        if (shape.isEmpty()) {
+            shape = state.getCollisionShape((BlockView)world, pos, ctx);
         }
-        if (shape.method_1110()) {
-            shape = class_259.method_1077();
+        if (shape.isEmpty()) {
+            shape = VoxelShapes.fullCube();
         }
-        ArrayList<class_238> boxes = new ArrayList<>(shape.method_1090());
+        ArrayList<Box> boxes = new ArrayList<>(shape.getBoundingBoxes());
         double sMinX = Double.POSITIVE_INFINITY;
         double sMaxX = Double.NEGATIVE_INFINITY;
         double sMinY = Double.POSITIVE_INFINITY;
@@ -906,83 +906,83 @@ implements MinecraftAccessor {
         double sMinZ = Double.POSITIVE_INFINITY;
         double sMaxZ = Double.NEGATIVE_INFINITY;
         for (Object b : boxes) {
-            if (((class_238)b).field_1323 < sMinX) {
-                sMinX = ((class_238)b).field_1323;
+            if (((Box)b).minX < sMinX) {
+                sMinX = ((Box)b).minX;
             }
-            if (((class_238)b).field_1320 > sMaxX) {
-                sMaxX = ((class_238)b).field_1320;
+            if (((Box)b).maxX > sMaxX) {
+                sMaxX = ((Box)b).maxX;
             }
-            if (((class_238)b).field_1322 < sMinY) {
-                sMinY = ((class_238)b).field_1322;
+            if (((Box)b).minY < sMinY) {
+                sMinY = ((Box)b).minY;
             }
-            if (((class_238)b).field_1325 > sMaxY) {
-                sMaxY = ((class_238)b).field_1325;
+            if (((Box)b).maxY > sMaxY) {
+                sMaxY = ((Box)b).maxY;
             }
-            if (((class_238)b).field_1321 < sMinZ) {
-                sMinZ = ((class_238)b).field_1321;
+            if (((Box)b).minZ < sMinZ) {
+                sMinZ = ((Box)b).minZ;
             }
-            if (!(((class_238)b).field_1324 > sMaxZ)) continue;
-            sMaxZ = ((class_238)b).field_1324;
+            if (!(((Box)b).maxZ > sMaxZ)) continue;
+            sMaxZ = ((Box)b).maxZ;
         }
-        record FaceSlice(class_238 box, double area) {
+        record FaceSlice(Box box, double area) {
         }
         ArrayList<FaceSlice> candidates = new ArrayList<FaceSlice>();
-        block21: for (class_238 b : boxes) {
+        block21: for (Box b : boxes) {
             switch (face) {
-                case field_11034: {
-                    if (!RotationUtils.nearly(b.field_1320, sMaxX)) break;
-                    area = (b.field_1325 - b.field_1322) * (b.field_1324 - b.field_1321);
+                case EAST: {
+                    if (!RotationUtils.nearly(b.maxX, sMaxX)) break;
+                    area = (b.maxY - b.minY) * (b.maxZ - b.minZ);
                     if (!(area > 0.0)) continue block21;
                     candidates.add(new FaceSlice(b, area));
                     break;
                 }
-                case field_11039: {
-                    if (!RotationUtils.nearly(b.field_1323, sMinX)) break;
-                    area = (b.field_1325 - b.field_1322) * (b.field_1324 - b.field_1321);
+                case WEST: {
+                    if (!RotationUtils.nearly(b.minX, sMinX)) break;
+                    area = (b.maxY - b.minY) * (b.maxZ - b.minZ);
                     if (!(area > 0.0)) continue block21;
                     candidates.add(new FaceSlice(b, area));
                     break;
                 }
-                case field_11036: {
-                    if (!RotationUtils.nearly(b.field_1325, sMaxY)) break;
-                    area = (b.field_1320 - b.field_1323) * (b.field_1324 - b.field_1321);
+                case UP: {
+                    if (!RotationUtils.nearly(b.maxY, sMaxY)) break;
+                    area = (b.maxX - b.minX) * (b.maxZ - b.minZ);
                     if (!(area > 0.0)) continue block21;
                     candidates.add(new FaceSlice(b, area));
                     break;
                 }
-                case field_11033: {
-                    if (!RotationUtils.nearly(b.field_1322, sMinY)) break;
-                    area = (b.field_1320 - b.field_1323) * (b.field_1324 - b.field_1321);
+                case DOWN: {
+                    if (!RotationUtils.nearly(b.minY, sMinY)) break;
+                    area = (b.maxX - b.minX) * (b.maxZ - b.minZ);
                     if (!(area > 0.0)) continue block21;
                     candidates.add(new FaceSlice(b, area));
                     break;
                 }
-                case field_11035: {
-                    if (!RotationUtils.nearly(b.field_1324, sMaxZ)) break;
-                    area = (b.field_1320 - b.field_1323) * (b.field_1325 - b.field_1322);
+                case SOUTH: {
+                    if (!RotationUtils.nearly(b.maxZ, sMaxZ)) break;
+                    area = (b.maxX - b.minX) * (b.maxY - b.minY);
                     if (!(area > 0.0)) continue block21;
                     candidates.add(new FaceSlice(b, area));
                     break;
                 }
-                case field_11043: {
-                    if (!RotationUtils.nearly(b.field_1321, sMinZ) || !((area = (b.field_1320 - b.field_1323) * (b.field_1325 - b.field_1322)) > 0.0)) break;
+                case NORTH: {
+                    if (!RotationUtils.nearly(b.minZ, sMinZ) || !((area = (b.maxX - b.minX) * (b.maxY - b.minY)) > 0.0)) break;
                     candidates.add(new FaceSlice(b, area));
                 }
             }
         }
         if (candidates.isEmpty()) {
-            for (class_238 b : boxes) {
-                switch (face.method_10166()) {
-                    case field_11048: {
-                        area = (b.field_1325 - b.field_1322) * (b.field_1324 - b.field_1321);
+            for (Box b : boxes) {
+                switch (face.getAxis()) {
+                    case X: {
+                        area = (b.maxY - b.minY) * (b.maxZ - b.minZ);
                         break;
                     }
-                    case field_11052: {
-                        area = (b.field_1320 - b.field_1323) * (b.field_1324 - b.field_1321);
+                    case Y: {
+                        area = (b.maxX - b.minX) * (b.maxZ - b.minZ);
                         break;
                     }
                     default: {
-                        area = (b.field_1320 - b.field_1323) * (b.field_1325 - b.field_1322);
+                        area = (b.maxX - b.minX) * (b.maxY - b.minY);
                     }
                 }
                 if (!(area > 0.0)) continue;
@@ -994,7 +994,7 @@ implements MinecraftAccessor {
             total += fs.area;
         }
         double pick = random.nextDouble() * total;
-        class_238 chosen = null;
+        Box chosen = null;
         for (FaceSlice fs : candidates) {
             if (!((pick -= fs.area) <= 0.0)) continue;
             chosen = fs.box;
@@ -1003,63 +1003,63 @@ implements MinecraftAccessor {
         if (chosen == null) {
             chosen = ((FaceSlice)candidates.get((int)(candidates.size() - 1))).box;
         }
-        double x = pos.method_10263();
-        double y = pos.method_10264();
-        double z = pos.method_10260();
+        double x = pos.getX();
+        double y = pos.getY();
+        double z = pos.getZ();
         switch (face) {
-            case field_11034: {
-                double ry = chosen.field_1322 + random.nextDouble() * (chosen.field_1325 - chosen.field_1322);
-                double rz = chosen.field_1321 + random.nextDouble() * (chosen.field_1324 - chosen.field_1321);
-                x += chosen.field_1320;
+            case EAST: {
+                double ry = chosen.minY + random.nextDouble() * (chosen.maxY - chosen.minY);
+                double rz = chosen.minZ + random.nextDouble() * (chosen.maxZ - chosen.minZ);
+                x += chosen.maxX;
                 y += ry;
                 z += rz;
                 break;
             }
-            case field_11039: {
-                double ry = chosen.field_1322 + random.nextDouble() * (chosen.field_1325 - chosen.field_1322);
-                double rz = chosen.field_1321 + random.nextDouble() * (chosen.field_1324 - chosen.field_1321);
-                x += chosen.field_1323;
+            case WEST: {
+                double ry = chosen.minY + random.nextDouble() * (chosen.maxY - chosen.minY);
+                double rz = chosen.minZ + random.nextDouble() * (chosen.maxZ - chosen.minZ);
+                x += chosen.minX;
                 y += ry;
                 z += rz;
                 break;
             }
-            case field_11036: {
-                double rx = chosen.field_1323 + random.nextDouble() * (chosen.field_1320 - chosen.field_1323);
-                double rz = chosen.field_1321 + random.nextDouble() * (chosen.field_1324 - chosen.field_1321);
+            case UP: {
+                double rx = chosen.minX + random.nextDouble() * (chosen.maxX - chosen.minX);
+                double rz = chosen.minZ + random.nextDouble() * (chosen.maxZ - chosen.minZ);
                 x += rx;
-                y += chosen.field_1325;
+                y += chosen.maxY;
                 z += rz;
                 break;
             }
-            case field_11033: {
-                double rx = chosen.field_1323 + random.nextDouble() * (chosen.field_1320 - chosen.field_1323);
-                double rz = chosen.field_1321 + random.nextDouble() * (chosen.field_1324 - chosen.field_1321);
+            case DOWN: {
+                double rx = chosen.minX + random.nextDouble() * (chosen.maxX - chosen.minX);
+                double rz = chosen.minZ + random.nextDouble() * (chosen.maxZ - chosen.minZ);
                 x += rx;
-                y += chosen.field_1322;
+                y += chosen.minY;
                 z += rz;
                 break;
             }
-            case field_11035: {
-                double rx = chosen.field_1323 + random.nextDouble() * (chosen.field_1320 - chosen.field_1323);
-                double ry = chosen.field_1322 + random.nextDouble() * (chosen.field_1325 - chosen.field_1322);
+            case SOUTH: {
+                double rx = chosen.minX + random.nextDouble() * (chosen.maxX - chosen.minX);
+                double ry = chosen.minY + random.nextDouble() * (chosen.maxY - chosen.minY);
                 x += rx;
                 y += ry;
-                z += chosen.field_1324;
+                z += chosen.maxZ;
                 break;
             }
-            case field_11043: {
-                double rx = chosen.field_1323 + random.nextDouble() * (chosen.field_1320 - chosen.field_1323);
-                double ry = chosen.field_1322 + random.nextDouble() * (chosen.field_1325 - chosen.field_1322);
+            case NORTH: {
+                double rx = chosen.minX + random.nextDouble() * (chosen.maxX - chosen.minX);
+                double ry = chosen.minY + random.nextDouble() * (chosen.maxY - chosen.minY);
                 x += rx;
                 y += ry;
-                z += chosen.field_1321;
+                z += chosen.minZ;
             }
         }
-        return new class_243(x, y, z);
+        return new Vec3d(x, y, z);
     }
 
-    public static Rotation getClosestToBlockFace(class_2338 pos, class_2350 face, float lastYaw, float lastPitch) {
-        class_746 player = class_310.method_1551().field_1724;
+    public static Rotation getClosestToBlockFace(BlockPos pos, Direction face, float lastYaw, float lastPitch) {
+        ClientPlayerEntity player = MinecraftClient.getInstance().player;
         if (player == null) {
             return new Rotation(lastYaw, 80.5f);
         }
@@ -1067,23 +1067,23 @@ implements MinecraftAccessor {
         if (ClientRayTraceUtil.didHitBlockFace(currentRot, pos, face, true)) {
             return currentRot;
         }
-        class_2680 state = player.method_37908().method_8320(pos);
-        class_265 shape = state.method_26218((class_1922)player.method_37908(), pos);
-        if (shape.method_1110()) {
-            shape = class_259.method_1077();
+        BlockState state = player.getWorld().getBlockState(pos);
+        VoxelShape shape = state.getOutlineShape((BlockView)player.getWorld(), pos);
+        if (shape.isEmpty()) {
+            shape = VoxelShapes.fullCube();
         }
-        List<class_238> boxes = shape.method_1090();
+        List<Box> boxes = shape.getBoundingBoxes();
         Rotation bestRot = null;
         Rotation closeRot = null;
         double minDiff = Double.MAX_VALUE;
-        class_243 eyePos = ClientRayTraceUtil.eyePos;
-        for (class_238 box : boxes) {
-            class_238 worldBox = box.method_996(pos);
-            class_243 optimalPoint = null;
-            ArrayList<class_243> hitPoints = new ArrayList<class_243>();
-            List<class_243> optimalPoints = RotationUtils.getOptimalPointOnFace(worldBox, face, eyePos, lastYaw);
+        Vec3d eyePos = ClientRayTraceUtil.eyePos;
+        for (Box box : boxes) {
+            Box worldBox = box.offset(pos);
+            Vec3d optimalPoint = null;
+            ArrayList<Vec3d> hitPoints = new ArrayList<Vec3d>();
+            List<Vec3d> optimalPoints = RotationUtils.getOptimalPointOnFace(worldBox, face, eyePos, lastYaw);
             double minYawDiff = Double.MAX_VALUE;
-            for (class_243 point : optimalPoints) {
+            for (Vec3d point : optimalPoints) {
                 double diff;
                 Rotation rot = RotationUtils.calculate(eyePos, point);
                 if (Math.abs(rot.pitch) > 89.9f) {
@@ -1097,13 +1097,13 @@ implements MinecraftAccessor {
             if (optimalPoint != null) {
                 hitPoints.add(optimalPoint);
             }
-            class_243 projectedPoint = RotationUtils.getProjectedPointOnFace(worldBox, face, eyePos, lastYaw, RandomUtils.generateRandomFloat(0.05f, 0.1f));
+            Vec3d projectedPoint = RotationUtils.getProjectedPointOnFace(worldBox, face, eyePos, lastYaw, RandomUtils.generateRandomFloat(0.05f, 0.1f));
             closeRot = RotationUtils.calculate(eyePos, projectedPoint);
             if (RotationUtils.tryHit(projectedPoint, pos, face, eyePos)) {
                 hitPoints.add(projectedPoint);
             }
             if (hitPoints.isEmpty()) continue;
-            for (class_243 hitPoint : hitPoints) {
+            for (Vec3d hitPoint : hitPoints) {
                 double yawDiff;
                 Rotation rot = RotationUtils.calculate(eyePos, hitPoint);
                 if (Math.abs(rot.pitch) > 89.9f) {
@@ -1117,91 +1117,91 @@ implements MinecraftAccessor {
         return bestRot != null ? bestRot : closeRot;
     }
 
-    private static boolean tryHit(class_243 target, class_2338 pos, class_2350 face, class_243 eyePos) {
+    private static boolean tryHit(Vec3d target, BlockPos pos, Direction face, Vec3d eyePos) {
         Rotation rot = RotationUtils.calculate(eyePos, target);
         return ClientRayTraceUtil.didHitBlockFace(rot, pos, face, true);
     }
 
-    private static List<class_243> getOptimalPointOnFace(class_238 box, class_2350 face, class_243 eyePos, float lastYaw) {
-        ArrayList<class_243> points = new ArrayList<class_243>();
+    private static List<Vec3d> getOptimalPointOnFace(Box box, Direction face, Vec3d eyePos, float lastYaw) {
+        ArrayList<Vec3d> points = new ArrayList<Vec3d>();
         double edgeInset = RandomUtils.generateRandomFloat(0.1f, 0.15f);
-        if (face.method_10166() == class_2350.class_2351.field_11052) {
-            double planeY = face == class_2350.field_11036 ? box.field_1325 : box.field_1322;
-            double clampedX = class_3532.method_15350((double)eyePos.field_1352, (double)(box.field_1323 + edgeInset), (double)(box.field_1320 - edgeInset));
-            double clampedZ = class_3532.method_15350((double)eyePos.field_1350, (double)(box.field_1321 + edgeInset), (double)(box.field_1324 - edgeInset));
-            points.add(new class_243(clampedX, planeY, clampedZ));
-            double centerX = (box.field_1323 + box.field_1320) * 0.5;
-            double centerZ = (box.field_1321 + box.field_1324) * 0.5;
-            points.add(new class_243(centerX, planeY, centerZ));
+        if (face.getAxis() == Direction.Axis.Y) {
+            double planeY = face == Direction.UP ? box.maxY : box.minY;
+            double clampedX = MathHelper.clamp((double)eyePos.x, (double)(box.minX + edgeInset), (double)(box.maxX - edgeInset));
+            double clampedZ = MathHelper.clamp((double)eyePos.z, (double)(box.minZ + edgeInset), (double)(box.maxZ - edgeInset));
+            points.add(new Vec3d(clampedX, planeY, clampedZ));
+            double centerX = (box.minX + box.maxX) * 0.5;
+            double centerZ = (box.minZ + box.maxZ) * 0.5;
+            points.add(new Vec3d(centerX, planeY, centerZ));
         } else {
-            double centerX = face.method_10166() == class_2350.class_2351.field_11048 ? (face == class_2350.field_11034 ? box.field_1320 : box.field_1323) : (box.field_1323 + box.field_1320) * 0.5;
-            double centerY = (box.field_1322 + box.field_1325) * 0.5;
-            double centerZ = face.method_10166() == class_2350.class_2351.field_11051 ? (face == class_2350.field_11035 ? box.field_1324 : box.field_1321) : (box.field_1321 + box.field_1324) * 0.5;
-            points.add(new class_243(centerX, centerY, centerZ));
+            double centerX = face.getAxis() == Direction.Axis.X ? (face == Direction.EAST ? box.maxX : box.minX) : (box.minX + box.maxX) * 0.5;
+            double centerY = (box.minY + box.maxY) * 0.5;
+            double centerZ = face.getAxis() == Direction.Axis.Z ? (face == Direction.SOUTH ? box.maxZ : box.minZ) : (box.minZ + box.maxZ) * 0.5;
+            points.add(new Vec3d(centerX, centerY, centerZ));
             double yawRad = Math.toRadians(lastYaw);
             double dirX = -Math.sin(yawRad);
             double dirZ = Math.cos(yawRad);
             double bestX = centerX;
             double bestZ = centerZ;
-            if (face.method_10166() == class_2350.class_2351.field_11051) {
+            if (face.getAxis() == Direction.Axis.Z) {
                 double planeZ;
                 double t;
-                planeZ = face == class_2350.field_11035 ? box.field_1324 : box.field_1321;
-                if (Math.abs(dirZ) > 1.0E-4 && (t = (planeZ - eyePos.field_1350) / dirZ) > 0.0) {
-                    double intersectX = eyePos.field_1352 + t * dirX;
-                    bestX = class_3532.method_15350((double)intersectX, (double)(box.field_1323 + edgeInset), (double)(box.field_1320 - edgeInset));
+                planeZ = face == Direction.SOUTH ? box.maxZ : box.minZ;
+                if (Math.abs(dirZ) > 1.0E-4 && (t = (planeZ - eyePos.z) / dirZ) > 0.0) {
+                    double intersectX = eyePos.x + t * dirX;
+                    bestX = MathHelper.clamp((double)intersectX, (double)(box.minX + edgeInset), (double)(box.maxX - edgeInset));
                     bestZ = planeZ;
                 }
-            } else if (face.method_10166() == class_2350.class_2351.field_11048) {
+            } else if (face.getAxis() == Direction.Axis.X) {
                 double planeX;
                 double t;
-                planeX = face == class_2350.field_11034 ? box.field_1320 : box.field_1323;
-                if (Math.abs(dirX) > 1.0E-4 && (t = (planeX - eyePos.field_1352) / dirX) > 0.0) {
-                    double intersectZ = eyePos.field_1350 + t * dirZ;
-                    bestZ = class_3532.method_15350((double)intersectZ, (double)(box.field_1321 + edgeInset), (double)(box.field_1324 - edgeInset));
+                planeX = face == Direction.EAST ? box.maxX : box.minX;
+                if (Math.abs(dirX) > 1.0E-4 && (t = (planeX - eyePos.x) / dirX) > 0.0) {
+                    double intersectZ = eyePos.z + t * dirZ;
+                    bestZ = MathHelper.clamp((double)intersectZ, (double)(box.minZ + edgeInset), (double)(box.maxZ - edgeInset));
                     bestX = planeX;
                 }
             }
-            for (double y = box.field_1322 + 0.1; y < box.field_1325; y += 0.4) {
-                points.add(new class_243(bestX, y, bestZ));
+            for (double y = box.minY + 0.1; y < box.maxY; y += 0.4) {
+                points.add(new Vec3d(bestX, y, bestZ));
             }
-            points.add(new class_243(bestX, box.field_1325 - 0.1, bestZ));
-            points.add(new class_243(bestX, box.field_1322 + 0.1, bestZ));
+            points.add(new Vec3d(bestX, box.maxY - 0.1, bestZ));
+            points.add(new Vec3d(bestX, box.minY + 0.1, bestZ));
         }
         return points;
     }
 
-    private static class_243 getProjectedPointOnFace(class_238 box, class_2350 face, class_243 eye, float lastYaw, double epsilon) {
+    private static Vec3d getProjectedPointOnFace(Box box, Direction face, Vec3d eye, float lastYaw, double epsilon) {
         double t;
-        class_243 u;
-        double cx = face.method_10166() == class_2350.class_2351.field_11048 ? (face == class_2350.field_11034 ? box.field_1320 : box.field_1323) : (box.field_1323 + box.field_1320) * 0.5;
-        double cy = face.method_10166() == class_2350.class_2351.field_11052 ? (face == class_2350.field_11036 ? box.field_1325 : box.field_1322) : (box.field_1322 + box.field_1325) * 0.5;
-        double cz = face.method_10166() == class_2350.class_2351.field_11051 ? (face == class_2350.field_11035 ? box.field_1324 : box.field_1321) : (box.field_1321 + box.field_1324) * 0.5;
-        class_243 center = new class_243(cx, cy, cz);
-        class_243 v = switch (face.method_10166()) {
-            case class_2350.class_2351.field_11048 -> {
-                u = new class_243(0.0, 1.0, 0.0);
-                yield new class_243(0.0, 0.0, 1.0);
+        Vec3d u;
+        double cx = face.getAxis() == Direction.Axis.X ? (face == Direction.EAST ? box.maxX : box.minX) : (box.minX + box.maxX) * 0.5;
+        double cy = face.getAxis() == Direction.Axis.Y ? (face == Direction.UP ? box.maxY : box.minY) : (box.minY + box.maxY) * 0.5;
+        double cz = face.getAxis() == Direction.Axis.Z ? (face == Direction.SOUTH ? box.maxZ : box.minZ) : (box.minZ + box.maxZ) * 0.5;
+        Vec3d center = new Vec3d(cx, cy, cz);
+        Vec3d v = switch (face.getAxis()) {
+            case Direction.Axis.X -> {
+                u = new Vec3d(0.0, 1.0, 0.0);
+                yield new Vec3d(0.0, 0.0, 1.0);
             }
-            case class_2350.class_2351.field_11052 -> {
-                u = new class_243(1.0, 0.0, 0.0);
-                yield new class_243(0.0, 0.0, 1.0);
+            case Direction.Axis.Y -> {
+                u = new Vec3d(1.0, 0.0, 0.0);
+                yield new Vec3d(0.0, 0.0, 1.0);
             }
             default -> {
-                u = new class_243(1.0, 0.0, 0.0);
-                yield new class_243(0.0, 1.0, 0.0);
+                u = new Vec3d(1.0, 0.0, 0.0);
+                yield new Vec3d(0.0, 1.0, 0.0);
             }
         };
-        double halfU = (u.field_1352 != 0.0 ? box.field_1320 - box.field_1323 : (u.field_1351 != 0.0 ? box.field_1325 - box.field_1322 : box.field_1324 - box.field_1321)) * 0.5;
-        double halfV = (v.field_1352 != 0.0 ? box.field_1320 - box.field_1323 : (v.field_1351 != 0.0 ? box.field_1325 - box.field_1322 : box.field_1324 - box.field_1321)) * 0.5;
+        double halfU = (u.x != 0.0 ? box.maxX - box.minX : (u.y != 0.0 ? box.maxY - box.minY : box.maxZ - box.minZ)) * 0.5;
+        double halfV = (v.x != 0.0 ? box.maxX - box.minX : (v.y != 0.0 ? box.maxY - box.minY : box.maxZ - box.minZ)) * 0.5;
         double rad = Math.toRadians(lastYaw + 90.0f);
-        class_243 dir = new class_243(Math.cos(rad), 0.0, Math.sin(rad));
-        class_243 normal = new class_243((double)face.method_10148(), (double)face.method_10164(), (double)face.method_10165());
-        double denom = normal.method_1026(dir);
-        if (Math.abs(denom) > 1.0E-6 && (t = normal.method_1026(center.method_1020(eye)) / denom) > 0.0) {
-            class_243 hit = eye.method_1019(dir.method_1021(t));
-            double du = hit.method_1020(center).method_1026(u);
-            double dv = hit.method_1020(center).method_1026(v);
+        Vec3d dir = new Vec3d(Math.cos(rad), 0.0, Math.sin(rad));
+        Vec3d normal = new Vec3d((double)face.getOffsetX(), (double)face.getOffsetY(), (double)face.getOffsetZ());
+        double denom = normal.dotProduct(dir);
+        if (Math.abs(denom) > 1.0E-6 && (t = normal.dotProduct(center.subtract(eye)) / denom) > 0.0) {
+            Vec3d hit = eye.add(dir.multiply(t));
+            double du = hit.subtract(center).dotProduct(u);
+            double dv = hit.subtract(center).dotProduct(v);
             if (Math.abs(du) <= halfU && Math.abs(dv) <= halfV) {
                 return RotationUtils.adjustInsideFace(center, u, v, du, dv, halfU, halfV, epsilon);
             }
@@ -1209,55 +1209,55 @@ implements MinecraftAccessor {
         return RotationUtils.projectToFaceBoundary(eye, dir, center, u, v, halfU, halfV, epsilon);
     }
 
-    private static class_243 projectToFaceBoundary(class_243 eye, class_243 dir, class_243 center, class_243 u, class_243 v, double halfU, double halfV, double epsilon) {
-        class_243 proj = eye.method_1019(dir.method_1021(100.0));
-        double du = proj.method_1020(center).method_1026(u);
-        double dv = proj.method_1020(center).method_1026(v);
+    private static Vec3d projectToFaceBoundary(Vec3d eye, Vec3d dir, Vec3d center, Vec3d u, Vec3d v, double halfU, double halfV, double epsilon) {
+        Vec3d proj = eye.add(dir.multiply(100.0));
+        double du = proj.subtract(center).dotProduct(u);
+        double dv = proj.subtract(center).dotProduct(v);
         du = Math.max(-halfU, Math.min(halfU, du));
         dv = Math.max(-halfV, Math.min(halfV, dv));
         return RotationUtils.adjustInsideFace(center, u, v, du, dv, halfU, halfV, epsilon);
     }
 
-    private static class_243 adjustInsideFace(class_243 center, class_243 u, class_243 v, double du, double dv, double halfU, double halfV, double epsilon) {
+    private static Vec3d adjustInsideFace(Vec3d center, Vec3d u, Vec3d v, double du, double dv, double halfU, double halfV, double epsilon) {
         if (Math.abs(du) >= halfU - 1.0E-4) {
             du = Math.copySign(halfU - epsilon, du);
         }
         if (Math.abs(dv) >= halfV - 1.0E-4) {
             dv = Math.copySign(halfV - epsilon, dv);
         }
-        return center.method_1019(u.method_1021(du)).method_1019(v.method_1021(dv));
+        return center.add(u.multiply(du)).add(v.multiply(dv));
     }
 
-    private static class_243 getCenterOfFace(class_238 box, class_2350 face) {
-        double x = (box.field_1323 + box.field_1320) * 0.5;
-        double y = (box.field_1322 + box.field_1325) * 0.5;
-        double z = (box.field_1321 + box.field_1324) * 0.5;
+    private static Vec3d getCenterOfFace(Box box, Direction face) {
+        double x = (box.minX + box.maxX) * 0.5;
+        double y = (box.minY + box.maxY) * 0.5;
+        double z = (box.minZ + box.maxZ) * 0.5;
         switch (face) {
-            case field_11039: {
-                x = box.field_1323;
+            case WEST: {
+                x = box.minX;
                 break;
             }
-            case field_11034: {
-                x = box.field_1320;
+            case EAST: {
+                x = box.maxX;
                 break;
             }
-            case field_11033: {
-                y = box.field_1322;
+            case DOWN: {
+                y = box.minY;
                 break;
             }
-            case field_11036: {
-                y = box.field_1325;
+            case UP: {
+                y = box.maxY;
                 break;
             }
-            case field_11043: {
-                z = box.field_1321;
+            case NORTH: {
+                z = box.minZ;
                 break;
             }
-            case field_11035: {
-                z = box.field_1324;
+            case SOUTH: {
+                z = box.maxZ;
             }
         }
-        return new class_243(x, y, z);
+        return new Vec3d(x, y, z);
     }
 
     private static double clamp(double v, double min, double max) {
@@ -1298,8 +1298,8 @@ implements MinecraftAccessor {
 
         public static Rotation getServerRotation() {
         if (serverRotation == null) {
-            if (mc != null && mc.field_1724 != null) {
-                serverRotation = new Rotation(mc.field_1724.method_36454(), mc.field_1724.method_36455());
+            if (mc != null && mc.player != null) {
+                serverRotation = new Rotation(mc.player.getYaw(), mc.player.getPitch());
             } else {
                 return new Rotation(0.0f, 0.0f);
             }

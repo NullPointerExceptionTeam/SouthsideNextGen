@@ -13,13 +13,13 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
-import net.minecraft.class_2172;
-import net.minecraft.class_2561;
-import net.minecraft.class_3675;
+import net.minecraft.command.CommandSource;
+import net.minecraft.text.Text;
+import net.minecraft.client.util.InputUtil;
 import org.lwjgl.glfw.GLFW;
 
 public class KeybindingArgumentType implements ArgumentType<KeybindingArgumentType.Keybinding> {
-   public static final DynamicCommandExceptionType INVALID_KEY = new DynamicCommandExceptionType(key -> class_2561.method_43470("Invalid key: " + key));
+   public static final DynamicCommandExceptionType INVALID_KEY = new DynamicCommandExceptionType(key -> Text.literal("Invalid key: " + key));
    private static final String[] KEYS = new String[]{
       "space",
       "apostrophe",
@@ -158,19 +158,19 @@ public class KeybindingArgumentType implements ArgumentType<KeybindingArgumentTy
          try {
             MethodHandle handle = MethodHandles.publicLookup().findStaticGetter(GLFW.class, "GLFW_KEY_" + key.toUpperCase(Locale.ENGLISH), int.class);
             int keybinding = (int)handle.invoke();
-            return new KeybindingArgumentType.Keybinding(keybinding, class_3675.method_15985(keybinding, 0).method_27445().getString());
+            return new KeybindingArgumentType.Keybinding(keybinding, InputUtil.fromKeyCode(keybinding, 0).getLocalizedText().getString());
          } catch (Throwable var5) {
             throw INVALID_KEY.createWithContext(reader, key);
          }
       }
    }
 
-   public static KeybindingArgumentType.Keybinding getKeybinding(CommandContext<class_2172> context, String key) {
+   public static KeybindingArgumentType.Keybinding getKeybinding(CommandContext<CommandSource> context, String key) {
       return (KeybindingArgumentType.Keybinding)context.getArgument(key, KeybindingArgumentType.Keybinding.class);
    }
 
    public <S> CompletableFuture<Suggestions> listSuggestions(CommandContext<S> context, SuggestionsBuilder builder) {
-      return class_2172.method_9253(KEYS, builder);
+      return CommandSource.suggestMatching(KEYS, builder);
    }
 
    public Collection<String> getExamples() {

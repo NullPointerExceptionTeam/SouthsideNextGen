@@ -1,24 +1,24 @@
 package cc.polyfrost.oneconfig.libs.universal;
 
-import net.minecraft.class_310;
-import net.minecraft.class_315;
-import net.minecraft.class_638;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.option.GameOptions;
+import net.minecraft.client.world.ClientWorld;
 
 public class UMinecraft {
-   public static class_310 getMinecraft() {
-      return class_310.method_1551();
+   public static MinecraftClient getMinecraft() {
+      return MinecraftClient.getInstance();
    }
 
-   public static class_638 getWorld() {
-      return getMinecraft().field_1687;
+   public static ClientWorld getWorld() {
+      return getMinecraft().world;
    }
 
    public static void setGuiScaleValue(int value) {
-      getSettings().method_42474().method_41748(value);
+      getSettings().getGuiScale().setValue(value);
    }
 
-   public static class_315 getSettings() {
-      return getMinecraft().field_1690;
+   public static GameOptions getSettings() {
+      return getMinecraft().options;
    }
 
    public static int getGuiScale() {
@@ -26,7 +26,7 @@ public class UMinecraft {
    }
 
    private static int getGuiScaleValue() {
-      return (Integer)getSettings().method_42474().method_41753();
+      return (Integer)getSettings().getGuiScale().getValue();
    }
 
    public static void setGuiScale(int value) {
@@ -34,6 +34,6 @@ public class UMinecraft {
    }
 
    public static long getWindowHandle() {
-      return getMinecraft().method_22683().method_4490();
+      return getMinecraft().getWindow().getHandle();
    }
 }

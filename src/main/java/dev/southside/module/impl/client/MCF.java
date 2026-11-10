@@ -10,9 +10,9 @@ import dev.southside.module.impl.combat.KillAura;
 import dev.southside.orbit.EventHandler;
 import dev.southside.utils.misc.StringUtils;
 import dev.southside.utils.render.animation.TimerUtil;
-import net.minecraft.class_1657;
-import net.minecraft.class_3966;
-import net.minecraft.class_239.class_240;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.hit.EntityHitResult;
+import net.minecraft.util.hit.HitResult.Type;
 
 public class MCF extends Module {
    private final TimerUtil timer = new TimerUtil();
@@ -31,14 +31,14 @@ public class MCF extends Module {
 
    @EventHandler
    public void onTick(TickEvent event) {
-      if (mc.method_1569() && this.down) {
+      if (mc.isWindowFocused() && this.down) {
          if (this.timer.hasReached(200.0)) {
             if ((!Southside.get().getModuleManager().isEnabled(KillAura.class) || KillAura.target == null)
-               && mc.field_1765 != null
-               && mc.field_1765.method_17783() == class_240.field_1331
-               && mc.field_1765 instanceof class_3966 entityHitResult
-               && entityHitResult.method_17782() instanceof class_1657 player) {
-               String name = StringUtils.stripControlCodes(player.method_5477().getString());
+               && mc.crosshairTarget != null
+               && mc.crosshairTarget.getType() == Type.ENTITY
+               && mc.crosshairTarget instanceof EntityHitResult entityHitResult
+               && entityHitResult.getEntity() instanceof PlayerEntity player) {
+               String name = StringUtils.stripControlCodes(player.getName().getString());
                FriendManager friendManager = Southside.get().getFriendManager();
                if (friendManager.isFriend(name)) {
                   friendManager.remove(name);

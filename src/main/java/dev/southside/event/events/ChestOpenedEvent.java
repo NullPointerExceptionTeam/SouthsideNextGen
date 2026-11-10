@@ -1,26 +1,26 @@
 package dev.southside.event.events;
 
 import lombok.Generated;
-import net.minecraft.class_1657;
-import net.minecraft.class_2338;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.math.BlockPos;
 
 public class ChestOpenedEvent {
-   private class_1657 opener;
-   private class_2338 pos;
+   private PlayerEntity opener;
+   private BlockPos pos;
 
    @Generated
-   public ChestOpenedEvent(class_1657 opener, class_2338 pos) {
+   public ChestOpenedEvent(PlayerEntity opener, BlockPos pos) {
       this.opener = opener;
       this.pos = pos;
    }
 
    @Generated
-   public class_1657 getOpener() {
+   public PlayerEntity getOpener() {
       return this.opener;
    }
 
    @Generated
-   public class_2338 getPos() {
+   public BlockPos getPos() {
       return this.pos;
    }
 }

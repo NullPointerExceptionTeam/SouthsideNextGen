@@ -1,15 +1,15 @@
 package dev.southside.mixininterfaces;
 
-import net.minecraft.class_243;
+import net.minecraft.util.math.Vec3d;
 
 public interface IBoxUpdate {
-   class_243 getServerBoxPos();
+   Vec3d getServerBoxPos();
 
-   class_243 getBoxPos();
+   Vec3d getBoxPos();
 
-   void setServerBoxPos(class_243 var1);
+   void setServerBoxPos(Vec3d var1);
 
-   void setBoxPos(class_243 var1);
+   void setBoxPos(Vec3d var1);
 
    void setBoxTrackingIncrements(int var1);
 

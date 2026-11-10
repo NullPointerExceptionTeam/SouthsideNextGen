@@ -12,9 +12,9 @@ import dev.southside.module.Module;
 import dev.southside.orbit.EventHandler;
 import dev.southside.render.Render3D;
 import dev.southside.utils.world.WorldUtils;
-import net.minecraft.class_238;
-import net.minecraft.class_2586;
-import net.minecraft.class_2595;
+import net.minecraft.util.math.Box;
+import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.block.entity.ChestBlockEntity;
 
 public class ChestESP extends Module {
    private final Dropdown mode = new Dropdown("Mode", "Both", "Sides", "Lines", "Both");
@@ -39,21 +39,21 @@ public class ChestESP extends Module {
 
    @EventHandler
    public void onRender(Render3DEvent event) {
-      if (mc.field_1687 != null && mc.field_1724 != null) {
+      if (mc.world != null && mc.player != null) {
          double maxRange = this.renderRange.getValue().doubleValue();
          double maxRangeSq = maxRange * maxRange;
 
-         for (class_2586 e : WorldUtils.blockEntities()) {
-            if (e instanceof class_2595) {
-               double distSq = mc.field_1724
-                  .method_19538()
-                  .method_1028(e.method_11016().method_10263() + 0.5, e.method_11016().method_10264() + 0.5, e.method_11016().method_10260() + 0.5);
+         for (BlockEntity e : WorldUtils.blockEntities()) {
+            if (e instanceof ChestBlockEntity) {
+               double distSq = mc.player
+                  .getPos()
+                  .squaredDistanceTo(e.getPos().getX() + 0.5, e.getPos().getY() + 0.5, e.getPos().getZ() + 0.5);
                if (!(distSq > maxRangeSq)) {
-                  class_238 box = new class_238(e.method_11016());
+                  Box box = new Box(e.getPos());
                   boolean renderLines = this.mode.isMode("Lines") || this.mode.isMode("Both");
                   boolean renderSides = this.mode.isMode("Sides") || this.mode.isMode("Both");
                   ChestManager manager = Southside.get().getChestManager();
-                  if (!manager.isStolen(e.method_11016())) {
+                  if (!manager.isStolen(e.getPos())) {
                      if (renderLines) {
                         Render3D.boxLines(box, this.uColorLine.getValue().toJavaColor());
                      }
@@ -61,7 +61,7 @@ public class ChestESP extends Module {
                      if (renderSides) {
                         Render3D.boxSides(box, this.uColor.getValue().toJavaColor());
                      }
-                  } else if (manager.isSelfStolen(e.method_11016())) {
+                  } else if (manager.isSelfStolen(e.getPos())) {
                      if (renderLines) {
                         Render3D.boxLines(box, this.sColorLine.getValue().toJavaColor());
                      }

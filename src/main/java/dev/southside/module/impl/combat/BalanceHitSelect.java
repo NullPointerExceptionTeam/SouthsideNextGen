@@ -13,10 +13,10 @@ import dev.southside.orbit.EventHandler;
 import dev.southside.utils.network.PacketUtils;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-import net.minecraft.class_1657;
-import net.minecraft.class_2596;
-import net.minecraft.class_310;
-import net.minecraft.class_3532;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.network.packet.Packet;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.util.math.MathHelper;
 
 public class BalanceHitSelect extends Module {
    private long lastEnterTime = 0L;
@@ -32,16 +32,16 @@ public class BalanceHitSelect extends Module {
       super(Category.Combat, "Balance Hitselect", "Balance hit select with blink");
    }
 
-   public static class_1657 getClosestPlayer() {
-      class_1657 closestPlayer = null;
+   public static PlayerEntity getClosestPlayer() {
+      PlayerEntity closestPlayer = null;
       double closestDistance = Double.MAX_VALUE;
-      class_310 mc = class_310.method_1551();
-      if (mc.field_1687 != null) {
-         for (class_1657 player : mc.field_1687.method_18456()) {
-            if (player != mc.field_1724) {
+      MinecraftClient mc = MinecraftClient.getInstance();
+      if (mc.world != null) {
+         for (PlayerEntity player : mc.world.getPlayers()) {
+            if (player != mc.player) {
                double distance = 0.0;
-               if (mc.field_1724 != null) {
-                  distance = mc.field_1724.method_5739(player);
+               if (mc.player != null) {
+                  distance = mc.player.distanceTo(player);
                }
 
                if (distance < closestDistance) {
@@ -55,12 +55,12 @@ public class BalanceHitSelect extends Module {
       return closestPlayer;
    }
 
-   private boolean isInFOV(class_1657 target, double fov) {
-      if (mc.field_1724 != null && target != null) {
-         double diffX = target.method_23317() - mc.field_1724.method_23317();
-         double diffZ = target.method_23321() - mc.field_1724.method_23321();
-         double angle = Math.toDegrees(Math.atan2(diffZ, diffX)) - mc.field_1724.method_36454() - 90.0;
-         angle = class_3532.method_15338(angle);
+   private boolean isInFOV(PlayerEntity target, double fov) {
+      if (mc.player != null && target != null) {
+         double diffX = target.getX() - mc.player.getX();
+         double diffZ = target.getZ() - mc.player.getZ();
+         double angle = Math.toDegrees(Math.atan2(diffZ, diffX)) - mc.player.getYaw() - 90.0;
+         angle = MathHelper.wrapDegrees(angle);
          return Math.abs(angle) <= fov / 2.0;
       } else {
          return false;
@@ -70,12 +70,12 @@ public class BalanceHitSelect extends Module {
    @EventHandler
    public void onUpdate(TickEvent event) {
       if (event.state == Stage.PRE) {
-         if (mc.field_1724 != null && mc.field_1724.method_5805() && !mc.field_1724.method_29504()) {
-            class_1657 closestPlayer = getClosestPlayer();
+         if (mc.player != null && mc.player.isAlive() && !mc.player.isDead()) {
+            PlayerEntity closestPlayer = getClosestPlayer();
             if (closestPlayer != null && !Teams.isTeam(closestPlayer)) {
                double startReachValue = this.startReach.getValue().doubleValue();
                double attackReachValue = this.attackReach.getValue().doubleValue();
-               double distance = mc.field_1724.method_5739(closestPlayer);
+               double distance = mc.player.distanceTo(closestPlayer);
                boolean inFOV = !this.fovCheck.getValue() || this.isInFOV(closestPlayer, 180.0);
                boolean shouldCache = distance < startReachValue && inFOV;
                if (this.distanceCheck.getValue()) {
@@ -84,7 +84,7 @@ public class BalanceHitSelect extends Module {
 
                if (shouldCache) {
                   if (!this.isInRange) {
-                     if (mc.field_1687 != null && mc.field_1724 != null && this.debug.getValue()) {
+                     if (mc.world != null && mc.player != null && this.debug.getValue()) {
                         this.info(String.format("§2[BHS] Cache | Distance: %s", distance), new Object[0]);
                      }
 
@@ -101,7 +101,7 @@ public class BalanceHitSelect extends Module {
                      reason = "Out of FOV";
                   }
 
-                  if (mc.field_1687 != null && mc.field_1724 != null && this.debug.getValue()) {
+                  if (mc.world != null && mc.player != null && this.debug.getValue()) {
                      this.info(String.format("§4[BHS] Release | %s | Distance: %s", reason, distance), new Object[0]);
                   }
 
@@ -110,7 +110,7 @@ public class BalanceHitSelect extends Module {
                }
 
                if (this.isInRange && System.currentTimeMillis() - this.lastEnterTime >= 750L) {
-                  if (mc.field_1687 != null && mc.field_1724 != null && this.debug.getValue()) {
+                  if (mc.world != null && mc.player != null && this.debug.getValue()) {
                      this.info("§4[BHS] Release | Timeout", new Object[0]);
                   }
 
@@ -118,7 +118,7 @@ public class BalanceHitSelect extends Module {
                   this.isInRange = false;
                }
             } else if (this.isInRange) {
-               if (mc.field_1687 != null && mc.field_1724 != null && this.debug.getValue()) {
+               if (mc.world != null && mc.player != null && this.debug.getValue()) {
                   this.info("§4[BHS] Release | No Player", new Object[0]);
                }
 
@@ -134,7 +134,7 @@ public class BalanceHitSelect extends Module {
    @EventHandler
    public void onAttack(AttackEvent event) {
       if (event.stage == Stage.POST && this.isInRange) {
-         if (mc.field_1687 != null && mc.field_1724 != null && this.debug.getValue()) {
+         if (mc.world != null && mc.player != null && this.debug.getValue()) {
             this.info("§4[BHS] Release | Attack", new Object[0]);
          }
 
@@ -152,19 +152,19 @@ public class BalanceHitSelect extends Module {
    }
 
    public static class PacketManager {
-      private final List<class_2596<?>> cachedPackets = new CopyOnWriteArrayList<>();
+      private final List<Packet<?>> cachedPackets = new CopyOnWriteArrayList<>();
       private final BalanceHitSelect.PacketSender packetSender;
 
       public PacketManager(BalanceHitSelect.PacketSender packetSender) {
          this.packetSender = packetSender;
       }
 
-      public void cache(class_2596<?> packet) {
+      public void cache(Packet<?> packet) {
          this.cachedPackets.add(packet);
       }
 
       public void release() {
-         for (class_2596<?> packet : this.cachedPackets) {
+         for (Packet<?> packet : this.cachedPackets) {
             this.packetSender.send(packet);
          }
 
@@ -177,6 +177,6 @@ public class BalanceHitSelect extends Module {
    }
 
    public interface PacketSender {
-      void send(class_2596<?> var1);
+      void send(Packet<?> var1);
    }
 }

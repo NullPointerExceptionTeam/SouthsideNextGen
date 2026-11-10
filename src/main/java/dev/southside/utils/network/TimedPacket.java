@@ -1,19 +1,19 @@
 package dev.southside.utils.network;
 
 import lombok.Generated;
-import net.minecraft.class_2596;
+import net.minecraft.network.packet.Packet;
 
 public class TimedPacket {
-   private final class_2596 packet;
+   private final Packet packet;
    private final long time;
 
-   public TimedPacket(class_2596<?> packet) {
+   public TimedPacket(Packet<?> packet) {
       this.packet = packet;
       this.time = System.currentTimeMillis();
    }
 
    @Generated
-   public class_2596 getPacket() {
+   public Packet getPacket() {
       return this.packet;
    }
 

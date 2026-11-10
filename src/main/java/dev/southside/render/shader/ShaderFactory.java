@@ -10,7 +10,7 @@ import java.util.Formatter;
 import java.util.Locale;
 import java.util.Map;
 import lombok.Generated;
-import net.minecraft.class_2960;
+import net.minecraft.util.Identifier;
 import org.apache.commons.io.IOUtils;
 import org.lwjgl.opengl.GL45C;
 import org.lwjgl.system.MemoryStack;
@@ -25,9 +25,9 @@ public class ShaderFactory {
    private static final Map<String, UniformBuffer> ubo = new Object2ObjectOpenHashMap();
    private static final Map<String, ShaderStorageBuffer> ssbo = new Object2ObjectOpenHashMap();
 
-   public static CompiledStage compile(class_2960 source, String identifier, ShaderType type) {
+   public static CompiledStage compile(Identifier source, String identifier, ShaderType type) {
       try {
-         return compile(IOUtils.toString(MinecraftAccessor.mc.method_1478().open(source), StandardCharsets.UTF_8), identifier, type);
+         return compile(IOUtils.toString(MinecraftAccessor.mc.getResourceManager().open(source), StandardCharsets.UTF_8), identifier, type);
       } catch (IOException var4) {
          throw new RuntimeException("Failed to compile shader ", var4);
       }

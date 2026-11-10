@@ -6,14 +6,14 @@ import dev.southside.event.events.RenderItemEntityEvent;
 import dev.southside.module.Category;
 import dev.southside.module.Module;
 import dev.southside.orbit.EventHandler;
-import net.minecraft.class_10039;
-import net.minecraft.class_10444;
-import net.minecraft.class_3532;
-import net.minecraft.class_4184;
-import net.minecraft.class_4587;
-import net.minecraft.class_4597;
-import net.minecraft.class_4608;
-import net.minecraft.class_7833;
+import net.minecraft.client.render.entity.state.ItemEntityRenderState;
+import net.minecraft.client.render.item.ItemRenderState;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.client.render.Camera;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.render.OverlayTexture;
+import net.minecraft.util.math.RotationAxis;
 
 public class Item2D extends Module {
    private final Slider scale = new Slider("Scale", 1.0F, 0.3F, 3.0F, 0.1F);
@@ -25,29 +25,29 @@ public class Item2D extends Module {
 
    @EventHandler
    private void onRenderItemEntity(RenderItemEntityEvent event) {
-      class_10039 state = event.renderState;
-      class_4587 matrices = event.matrixStack;
-      class_4597 vertexConsumers = event.vertexConsumerProvider;
+      ItemEntityRenderState state = event.renderState;
+      MatrixStack matrices = event.matrixStack;
+      VertexConsumerProvider vertexConsumers = event.vertexConsumerProvider;
       int light = event.light;
-      class_10444 itemRenderState = state.field_55310;
-      if (!itemRenderState.method_65606()) {
-         class_4184 camera = mc.field_1773.method_19418();
-         matrices.method_22903();
+      ItemRenderState itemRenderState = state.itemRenderState;
+      if (!itemRenderState.isEmpty()) {
+         Camera camera = mc.gameRenderer.getCamera();
+         matrices.push();
          float yOffset;
          if (this.bobbing.getValue()) {
-            yOffset = class_3532.method_15374(state.field_53328 / 10.0F + state.field_53435) * 0.1F + 0.1F;
+            yOffset = MathHelper.sin(state.age / 10.0F + state.uniqueOffset) * 0.1F + 0.1F;
          } else {
             yOffset = 0.05F;
          }
 
-         float scaleY = itemRenderState.method_65609().field_4285.y();
-         matrices.method_46416(0.0F, yOffset + 0.25F * scaleY, 0.0F);
-         matrices.method_22907(class_7833.field_40716.rotationDegrees(180.0F - camera.method_19330()));
-         matrices.method_22907(class_7833.field_40714.rotationDegrees(-camera.method_19329()));
+         float scaleY = itemRenderState.getTransformation().scale.y();
+         matrices.translate(0.0F, yOffset + 0.25F * scaleY, 0.0F);
+         matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180.0F - camera.getYaw()));
+         matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-camera.getPitch()));
          float s = this.scale.getValue().floatValue();
-         matrices.method_22905(s, s, 0.01F);
-         itemRenderState.method_65604(matrices, vertexConsumers, light, class_4608.field_21444);
-         matrices.method_22909();
+         matrices.scale(s, s, 0.01F);
+         itemRenderState.render(matrices, vertexConsumers, light, OverlayTexture.DEFAULT_UV);
+         matrices.pop();
          event.cancel();
       }
    }

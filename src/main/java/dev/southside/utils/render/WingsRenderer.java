@@ -3,73 +3,73 @@ package dev.southside.utils.render;
 import dev.southside.Southside;
 import dev.southside.module.impl.render.PlayerAppearance;
 import java.awt.Color;
-import net.minecraft.class_10055;
-import net.minecraft.class_1657;
-import net.minecraft.class_1921;
-import net.minecraft.class_2960;
-import net.minecraft.class_310;
-import net.minecraft.class_3532;
-import net.minecraft.class_3883;
-import net.minecraft.class_3887;
-import net.minecraft.class_4587;
-import net.minecraft.class_4588;
-import net.minecraft.class_4597;
-import net.minecraft.class_4608;
-import net.minecraft.class_591;
-import net.minecraft.class_7833;
+import net.minecraft.client.render.entity.state.PlayerEntityRenderState;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.client.render.RenderLayer;
+import net.minecraft.util.Identifier;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.client.render.entity.feature.FeatureRendererContext;
+import net.minecraft.client.render.entity.feature.FeatureRenderer;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.render.VertexConsumer;
+import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.render.OverlayTexture;
+import net.minecraft.client.render.entity.model.PlayerEntityModel;
+import net.minecraft.util.math.RotationAxis;
 
-public class WingsRenderer extends class_3887<class_10055, class_591> {
+public class WingsRenderer extends FeatureRenderer<PlayerEntityRenderState, PlayerEntityModel> {
    private final WingsModel wingsModel = new WingsModel();
-   private static final class_2960 WINGS_TEXTURE = class_2960.method_60655(Southside.CLIENT_NAME.toLowerCase(), "textures/wings/wings.png");
+   private static final Identifier WINGS_TEXTURE = Identifier.of(Southside.CLIENT_NAME.toLowerCase(), "textures/wings/wings.png");
 
-   public WingsRenderer(class_3883<class_10055, class_591> context) {
+   public WingsRenderer(FeatureRendererContext<PlayerEntityRenderState, PlayerEntityModel> context) {
       super(context);
    }
 
    @Override
-   public void method_4199(class_4587 matrices, class_4597 vertexConsumers, int light, class_10055 state, float limbAngle, float limbDistance) {
-      this.render(matrices, vertexConsumers, light, state, limbAngle, limbDistance);
+   public void render(MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, PlayerEntityRenderState state, float limbAngle, float limbDistance) {
+      this.renderWingsFor(matrices, vertexConsumers, light, state, limbAngle, limbDistance);
    }
 
-   public void render(class_4587 matrices, class_4597 vertexConsumers, int light, class_10055 state, float limbAngle, float limbDistance) {
+   public void renderWingsFor(MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, PlayerEntityRenderState state, float limbAngle, float limbDistance) {
       PlayerAppearance appearance = Southside.INSTANCE.getModuleManager().get(PlayerAppearance.class);
       if (appearance.setWings.getValue()
          && appearance.isEnabled()
-         && !state.field_53333
-         && state.field_53528 == class_310.method_1551().field_1724.method_5628()) {
-         matrices.method_22903();
-         ((class_591)this.method_17165()).field_3391.method_22703(matrices);
-         matrices.method_22904(0.0, 0.1F, 0.125);
+         && !state.invisible
+         && state.id == MinecraftClient.getInstance().player.getId()) {
+         matrices.push();
+         ((PlayerEntityModel)this.getContextModel()).body.rotate(matrices);
+         matrices.translate(0.0, 0.1F, 0.125);
          float scale = 1.2F;
-         matrices.method_22905(scale, scale, scale);
+         matrices.scale(scale, scale, scale);
          this.renderWings(matrices, vertexConsumers, light);
-         matrices.method_22909();
+         matrices.pop();
       }
    }
 
-   private void renderWings(class_4587 matrices, class_4597 vertexConsumers, int light) {
+   private void renderWings(MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light) {
       Color color = Color.getHSBColor((float)(System.currentTimeMillis() % 1000L) / 1000.0F, 0.8F, 1.0F);
-      class_4588 vertexConsumer = vertexConsumers.getBuffer(class_1921.method_23578(WINGS_TEXTURE));
+      VertexConsumer vertexConsumer = vertexConsumers.getBuffer(RenderLayer.getEntityCutoutNoCull(WINGS_TEXTURE));
       float time = (float)(System.currentTimeMillis() % 1000L) / 1000.0F * (float) Math.PI * 2.0F;
       this.wingsModel.setAngles(time);
-      matrices.method_22903();
-      this.wingsModel.method_62100(matrices, vertexConsumer, light, class_4608.field_21444, color.getRGB());
-      matrices.method_22909();
-      matrices.method_22903();
-      matrices.method_22905(-1.0F, 1.0F, 1.0F);
-      this.wingsModel.method_62100(matrices, vertexConsumer, light, class_4608.field_21444, color.getRGB());
-      matrices.method_22909();
+      matrices.push();
+      this.wingsModel.render(matrices, vertexConsumer, light, OverlayTexture.DEFAULT_UV, color.getRGB());
+      matrices.pop();
+      matrices.push();
+      matrices.scale(-1.0F, 1.0F, 1.0F);
+      this.wingsModel.render(matrices, vertexConsumer, light, OverlayTexture.DEFAULT_UV, color.getRGB());
+      matrices.pop();
    }
 
-   private void setupTransforms(class_4587 matrices, class_1657 player, float tickDelta) {
+   private void setupTransforms(MatrixStack matrices, PlayerEntity player, float tickDelta) {
       double scale = 1.4;
-      float bodyYaw = class_3532.method_17821(tickDelta, player.field_6220, player.field_6283);
-      matrices.method_22905((float)(-scale), (float)(-scale), (float)scale);
-      matrices.method_22907(class_7833.field_40716.rotationDegrees(180.0F + bodyYaw));
-      matrices.method_22904(0.0, -1.25 / scale, 0.0);
-      matrices.method_22904(0.0, 0.0, 0.2 / scale);
-      if (player.method_18276()) {
-         matrices.method_22904(0.0, 0.125 / scale, 0.0);
+      float bodyYaw = MathHelper.lerpAngleDegrees(tickDelta, player.prevBodyYaw, player.bodyYaw);
+      matrices.scale((float)(-scale), (float)(-scale), (float)scale);
+      matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180.0F + bodyYaw));
+      matrices.translate(0.0, -1.25 / scale, 0.0);
+      matrices.translate(0.0, 0.0, 0.2 / scale);
+      if (player.isInSneakingPose()) {
+         matrices.translate(0.0, 0.125 / scale, 0.0);
       }
    }
 }

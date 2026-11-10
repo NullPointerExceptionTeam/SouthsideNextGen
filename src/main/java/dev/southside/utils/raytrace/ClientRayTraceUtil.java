@@ -3,148 +3,148 @@ package dev.southside.utils.raytrace;
 import dev.southside.utils.types.Rotation;
 import java.util.Optional;
 import java.util.function.Predicate;
-import net.minecraft.class_1297;
-import net.minecraft.class_1657;
-import net.minecraft.class_1937;
-import net.minecraft.class_2189;
-import net.minecraft.class_2248;
-import net.minecraft.class_2261;
-import net.minecraft.class_2281;
-import net.minecraft.class_2336;
-import net.minecraft.class_2338;
-import net.minecraft.class_2350;
-import net.minecraft.class_238;
-import net.minecraft.class_2404;
-import net.minecraft.class_243;
-import net.minecraft.class_2480;
-import net.minecraft.class_2488;
-import net.minecraft.class_2526;
-import net.minecraft.class_259;
-import net.minecraft.class_265;
-import net.minecraft.class_2680;
-import net.minecraft.class_310;
-import net.minecraft.class_3532;
-import net.minecraft.class_3610;
-import net.minecraft.class_3612;
-import net.minecraft.class_3726;
-import net.minecraft.class_3965;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.world.World;
+import net.minecraft.block.AirBlock;
+import net.minecraft.block.Block;
+import net.minecraft.block.PlantBlock;
+import net.minecraft.block.ChestBlock;
+import net.minecraft.block.EnderChestBlock;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Box;
+import net.minecraft.block.FluidBlock;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.block.ShulkerBoxBlock;
+import net.minecraft.block.SnowBlock;
+import net.minecraft.block.ShortPlantBlock;
+import net.minecraft.util.shape.VoxelShapes;
+import net.minecraft.util.shape.VoxelShape;
+import net.minecraft.block.BlockState;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.fluid.FluidState;
+import net.minecraft.fluid.Fluids;
+import net.minecraft.block.ShapeContext;
+import net.minecraft.util.hit.BlockHitResult;
 import org.jetbrains.annotations.Nullable;
 
 public final class ClientRayTraceUtil {
    private static final double EPSILON = 1.0E-7;
-   public static class_243 eyePos = null;
-   private static class_310 mc = class_310.method_1551();
+   public static Vec3d eyePos = null;
+   private static MinecraftClient mc = MinecraftClient.getInstance();
 
-   public static boolean didHitBlockFace(Rotation rotation, class_2338 targetPos, class_2350 expectedFace, boolean strict) {
-      return didHitBlockFace(mc.field_1724, rotation.yaw, rotation.pitch, targetPos, expectedFace, strict, ClientRayTraceUtil::isIgnoredBlock);
+   public static boolean didHitBlockFace(Rotation rotation, BlockPos targetPos, Direction expectedFace, boolean strict) {
+      return didHitBlockFace(mc.player, rotation.yaw, rotation.pitch, targetPos, expectedFace, strict, ClientRayTraceUtil::isIgnoredBlock);
    }
 
-   public static boolean didHitBlockFace(class_1657 player, float yaw, float pitch, class_2338 targetPos, class_2350 expectedFace, boolean strict) {
+   public static boolean didHitBlockFace(PlayerEntity player, float yaw, float pitch, BlockPos targetPos, Direction expectedFace, boolean strict) {
       return didHitBlockFace(player, yaw, pitch, targetPos, expectedFace, strict, ClientRayTraceUtil::isIgnoredBlock);
    }
 
    public static boolean didHitBlockFace(
-      Rotation rotation, class_2338 targetPos, class_2350 expectedFace, boolean strict, Predicate<class_2680> ignorePredicate
+      Rotation rotation, BlockPos targetPos, Direction expectedFace, boolean strict, Predicate<BlockState> ignorePredicate
    ) {
-      return didHitBlockFace(mc.field_1724, rotation.yaw, rotation.pitch, targetPos, expectedFace, strict, ignorePredicate);
+      return didHitBlockFace(mc.player, rotation.yaw, rotation.pitch, targetPos, expectedFace, strict, ignorePredicate);
    }
 
    public static boolean didHitBlockFace(
-      class_1657 player, float yaw, float pitch, class_2338 targetPos, class_2350 expectedFace, boolean strict, Predicate<class_2680> ignorePredicate
+      PlayerEntity player, float yaw, float pitch, BlockPos targetPos, Direction expectedFace, boolean strict, Predicate<BlockState> ignorePredicate
    ) {
       if (player != null && expectedFace != null) {
-         class_3965 result = getFacedBlock(yaw, pitch, ignorePredicate);
+         BlockHitResult result = getFacedBlock(yaw, pitch, ignorePredicate);
          return result != null
-            && targetPos.method_10263() == result.method_17777().method_10263()
-            && targetPos.method_10264() == result.method_17777().method_10264()
-            && targetPos.method_10260() == result.method_17777().method_10260()
-            && (expectedFace == result.method_17780() || !strict);
+            && targetPos.getX() == result.getBlockPos().getX()
+            && targetPos.getY() == result.getBlockPos().getY()
+            && targetPos.getZ() == result.getBlockPos().getZ()
+            && (expectedFace == result.getSide() || !strict);
       } else {
          return false;
       }
    }
 
    public static void updateEyePos() {
-      if (mc.field_1724 != null) {
-         eyePos = mc.field_1724.method_33571();
+      if (mc.player != null) {
+         eyePos = mc.player.getEyePos();
       }
    }
 
    @Nullable
-   private static class_2350 getHitFace(class_243 hitPos, class_238 box) {
-      if (Math.abs(hitPos.field_1352 - box.field_1323) < 1.0E-7) {
-         return class_2350.field_11039;
-      } else if (Math.abs(hitPos.field_1352 - box.field_1320) < 1.0E-7) {
-         return class_2350.field_11034;
-      } else if (Math.abs(hitPos.field_1351 - box.field_1322) < 1.0E-7) {
-         return class_2350.field_11033;
-      } else if (Math.abs(hitPos.field_1351 - box.field_1325) < 1.0E-7) {
-         return class_2350.field_11036;
-      } else if (Math.abs(hitPos.field_1350 - box.field_1321) < 1.0E-7) {
-         return class_2350.field_11043;
+   private static Direction getHitFace(Vec3d hitPos, Box box) {
+      if (Math.abs(hitPos.x - box.minX) < 1.0E-7) {
+         return Direction.WEST;
+      } else if (Math.abs(hitPos.x - box.maxX) < 1.0E-7) {
+         return Direction.EAST;
+      } else if (Math.abs(hitPos.y - box.minY) < 1.0E-7) {
+         return Direction.DOWN;
+      } else if (Math.abs(hitPos.y - box.maxY) < 1.0E-7) {
+         return Direction.UP;
+      } else if (Math.abs(hitPos.z - box.minZ) < 1.0E-7) {
+         return Direction.NORTH;
       } else {
-         return Math.abs(hitPos.field_1350 - box.field_1324) < 1.0E-7 ? class_2350.field_11035 : null;
+         return Math.abs(hitPos.z - box.maxZ) < 1.0E-7 ? Direction.SOUTH : null;
       }
    }
 
-   public static class_3965 getFacedBlock(float yaw, float pitch) {
+   public static BlockHitResult getFacedBlock(float yaw, float pitch) {
       return getFacedBlock(yaw, pitch, ClientRayTraceUtil::isIgnoredBlock);
    }
 
-   public static class_3965 getFacedBlock(float yaw, float pitch, Predicate<class_2680> ignorePredicate) {
-      class_310 client = class_310.method_1551();
-      double reachDistance = client.field_1724.method_55754();
-      class_243 startPos = eyePos;
-      class_243 direction = class_243.method_1030(pitch, yaw);
-      class_243 endPos = startPos.method_1019(direction.method_1021(reachDistance));
-      if (direction.field_1352 == 0.0) {
-         direction = new class_243(1.0E-7, direction.field_1351, direction.field_1350);
+   public static BlockHitResult getFacedBlock(float yaw, float pitch, Predicate<BlockState> ignorePredicate) {
+      MinecraftClient client = MinecraftClient.getInstance();
+      double reachDistance = client.player.getBlockInteractionRange();
+      Vec3d startPos = eyePos;
+      Vec3d direction = Vec3d.fromPolar(pitch, yaw);
+      Vec3d endPos = startPos.add(direction.multiply(reachDistance));
+      if (direction.x == 0.0) {
+         direction = new Vec3d(1.0E-7, direction.y, direction.z);
       }
 
-      if (direction.field_1351 == 0.0) {
-         direction = new class_243(direction.field_1352, 1.0E-7, direction.field_1350);
+      if (direction.y == 0.0) {
+         direction = new Vec3d(direction.x, 1.0E-7, direction.z);
       }
 
-      if (direction.field_1350 == 0.0) {
-         direction = new class_243(direction.field_1352, direction.field_1351, 1.0E-7);
+      if (direction.z == 0.0) {
+         direction = new Vec3d(direction.x, direction.y, 1.0E-7);
       }
 
-      class_2338 currentPos = class_2338.method_49638(startPos);
-      int stepX = (int)Math.signum(direction.field_1352);
-      int stepY = (int)Math.signum(direction.field_1351);
-      int stepZ = (int)Math.signum(direction.field_1350);
-      double nextBoundaryX = stepX > 0 ? currentPos.method_10263() + 1 : currentPos.method_10263();
-      double nextBoundaryY = stepY > 0 ? currentPos.method_10264() + 1 : currentPos.method_10264();
-      double nextBoundaryZ = stepZ > 0 ? currentPos.method_10260() + 1 : currentPos.method_10260();
-      double tMaxX = (nextBoundaryX - startPos.field_1352) / direction.field_1352;
-      double tMaxY = (nextBoundaryY - startPos.field_1351) / direction.field_1351;
-      double tMaxZ = (nextBoundaryZ - startPos.field_1350) / direction.field_1350;
-      double tDeltaX = stepX / direction.field_1352;
-      double tDeltaY = stepY / direction.field_1351;
-      double tDeltaZ = stepZ / direction.field_1350;
-      class_1937 world = mc.field_1724.method_37908();
+      BlockPos currentPos = BlockPos.ofFloored(startPos);
+      int stepX = (int)Math.signum(direction.x);
+      int stepY = (int)Math.signum(direction.y);
+      int stepZ = (int)Math.signum(direction.z);
+      double nextBoundaryX = stepX > 0 ? currentPos.getX() + 1 : currentPos.getX();
+      double nextBoundaryY = stepY > 0 ? currentPos.getY() + 1 : currentPos.getY();
+      double nextBoundaryZ = stepZ > 0 ? currentPos.getZ() + 1 : currentPos.getZ();
+      double tMaxX = (nextBoundaryX - startPos.x) / direction.x;
+      double tMaxY = (nextBoundaryY - startPos.y) / direction.y;
+      double tMaxZ = (nextBoundaryZ - startPos.z) / direction.z;
+      double tDeltaX = stepX / direction.x;
+      double tDeltaY = stepY / direction.y;
+      double tDeltaZ = stepZ / direction.z;
+      World world = mc.player.getWorld();
 
-      while (startPos.method_1022(currentPos.method_46558()) <= reachDistance) {
-         if (!world.method_22347(currentPos)) {
-            class_2680 state = world.method_8320(currentPos);
+      while (startPos.distanceTo(currentPos.toCenterPos()) <= reachDistance) {
+         if (!world.isAir(currentPos)) {
+            BlockState state = world.getBlockState(currentPos);
             if (!ignorePredicate.test(state)) {
-               class_3610 fluidState = world.method_8316(currentPos);
-               class_265 shape;
-               if (fluidState != null && fluidState.method_15771() && fluidState.method_15772() == class_3612.field_15910) {
-                  shape = class_259.method_1077();
+               FluidState fluidState = world.getFluidState(currentPos);
+               VoxelShape shape;
+               if (fluidState != null && fluidState.isStill() && fluidState.getFluid() == Fluids.WATER) {
+                  shape = VoxelShapes.fullCube();
                } else {
-                  shape = state.method_26194(world, currentPos, class_3726.method_16195(client.field_1724));
+                  shape = state.getCollisionShape(world, currentPos, ShapeContext.of(client.player));
                }
 
-               if (!shape.method_1110()) {
-                  for (class_238 localBox : shape.method_1090()) {
-                     class_238 box = localBox.method_996(currentPos);
-                     Optional<class_243> intercept = box.method_992(startPos, endPos);
+               if (!shape.isEmpty()) {
+                  for (Box localBox : shape.getBoundingBoxes()) {
+                     Box box = localBox.offset(currentPos);
+                     Optional<Vec3d> intercept = box.raycast(startPos, endPos);
                      if (intercept.isPresent()) {
-                        class_243 hitVec = intercept.get();
-                        class_2350 side = getHitFaceFromBox(hitVec, box);
-                        boolean isInside = box.method_1006(startPos);
-                        return new class_3965(hitVec, side, currentPos, isInside);
+                        Vec3d hitVec = intercept.get();
+                        Direction side = getHitFaceFromBox(hitVec, box);
+                        boolean isInside = box.contains(startPos);
+                        return new BlockHitResult(hitVec, side, currentPos, isInside);
                      }
                   }
                }
@@ -153,17 +153,17 @@ public final class ClientRayTraceUtil {
 
          if (tMaxX < tMaxY) {
             if (tMaxX < tMaxZ) {
-               currentPos = currentPos.method_10069(stepX, 0, 0);
+               currentPos = currentPos.add(stepX, 0, 0);
                tMaxX += tDeltaX;
             } else {
-               currentPos = currentPos.method_10069(0, 0, stepZ);
+               currentPos = currentPos.add(0, 0, stepZ);
                tMaxZ += tDeltaZ;
             }
          } else if (tMaxY < tMaxZ) {
-            currentPos = currentPos.method_10069(0, stepY, 0);
+            currentPos = currentPos.add(0, stepY, 0);
             tMaxY += tDeltaY;
          } else {
-            currentPos = currentPos.method_10069(0, 0, stepZ);
+            currentPos = currentPos.add(0, 0, stepZ);
             tMaxZ += tDeltaZ;
          }
       }
@@ -171,123 +171,123 @@ public final class ClientRayTraceUtil {
       return null;
    }
 
-   public static boolean isIgnoredBlock(class_2680 state) {
-      class_2248 block = state.method_26204();
-      return block instanceof class_2261
-         || block instanceof class_2488
-         || block instanceof class_2189
-         || block instanceof class_2526
-         || block instanceof class_2404;
+   public static boolean isIgnoredBlock(BlockState state) {
+      Block block = state.getBlock();
+      return block instanceof PlantBlock
+         || block instanceof SnowBlock
+         || block instanceof AirBlock
+         || block instanceof ShortPlantBlock
+         || block instanceof FluidBlock;
    }
 
-   private static class_2350 getHitFaceFromBox(class_243 hit, class_238 box) {
+   private static Direction getHitFaceFromBox(Vec3d hit, Box box) {
       double eps = 1.0E-7;
-      if (Math.abs(hit.field_1352 - box.field_1323) <= 1.0E-7) {
-         return class_2350.field_11039;
-      } else if (Math.abs(hit.field_1352 - box.field_1320) <= 1.0E-7) {
-         return class_2350.field_11034;
-      } else if (Math.abs(hit.field_1351 - box.field_1322) <= 1.0E-7) {
-         return class_2350.field_11033;
-      } else if (Math.abs(hit.field_1351 - box.field_1325) <= 1.0E-7) {
-         return class_2350.field_11036;
-      } else if (Math.abs(hit.field_1350 - box.field_1321) <= 1.0E-7) {
-         return class_2350.field_11043;
-      } else if (Math.abs(hit.field_1350 - box.field_1324) <= 1.0E-7) {
-         return class_2350.field_11035;
+      if (Math.abs(hit.x - box.minX) <= 1.0E-7) {
+         return Direction.WEST;
+      } else if (Math.abs(hit.x - box.maxX) <= 1.0E-7) {
+         return Direction.EAST;
+      } else if (Math.abs(hit.y - box.minY) <= 1.0E-7) {
+         return Direction.DOWN;
+      } else if (Math.abs(hit.y - box.maxY) <= 1.0E-7) {
+         return Direction.UP;
+      } else if (Math.abs(hit.z - box.minZ) <= 1.0E-7) {
+         return Direction.NORTH;
+      } else if (Math.abs(hit.z - box.maxZ) <= 1.0E-7) {
+         return Direction.SOUTH;
       } else {
-         double dxMin = Math.abs(hit.field_1352 - box.field_1323);
-         double dxMax = Math.abs(hit.field_1352 - box.field_1320);
-         double dyMin = Math.abs(hit.field_1351 - box.field_1322);
-         double dyMax = Math.abs(hit.field_1351 - box.field_1325);
-         double dzMin = Math.abs(hit.field_1350 - box.field_1321);
-         double dzMax = Math.abs(hit.field_1350 - box.field_1324);
+         double dxMin = Math.abs(hit.x - box.minX);
+         double dxMax = Math.abs(hit.x - box.maxX);
+         double dyMin = Math.abs(hit.y - box.minY);
+         double dyMax = Math.abs(hit.y - box.maxY);
+         double dzMin = Math.abs(hit.z - box.minZ);
+         double dzMax = Math.abs(hit.z - box.maxZ);
          double m = dxMin;
-         class_2350 d = class_2350.field_11039;
+         Direction d = Direction.WEST;
          if (dxMax < dxMin) {
             m = dxMax;
-            d = class_2350.field_11034;
+            d = Direction.EAST;
          }
 
          if (dyMin < m) {
             m = dyMin;
-            d = class_2350.field_11033;
+            d = Direction.DOWN;
          }
 
          if (dyMax < m) {
             m = dyMax;
-            d = class_2350.field_11036;
+            d = Direction.UP;
          }
 
          if (dzMin < m) {
             m = dzMin;
-            d = class_2350.field_11043;
+            d = Direction.NORTH;
          }
 
          if (dzMax < m) {
-            d = class_2350.field_11035;
+            d = Direction.SOUTH;
          }
 
          return d;
       }
    }
 
-   public static class_3965 getFacedContainerBlock(float yaw, float pitch) {
-      class_310 client = class_310.method_1551();
-      double reachDistance = client.field_1724.method_55754();
-      class_243 startPos = eyePos;
-      class_243 direction = class_243.method_1030(pitch, yaw);
-      class_243 endPos = startPos.method_1019(direction.method_1021(reachDistance));
-      if (direction.field_1352 == 0.0) {
-         direction = new class_243(1.0E-7, direction.field_1351, direction.field_1350);
+   public static BlockHitResult getFacedContainerBlock(float yaw, float pitch) {
+      MinecraftClient client = MinecraftClient.getInstance();
+      double reachDistance = client.player.getBlockInteractionRange();
+      Vec3d startPos = eyePos;
+      Vec3d direction = Vec3d.fromPolar(pitch, yaw);
+      Vec3d endPos = startPos.add(direction.multiply(reachDistance));
+      if (direction.x == 0.0) {
+         direction = new Vec3d(1.0E-7, direction.y, direction.z);
       }
 
-      if (direction.field_1351 == 0.0) {
-         direction = new class_243(direction.field_1352, 1.0E-7, direction.field_1350);
+      if (direction.y == 0.0) {
+         direction = new Vec3d(direction.x, 1.0E-7, direction.z);
       }
 
-      if (direction.field_1350 == 0.0) {
-         direction = new class_243(direction.field_1352, direction.field_1351, 1.0E-7);
+      if (direction.z == 0.0) {
+         direction = new Vec3d(direction.x, direction.y, 1.0E-7);
       }
 
-      class_2338 currentPos = class_2338.method_49638(startPos);
-      int stepX = (int)Math.signum(direction.field_1352);
-      int stepY = (int)Math.signum(direction.field_1351);
-      int stepZ = (int)Math.signum(direction.field_1350);
-      double nextBoundaryX = stepX > 0 ? currentPos.method_10263() + 1 : currentPos.method_10263();
-      double nextBoundaryY = stepY > 0 ? currentPos.method_10264() + 1 : currentPos.method_10264();
-      double nextBoundaryZ = stepZ > 0 ? currentPos.method_10260() + 1 : currentPos.method_10260();
-      double tMaxX = (nextBoundaryX - startPos.field_1352) / direction.field_1352;
-      double tMaxY = (nextBoundaryY - startPos.field_1351) / direction.field_1351;
-      double tMaxZ = (nextBoundaryZ - startPos.field_1350) / direction.field_1350;
-      double tDeltaX = stepX / direction.field_1352;
-      double tDeltaY = stepY / direction.field_1351;
-      double tDeltaZ = stepZ / direction.field_1350;
+      BlockPos currentPos = BlockPos.ofFloored(startPos);
+      int stepX = (int)Math.signum(direction.x);
+      int stepY = (int)Math.signum(direction.y);
+      int stepZ = (int)Math.signum(direction.z);
+      double nextBoundaryX = stepX > 0 ? currentPos.getX() + 1 : currentPos.getX();
+      double nextBoundaryY = stepY > 0 ? currentPos.getY() + 1 : currentPos.getY();
+      double nextBoundaryZ = stepZ > 0 ? currentPos.getZ() + 1 : currentPos.getZ();
+      double tMaxX = (nextBoundaryX - startPos.x) / direction.x;
+      double tMaxY = (nextBoundaryY - startPos.y) / direction.y;
+      double tMaxZ = (nextBoundaryZ - startPos.z) / direction.z;
+      double tDeltaX = stepX / direction.x;
+      double tDeltaY = stepY / direction.y;
+      double tDeltaZ = stepZ / direction.z;
 
-      while (startPos.method_1022(currentPos.method_46558()) <= reachDistance) {
-         if (!mc.field_1724.method_37908().method_22347(currentPos) && isContainerBlock(mc.field_1724.method_37908().method_8320(currentPos))) {
-            class_238 currentBox = new class_238(currentPos);
-            Optional<class_243> intercept = currentBox.method_992(startPos, endPos);
+      while (startPos.distanceTo(currentPos.toCenterPos()) <= reachDistance) {
+         if (!mc.player.getWorld().isAir(currentPos) && isContainerBlock(mc.player.getWorld().getBlockState(currentPos))) {
+            Box currentBox = new Box(currentPos);
+            Optional<Vec3d> intercept = currentBox.raycast(startPos, endPos);
             if (intercept.isPresent()) {
-               class_243 hitVec = intercept.get();
-               class_2350 side = getHitFace(hitVec, currentBox);
-               boolean isInside = currentBox.method_1006(startPos);
-               return new class_3965(hitVec, side, currentPos, isInside);
+               Vec3d hitVec = intercept.get();
+               Direction side = getHitFace(hitVec, currentBox);
+               boolean isInside = currentBox.contains(startPos);
+               return new BlockHitResult(hitVec, side, currentPos, isInside);
             }
          }
 
          if (tMaxX < tMaxY) {
             if (tMaxX < tMaxZ) {
-               currentPos = currentPos.method_10069(stepX, 0, 0);
+               currentPos = currentPos.add(stepX, 0, 0);
                tMaxX += tDeltaX;
             } else {
-               currentPos = currentPos.method_10069(0, 0, stepZ);
+               currentPos = currentPos.add(0, 0, stepZ);
                tMaxZ += tDeltaZ;
             }
          } else if (tMaxY < tMaxZ) {
-            currentPos = currentPos.method_10069(0, stepY, 0);
+            currentPos = currentPos.add(0, stepY, 0);
             tMaxY += tDeltaY;
          } else {
-            currentPos = currentPos.method_10069(0, 0, stepZ);
+            currentPos = currentPos.add(0, 0, stepZ);
             tMaxZ += tDeltaZ;
          }
       }
@@ -295,51 +295,51 @@ public final class ClientRayTraceUtil {
       return null;
    }
 
-   private static boolean isContainerBlock(class_2680 state) {
-      return state.method_26204() instanceof class_2281 || state.method_26204() instanceof class_2336 || state.method_26204() instanceof class_2480;
+   private static boolean isContainerBlock(BlockState state) {
+      return state.getBlock() instanceof ChestBlock || state.getBlock() instanceof EnderChestBlock || state.getBlock() instanceof ShulkerBoxBlock;
    }
 
-   public static double getDistance(float yaw, float pitch, class_1297 target) {
-      class_243 dir = class_243.method_1030(pitch, yaw).method_1029();
-      class_238 targetBox = target.method_5829();
+   public static double getDistance(float yaw, float pitch, Entity target) {
+      Vec3d dir = Vec3d.fromPolar(pitch, yaw).normalize();
+      Box targetBox = target.getBoundingBox();
       return intersectRayAabb(eyePos, dir, targetBox);
    }
 
-   public static boolean didHitEntity(float yaw, float pitch, double range, class_1297 target) {
-      return overBox(yaw, pitch, range, target.method_5829());
+   public static boolean didHitEntity(float yaw, float pitch, double range, Entity target) {
+      return overBox(yaw, pitch, range, target.getBoundingBox());
    }
 
-   public static boolean overBox(float yawDeg, float pitchDeg, double range, class_238 box) {
+   public static boolean overBox(float yawDeg, float pitchDeg, double range, Box box) {
       if (box == null) {
          return false;
       } else {
-         class_243 start = eyePos;
-         class_1937 world = class_310.method_1551().field_1687;
-         class_243 dir = class_243.method_1030(pitchDeg, yawDeg).method_1029();
-         if (dir.method_1027() < 1.0E-12) {
+         Vec3d start = eyePos;
+         World world = MinecraftClient.getInstance().world;
+         Vec3d dir = Vec3d.fromPolar(pitchDeg, yawDeg).normalize();
+         if (dir.lengthSquared() < 1.0E-12) {
             return false;
          } else {
             double tBox = intersectRayAabb(start, dir, box);
-            return !Double.isFinite(tBox) || tBox < 0.0 || tBox > range ? false : !isOccludedBefore(world, start, dir, tBox, range, mc.field_1724);
+            return !Double.isFinite(tBox) || tBox < 0.0 || tBox > range ? false : !isOccludedBefore(world, start, dir, tBox, range, mc.player);
          }
       }
    }
 
-   private static boolean isOccludedBefore(class_1937 world, class_243 origin, class_243 dir, double tStop, double range, class_1297 viewer) {
-      int x = class_3532.method_15357(origin.field_1352);
-      int y = class_3532.method_15357(origin.field_1351);
-      int z = class_3532.method_15357(origin.field_1350);
-      int stepX = dir.field_1352 > 0.0 ? 1 : (dir.field_1352 < 0.0 ? -1 : 0);
-      int stepY = dir.field_1351 > 0.0 ? 1 : (dir.field_1351 < 0.0 ? -1 : 0);
-      int stepZ = dir.field_1350 > 0.0 ? 1 : (dir.field_1350 < 0.0 ? -1 : 0);
-      double tMaxX = nextBoundaryT(origin.field_1352, dir.field_1352, x, stepX);
-      double tMaxY = nextBoundaryT(origin.field_1351, dir.field_1351, y, stepY);
-      double tMaxZ = nextBoundaryT(origin.field_1350, dir.field_1350, z, stepZ);
-      double tDeltaX = stepX != 0 ? 1.0 / Math.abs(dir.field_1352) : Double.POSITIVE_INFINITY;
-      double tDeltaY = stepY != 0 ? 1.0 / Math.abs(dir.field_1351) : Double.POSITIVE_INFINITY;
-      double tDeltaZ = stepZ != 0 ? 1.0 / Math.abs(dir.field_1350) : Double.POSITIVE_INFINITY;
+   private static boolean isOccludedBefore(World world, Vec3d origin, Vec3d dir, double tStop, double range, Entity viewer) {
+      int x = MathHelper.floor(origin.x);
+      int y = MathHelper.floor(origin.y);
+      int z = MathHelper.floor(origin.z);
+      int stepX = dir.x > 0.0 ? 1 : (dir.x < 0.0 ? -1 : 0);
+      int stepY = dir.y > 0.0 ? 1 : (dir.y < 0.0 ? -1 : 0);
+      int stepZ = dir.z > 0.0 ? 1 : (dir.z < 0.0 ? -1 : 0);
+      double tMaxX = nextBoundaryT(origin.x, dir.x, x, stepX);
+      double tMaxY = nextBoundaryT(origin.y, dir.y, y, stepY);
+      double tMaxZ = nextBoundaryT(origin.z, dir.z, z, stepZ);
+      double tDeltaX = stepX != 0 ? 1.0 / Math.abs(dir.x) : Double.POSITIVE_INFINITY;
+      double tDeltaY = stepY != 0 ? 1.0 / Math.abs(dir.y) : Double.POSITIVE_INFINITY;
+      double tDeltaZ = stepZ != 0 ? 1.0 / Math.abs(dir.z) : Double.POSITIVE_INFINITY;
       double tLimit = Math.min(tStop, range);
-      if (blockOccludesHere(world, origin, dir, new class_2338(x, y, z), tStop, viewer)) {
+      if (blockOccludesHere(world, origin, dir, new BlockPos(x, y, z), tStop, viewer)) {
          return true;
       } else {
          while (true) {
@@ -350,7 +350,7 @@ public final class ClientRayTraceUtil {
                   }
 
                   x += stepX;
-                  if (blockOccludesHere(world, origin, dir, new class_2338(x, y, z), tStop, viewer)) {
+                  if (blockOccludesHere(world, origin, dir, new BlockPos(x, y, z), tStop, viewer)) {
                      return true;
                   }
 
@@ -361,7 +361,7 @@ public final class ClientRayTraceUtil {
                   }
 
                   z += stepZ;
-                  if (blockOccludesHere(world, origin, dir, new class_2338(x, y, z), tStop, viewer)) {
+                  if (blockOccludesHere(world, origin, dir, new BlockPos(x, y, z), tStop, viewer)) {
                      return true;
                   }
 
@@ -373,7 +373,7 @@ public final class ClientRayTraceUtil {
                }
 
                y += stepY;
-               if (blockOccludesHere(world, origin, dir, new class_2338(x, y, z), tStop, viewer)) {
+               if (blockOccludesHere(world, origin, dir, new BlockPos(x, y, z), tStop, viewer)) {
                   return true;
                }
 
@@ -384,7 +384,7 @@ public final class ClientRayTraceUtil {
                }
 
                z += stepZ;
-               if (blockOccludesHere(world, origin, dir, new class_2338(x, y, z), tStop, viewer)) {
+               if (blockOccludesHere(world, origin, dir, new BlockPos(x, y, z), tStop, viewer)) {
                   return true;
                }
 
@@ -405,17 +405,17 @@ public final class ClientRayTraceUtil {
       }
    }
 
-   private static boolean blockOccludesHere(class_1937 world, class_243 origin, class_243 dir, class_2338 pos, double tEntity, class_1297 viewer) {
-      class_2680 state = world.method_8320(pos);
-      if (state.method_26215()) {
+   private static boolean blockOccludesHere(World world, Vec3d origin, Vec3d dir, BlockPos pos, double tEntity, Entity viewer) {
+      BlockState state = world.getBlockState(pos);
+      if (state.isAir()) {
          return false;
       } else {
-         class_265 shape = state.method_26172(world, pos, viewer != null ? class_3726.method_16195(viewer) : class_3726.method_16194());
-         if (shape.method_1110()) {
+         VoxelShape shape = state.getOutlineShape(world, pos, viewer != null ? ShapeContext.of(viewer) : ShapeContext.absent());
+         if (shape.isEmpty()) {
             return false;
          } else {
-            for (class_238 local : shape.method_1090()) {
-               class_238 box = local.method_996(pos);
+            for (Box local : shape.getBoundingBoxes()) {
+               Box box = local.offset(pos);
                double tBox = intersectRayAabb(origin, dir, box);
                if (Double.isFinite(tBox) && tBox >= 0.0 && tBox < tEntity) {
                   return true;
@@ -427,24 +427,24 @@ public final class ClientRayTraceUtil {
       }
    }
 
-   public static double intersectRayAabb(class_243 o, class_243 d, class_238 b) {
+   public static double intersectRayAabb(Vec3d o, Vec3d d, Box b) {
       double tMin = 0.0;
       double tMax = Double.POSITIVE_INFINITY;
-      if (!axisSlab(o.field_1352, d.field_1352, b.field_1323, b.field_1320, ClientRayTraceUtil.Holder.tmp)) {
+      if (!axisSlab(o.x, d.x, b.minX, b.maxX, ClientRayTraceUtil.Holder.tmp)) {
          return Double.POSITIVE_INFINITY;
       } else {
          tMin = Math.max(tMin, ClientRayTraceUtil.Holder.tmp[0]);
          tMax = Math.min(tMax, ClientRayTraceUtil.Holder.tmp[1]);
          if (tMax < tMin) {
             return Double.POSITIVE_INFINITY;
-         } else if (!axisSlab(o.field_1351, d.field_1351, b.field_1322, b.field_1325, ClientRayTraceUtil.Holder.tmp)) {
+         } else if (!axisSlab(o.y, d.y, b.minY, b.maxY, ClientRayTraceUtil.Holder.tmp)) {
             return Double.POSITIVE_INFINITY;
          } else {
             tMin = Math.max(tMin, ClientRayTraceUtil.Holder.tmp[0]);
             tMax = Math.min(tMax, ClientRayTraceUtil.Holder.tmp[1]);
             if (tMax < tMin) {
                return Double.POSITIVE_INFINITY;
-            } else if (!axisSlab(o.field_1350, d.field_1350, b.field_1321, b.field_1324, ClientRayTraceUtil.Holder.tmp)) {
+            } else if (!axisSlab(o.z, d.z, b.minZ, b.maxZ, ClientRayTraceUtil.Holder.tmp)) {
                return Double.POSITIVE_INFINITY;
             } else {
                tMin = Math.max(tMin, ClientRayTraceUtil.Holder.tmp[0]);

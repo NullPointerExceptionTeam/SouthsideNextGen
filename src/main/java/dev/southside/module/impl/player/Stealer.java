@@ -17,28 +17,28 @@ import dev.southside.utils.timer.StopWatch;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import net.minecraft.class_1304;
-import net.minecraft.class_1703;
-import net.minecraft.class_1707;
-import net.minecraft.class_1708;
-import net.minecraft.class_1713;
-import net.minecraft.class_1738;
-import net.minecraft.class_1743;
-import net.minecraft.class_1747;
-import net.minecraft.class_1753;
-import net.minecraft.class_1764;
-import net.minecraft.class_1792;
-import net.minecraft.class_1799;
-import net.minecraft.class_1802;
-import net.minecraft.class_1810;
-import net.minecraft.class_1812;
-import net.minecraft.class_1829;
-import net.minecraft.class_1835;
-import net.minecraft.class_3858;
-import net.minecraft.class_465;
-import net.minecraft.class_490;
-import net.minecraft.class_9334;
-import net.minecraft.class_1304.class_1305;
+import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.screen.ScreenHandler;
+import net.minecraft.screen.GenericContainerScreenHandler;
+import net.minecraft.screen.BrewingStandScreenHandler;
+import net.minecraft.screen.slot.SlotActionType;
+import net.minecraft.item.ArmorItem;
+import net.minecraft.item.AxeItem;
+import net.minecraft.item.BlockItem;
+import net.minecraft.item.BowItem;
+import net.minecraft.item.CrossbowItem;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.item.PickaxeItem;
+import net.minecraft.item.PotionItem;
+import net.minecraft.item.SwordItem;
+import net.minecraft.item.TridentItem;
+import net.minecraft.screen.FurnaceScreenHandler;
+import net.minecraft.client.gui.screen.ingame.HandledScreen;
+import net.minecraft.client.gui.screen.ingame.InventoryScreen;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.entity.EquipmentSlot.Type;
 
 public class Stealer extends Module {
    private final Slider startDelay = new Slider("Start Delay", 120, 0, 520, 1);
@@ -86,24 +86,24 @@ public class Stealer extends Module {
 
    @EventHandler
    public void onTick(TickEvent event) {
-      if (mc.field_1724 != null && mc.field_1687 != null) {
+      if (mc.player != null && mc.world != null) {
          if (event.getState() != Stage.PRE) {
-            if (this.auto_disable.getValue() && mc.field_1687 != null) {
-               if (!mc.field_1724.method_5805()) {
+            if (this.auto_disable.getValue() && mc.world != null) {
+               if (!mc.player.isAlive()) {
                   this.setEnable(false);
                   return;
                }
 
-               if (mc.field_1724.field_6012 <= 1) {
+               if (mc.player.age <= 1) {
                   this.setEnable(false);
                }
             }
 
             if (!this.noMove.getValue() || !PlayerUtils.isMoving()) {
-               if (mc.field_1755 == null) {
+               if (mc.currentScreen == null) {
                   this.isOpened = false;
-               } else if (mc.field_1724.field_7512 instanceof class_1707
-                  || this.stealOtherContainers.getValue() && (mc.field_1724.field_7512 instanceof class_3858 || mc.field_1724.field_7512 instanceof class_1708)
+               } else if (mc.player.currentScreenHandler instanceof GenericContainerScreenHandler
+                  || this.stealOtherContainers.getValue() && (mc.player.currentScreenHandler instanceof FurnaceScreenHandler || mc.player.currentScreenHandler instanceof BrewingStandScreenHandler)
                   )
                 {
                   if (!this.isOpened) {
@@ -123,8 +123,8 @@ public class Stealer extends Module {
    }
 
    private void take_items() {
-      if (mc.field_1755 instanceof class_465 screen) {
-         if (mc.field_1755 instanceof class_490 || !this.watch.finished(this.nextClickDelay)) {
+      if (mc.currentScreen instanceof HandledScreen screen) {
+         if (mc.currentScreen instanceof InventoryScreen || !this.watch.finished(this.nextClickDelay)) {
             return;
          }
 
@@ -133,21 +133,21 @@ public class Stealer extends Module {
          }
 
          this.bestSwordSlot = -1;
-         if (screen.method_17577() instanceof class_1707
-            || this.stealOtherContainers.getValue() && (screen.method_17577() instanceof class_3858 || screen.method_17577() instanceof class_1708)) {
+         if (screen.getScreenHandler() instanceof GenericContainerScreenHandler
+            || this.stealOtherContainers.getValue() && (screen.getScreenHandler() instanceof FurnaceScreenHandler || screen.getScreenHandler() instanceof BrewingStandScreenHandler)) {
             List<Integer> slots = new ArrayList<>();
-            int slotCount = screen.method_17577() instanceof class_1707 container ? container.method_17388() * 9 : screen.method_17577().field_7761.size();
+            int slotCount = screen.getScreenHandler() instanceof GenericContainerScreenHandler container ? container.getRows() * 9 : screen.getScreenHandler().slots.size();
 
             for (int i = 0; i < slotCount; i++) {
                try {
-                  class_1799 itemStack = screen.method_17577().method_7611(i).method_7677();
-                  if (!itemStack.method_7960()) {
-                     class_1792 item = itemStack.method_7909();
-                     if (item instanceof class_1738 armor
-                        && InvUtils.isBestArmor(screen.method_17577(), itemStack, this.checkInv.getValue())
+                  ItemStack itemStack = screen.getScreenHandler().getSlot(i).getStack();
+                  if (!itemStack.isEmpty()) {
+                     Item item = itemStack.getItem();
+                     if (item instanceof ArmorItem armor
+                        && InvUtils.isBestArmor(screen.getScreenHandler(), itemStack, this.checkInv.getValue())
                         && this.isStrictlyBetterArmor(itemStack)) {
-                        class_1304 armorSlotx = ItemUtils.getEquippableSlotType(itemStack);
-                        if (armorSlotx.method_5925() == class_1305.field_6178) {
+                        EquipmentSlot armorSlotx = ItemUtils.getEquippableSlotType(itemStack);
+                        if (armorSlotx.getType() == Type.HUMANOID_ARMOR) {
                            int index = armorSlotx.ordinal();
                            if (index >= 0 && index < this.bestArmorPieces.length) {
                               int pieceSlot = this.bestArmorPieces[index];
@@ -158,8 +158,8 @@ public class Stealer extends Module {
                         }
                      }
 
-                     if ((item instanceof class_1829 || item instanceof class_1835)
-                        && InvUtils.isBestSword(screen.method_17577(), itemStack, this.checkInv.getValue())
+                     if ((item instanceof SwordItem || item instanceof TridentItem)
+                        && InvUtils.isBestSword(screen.getScreenHandler(), itemStack, this.checkInv.getValue())
                         && this.isStrictlyBetterSword(itemStack)) {
                         this.bestSwordSlot = i;
                      }
@@ -178,22 +178,22 @@ public class Stealer extends Module {
 
             for (int i : slots) {
                try {
-                  class_1799 itemStack = screen.method_17577().method_7611(i).method_7677();
+                  ItemStack itemStack = screen.getScreenHandler().getSlot(i).getStack();
                   if ((
-                        itemStack.method_7960()
-                           || (!(itemStack.method_7909() instanceof class_1738) || this.isStrictlyBetterArmor(itemStack) || this.isBestItem(i))
+                        itemStack.isEmpty()
+                           || (!(itemStack.getItem() instanceof ArmorItem) || this.isStrictlyBetterArmor(itemStack) || this.isBestItem(i))
                               && (
-                                 !(itemStack.method_7909() instanceof class_1829) && !(itemStack.method_7909() instanceof class_1835)
+                                 !(itemStack.getItem() instanceof SwordItem) && !(itemStack.getItem() instanceof TridentItem)
                                     || this.isStrictlyBetterSword(itemStack)
                                     || this.isBestItem(i)
                               )
                      )
-                     && !itemStack.method_7960()
-                     && (this.isItemUseful(screen.method_17577(), itemStack) || this.pickTrash.getValue() || this.isBestItem(i))) {
+                     && !itemStack.isEmpty()
+                     && (this.isItemUseful(screen.getScreenHandler(), itemStack) || this.pickTrash.getValue() || this.isBestItem(i))) {
                      if (this.antiCheatAddition.getValue()) {
-                        this.transferSlotAnticheat(screen.method_17577(), i);
+                        this.transferSlotAnticheat(screen.getScreenHandler(), i);
                      } else {
-                        mc.field_1761.method_2906(screen.method_17577().field_7763, i, 0, class_1713.field_7794, mc.field_1724);
+                        mc.interactionManager.clickSlot(screen.getScreenHandler().syncId, i, 0, SlotActionType.QUICK_MOVE, mc.player);
                      }
                      this.watch.reset();
                      this.nextClickDelay = (long)(
@@ -207,35 +207,35 @@ public class Stealer extends Module {
                }
             }
 
-            mc.field_1724.method_7346();
+            mc.player.closeHandledScreen();
          }
       }
    }
 
    private int getEmptyHotbarSlot() {
       for (int i = 0; i < 9; i++) {
-         if (mc.field_1724.method_31548().method_5438(i).method_7960()) {
+         if (mc.player.getInventory().getStack(i).isEmpty()) {
             return i;
          }
       }
       return -1;
    }
 
-   private void transferSlotAnticheat(class_1703 container, int slot) {
-      int windowId = container.field_7763;
+   private void transferSlotAnticheat(ScreenHandler container, int slot) {
+      int windowId = container.syncId;
       if (this.preClick.isMode("Middle")) {
-         mc.field_1761.method_2906(windowId, slot, 0, class_1713.field_7796, mc.field_1724);
+         mc.interactionManager.clickSlot(windowId, slot, 0, SlotActionType.CLONE, mc.player);
       }
       int hotbarIndex;
       if (this.transfer.isMode("Number")) {
          hotbarIndex = this.getEmptyHotbarSlot();
          if (hotbarIndex == -1) {
-            hotbarIndex = mc.field_1724.method_31548().field_7545;
+            hotbarIndex = mc.player.getInventory().selectedSlot;
          }
       } else {
-         hotbarIndex = mc.field_1724.method_31548().field_7545;
+         hotbarIndex = mc.player.getInventory().selectedSlot;
       }
-      mc.field_1761.method_2906(windowId, slot, hotbarIndex, class_1713.field_7791, mc.field_1724);
+      mc.interactionManager.clickSlot(windowId, slot, hotbarIndex, SlotActionType.SWAP, mc.player);
    }
 
    private boolean isBestItem(int slot) {
@@ -248,36 +248,36 @@ public class Stealer extends Module {
       return slot == this.bestSwordSlot;
    }
 
-   private boolean isItemUseful(class_1703 containerMenu, class_1799 itemStack) {
-      class_1792 item = itemStack.method_7909();
-      return item == class_1802.field_8288
-         || item == class_1802.field_8777
-         || item == class_1802.field_8301
-         || item == class_1802.field_8814
-         || item == class_1802.field_8626
-         || item == class_1802.field_8107
-         || item == class_1802.field_8634
-         || item == class_1802.field_8251
-         || item == class_1802.field_8833
-         || item == class_1802.field_8378
-         || item == class_1802.field_8543
-         || item == class_1802.field_8803
-         || item instanceof class_1743
-         || item instanceof class_1810
-         || item instanceof class_1753
-         || item instanceof class_1764
-         || item instanceof class_1812
-         || item instanceof class_1747
-         || item == class_1802.field_8705
+   private boolean isItemUseful(ScreenHandler containerMenu, ItemStack itemStack) {
+      Item item = itemStack.getItem();
+      return item == Items.TOTEM_OF_UNDYING
+         || item == Items.SLIME_BALL
+         || item == Items.END_CRYSTAL
+         || item == Items.FIRE_CHARGE
+         || item == Items.TNT
+         || item == Items.ARROW
+         || item == Items.ENDER_PEARL
+         || item == Items.COMPASS
+         || item == Items.ELYTRA
+         || item == Items.FISHING_ROD
+         || item == Items.SNOWBALL
+         || item == Items.EGG
+         || item instanceof AxeItem
+         || item instanceof PickaxeItem
+         || item instanceof BowItem
+         || item instanceof CrossbowItem
+         || item instanceof PotionItem
+         || item instanceof BlockItem
+         || item == Items.WATER_BUCKET
          || (
             this.onlyGapples.getValue()
-               ? item == class_1802.field_8463 || item == class_1802.field_8367
-               : itemStack.method_57824(class_9334.field_50075) != null
+               ? item == Items.GOLDEN_APPLE || item == Items.ENCHANTED_GOLDEN_APPLE
+               : itemStack.get(DataComponentTypes.FOOD) != null
          );
    }
 
-   private boolean isStrictlyBetterArmor(class_1799 stack) {
-      if (stack.method_7909() instanceof class_1738 armor) {
+   private boolean isStrictlyBetterArmor(ItemStack stack) {
+      if (stack.getItem() instanceof ArmorItem armor) {
          double var7 = InvUtils.getDamageReduction(stack);
          double bestOwned = this.getBestArmorReductionOwned(ItemUtils.getEquippableSlotType(stack));
          return var7 > bestOwned + 1.0E-6;
@@ -286,19 +286,19 @@ public class Stealer extends Module {
       }
    }
 
-   private double getBestArmorReductionOwned(class_1304 slotType) {
-      if (mc.field_1724 == null) {
+   private double getBestArmorReductionOwned(EquipmentSlot slotType) {
+      if (mc.player == null) {
          return -1.0;
       } else {
          double best = -1.0;
-         class_1799 equipped = mc.field_1724.method_6118(slotType);
-         if (!equipped.method_7960() && equipped.method_7909() instanceof class_1738) {
+         ItemStack equipped = mc.player.getEquippedStack(slotType);
+         if (!equipped.isEmpty() && equipped.getItem() instanceof ArmorItem) {
             best = Math.max(best, InvUtils.getDamageReduction(equipped));
          }
 
-         for (int i = 0; i < mc.field_1724.method_31548().method_5439(); i++) {
-            class_1799 inv = mc.field_1724.method_31548().method_5438(i);
-            if (!inv.method_7960() && inv.method_7909() instanceof class_1738 armor && ItemUtils.getEquippableSlotType(inv) == slotType) {
+         for (int i = 0; i < mc.player.getInventory().size(); i++) {
+            ItemStack inv = mc.player.getInventory().getStack(i);
+            if (!inv.isEmpty() && inv.getItem() instanceof ArmorItem armor && ItemUtils.getEquippableSlotType(inv) == slotType) {
                best = Math.max(best, InvUtils.getDamageReduction(inv));
             }
          }
@@ -307,8 +307,8 @@ public class Stealer extends Module {
       }
    }
 
-   private boolean isStrictlyBetterSword(class_1799 stack) {
-      if (!(stack.method_7909() instanceof class_1829) && !(stack.method_7909() instanceof class_1835)) {
+   private boolean isStrictlyBetterSword(ItemStack stack) {
+      if (!(stack.getItem() instanceof SwordItem) && !(stack.getItem() instanceof TridentItem)) {
          return false;
       } else {
          double dmg = InvUtils.getItemDamage(stack);
@@ -318,14 +318,14 @@ public class Stealer extends Module {
    }
 
    private double getBestSwordDamageOwned() {
-      if (mc.field_1724 == null) {
+      if (mc.player == null) {
          return -1.0;
       } else {
          double best = -1.0;
 
-         for (int i = 0; i < mc.field_1724.method_31548().method_5439(); i++) {
-            class_1799 inv = mc.field_1724.method_31548().method_5438(i);
-            if (!inv.method_7960() && (inv.method_7909() instanceof class_1829 || inv.method_7909() instanceof class_1835)) {
+         for (int i = 0; i < mc.player.getInventory().size(); i++) {
+            ItemStack inv = mc.player.getInventory().getStack(i);
+            if (!inv.isEmpty() && (inv.getItem() instanceof SwordItem || inv.getItem() instanceof TridentItem)) {
                best = Math.max(best, InvUtils.getItemDamage(inv));
             }
          }

@@ -4,11 +4,11 @@ import dev.southside.MinecraftAccessor;
 import dev.southside.anticheat.check.NormalCheck;
 import dev.southside.anticheat.player.PlayerData;
 import java.util.List;
-import net.minecraft.class_1657;
-import net.minecraft.class_2338;
-import net.minecraft.class_2350;
-import net.minecraft.class_243;
-import net.minecraft.class_2680;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.block.BlockState;
 
 public class ScaffoldBatchCheck implements NormalCheck {
    private static final int BATCH_SIZE = 6;
@@ -21,21 +21,21 @@ public class ScaffoldBatchCheck implements NormalCheck {
 
    @Override
    public void onUpdate(PlayerData playerData) {
-      class_1657 player = playerData.getPlayer();
-      int tick = player.field_6012;
-      if (MinecraftAccessor.mc.field_1687 != null && player.method_5805()) {
-         class_2338 feetPos = player.method_24515();
-         class_2338 belowFeet = feetPos.method_10074();
+      PlayerEntity player = playerData.getPlayer();
+      int tick = player.age;
+      if (MinecraftAccessor.mc.world != null && player.isAlive()) {
+         BlockPos feetPos = player.getBlockPos();
+         BlockPos belowFeet = feetPos.down();
          boolean scaffoldDetected = false;
-         class_2338 placedBlock = null;
+         BlockPos placedBlock = null;
 
-         for (class_2350 dir : new class_2350[]{
-            class_2350.field_11033, class_2350.field_11043, class_2350.field_11035, class_2350.field_11034, class_2350.field_11039
+         for (Direction dir : new Direction[]{
+            Direction.DOWN, Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST
          }) {
-            class_2338 checkPos = dir == class_2350.field_11033 ? belowFeet : belowFeet.method_10093(dir);
-            class_2680 state = MinecraftAccessor.mc.field_1687.method_8320(checkPos);
-            if (state.method_26212(MinecraftAccessor.mc.field_1687, checkPos)
-               && player.method_23318() > checkPos.method_10264()
+            BlockPos checkPos = dir == Direction.DOWN ? belowFeet : belowFeet.offset(dir);
+            BlockState state = MinecraftAccessor.mc.world.getBlockState(checkPos);
+            if (state.isSolidBlock(MinecraftAccessor.mc.world, checkPos)
+               && player.getY() > checkPos.getY()
                && this.isInRange(player, checkPos)) {
                int solidNeighbors = this.countSolidHorizontalNeighbors(checkPos);
                if (solidNeighbors == 1 && (playerData.getScaffoldLastPlacedBlock() == null || !playerData.getScaffoldLastPlacedBlock().equals(checkPos))) {
@@ -51,11 +51,11 @@ public class ScaffoldBatchCheck implements NormalCheck {
             List<Long> placeTimes = playerData.getScaffoldPlaceTimes();
             List<Boolean> placeSneaking = playerData.getScaffoldPlaceSneaking();
             if (playerData.getScaffoldLastPlacedBlock() != null) {
-               playerData.setScaffoldLastPlacedY(playerData.getScaffoldLastPlacedBlock().method_10264());
+               playerData.setScaffoldLastPlacedY(playerData.getScaffoldLastPlacedBlock().getY());
             }
 
             placeTimes.add(now);
-            placeSneaking.add(player.method_5715());
+            placeSneaking.add(player.isSneaking());
             playerData.setScaffoldLastPlacedBlock(placedBlock);
             if (placeTimes.size() >= 6) {
                this.processBatch(playerData, tick);
@@ -95,7 +95,7 @@ public class ScaffoldBatchCheck implements NormalCheck {
                long actualDelay = times.get(i) - times.get(i - 1);
                boolean curSneak = sneaking.get(i);
                boolean prevSneak = sneaking.get(i - 1);
-               double expectedDelay = this.calculateExpectedDelay(moonwalk, curSneak, prevSneak, playerData.getPlayer().method_36454());
+               double expectedDelay = this.calculateExpectedDelay(moonwalk, curSneak, prevSneak, playerData.getPlayer().getYaw());
                actualDelaySum += actualDelay;
                expectedDelaySum += expectedDelay;
                count++;
@@ -124,20 +124,20 @@ public class ScaffoldBatchCheck implements NormalCheck {
       }
    }
 
-   private boolean isInRange(class_1657 player, class_2338 pos) {
-      class_243 playerPos = player.method_19538();
-      double dx = playerPos.field_1352 - (pos.method_10263() + 0.5);
-      double dy = playerPos.field_1351 - (pos.method_10264() + 0.5);
-      double dz = playerPos.field_1350 - (pos.method_10260() + 0.5);
+   private boolean isInRange(PlayerEntity player, BlockPos pos) {
+      Vec3d playerPos = player.getPos();
+      double dx = playerPos.x - (pos.getX() + 0.5);
+      double dy = playerPos.y - (pos.getY() + 0.5);
+      double dz = playerPos.z - (pos.getZ() + 0.5);
       return Math.sqrt(dx * dx + dy * dy + dz * dz) <= 4.0;
    }
 
-   private int countSolidHorizontalNeighbors(class_2338 pos) {
+   private int countSolidHorizontalNeighbors(BlockPos pos) {
       int count = 0;
 
-      for (class_2350 dir : new class_2350[]{class_2350.field_11043, class_2350.field_11035, class_2350.field_11034, class_2350.field_11039}) {
-         class_2338 neighbor = pos.method_10093(dir);
-         if (MinecraftAccessor.mc.field_1687.method_8320(neighbor).method_26212(MinecraftAccessor.mc.field_1687, neighbor)) {
+      for (Direction dir : new Direction[]{Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST}) {
+         BlockPos neighbor = pos.offset(dir);
+         if (MinecraftAccessor.mc.world.getBlockState(neighbor).isSolidBlock(MinecraftAccessor.mc.world, neighbor)) {
             count++;
          }
       }

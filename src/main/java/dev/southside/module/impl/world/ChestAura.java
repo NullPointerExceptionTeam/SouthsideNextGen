@@ -23,17 +23,17 @@ import dev.southside.utils.raytrace.ClientRayTraceUtil;
 import dev.southside.utils.rotation.RotationUtils;
 import dev.southside.utils.types.Rotation;
 import java.util.Random;
-import net.minecraft.class_1268;
-import net.minecraft.class_2281;
-import net.minecraft.class_2336;
-import net.minecraft.class_2338;
-import net.minecraft.class_2350;
-import net.minecraft.class_2397;
-import net.minecraft.class_243;
-import net.minecraft.class_2480;
-import net.minecraft.class_2680;
-import net.minecraft.class_2885;
-import net.minecraft.class_3965;
+import net.minecraft.util.Hand;
+import net.minecraft.block.ChestBlock;
+import net.minecraft.block.EnderChestBlock;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.block.LeavesBlock;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.block.ShulkerBoxBlock;
+import net.minecraft.block.BlockState;
+import net.minecraft.network.packet.c2s.play.PlayerInteractBlockC2SPacket;
+import net.minecraft.util.hit.BlockHitResult;
 
 public class ChestAura extends Module {
    private final Slider range = new Slider("Range", 4.0, 1.0, 8.0, 0.1);
@@ -46,7 +46,7 @@ public class ChestAura extends Module {
    private final MSTimer timer = new MSTimer();
    private final Random random = new Random();
    private long currentDelay = 0L;
-   private class_2338 currentPos;
+   private BlockPos currentPos;
    public int delayTime = 0;
    private boolean moveInputActive = false;
    private Rotation rotation = null;
@@ -83,19 +83,19 @@ public class ChestAura extends Module {
 
    @EventHandler
    public void onRotation(RotationEvent event) {
-      if (mc.field_1724 != null && mc.field_1687 != null) {
+      if (mc.player != null && mc.world != null) {
          if (this.delayTime > 0) {
             this.delayTime--;
          } else if (this.timer.hasTimePassed(this.currentDelay)) {
             if ((KillAura.target == null || !Southside.get().getModuleManager().get(KillAura.class).isEnabled())
-               && !mc.field_1724.method_6115()
+               && !mc.player.isUsingItem()
                && !Southside.get().getModuleManager().get(Scaffold.class).isEnabled()
                && !Southside.get().getModuleManager().get(Blink.class).isEnabled()
-               && mc.field_1724.field_6235 == 0) {
-               if (!(mc.field_1724.field_6017 > 3.0F) && !NoSlowTest.shouldEnable) {
-                  if (mc.field_1755 == null && !InvUtils.isInventoryFull(mc.field_1724.method_31548())) {
+               && mc.player.hurtTime == 0) {
+               if (!(mc.player.fallDistance > 3.0F) && !NoSlowTest.shouldEnable) {
+                  if (mc.currentScreen == null && !InvUtils.isInventoryFull(mc.player.getInventory())) {
                      if (!this.pauseOnMoveInput.getValue() || !this.moveInputActive) {
-                        class_2338 chestPos = this.findNextChest();
+                        BlockPos chestPos = this.findNextChest();
                         if (chestPos != null) {
                            if (!Southside.INSTANCE.getModuleManager().get(StealerN.class).isEnabled()
                               || Southside.INSTANCE.getModuleManager().get(Scaffold.class).isEnabled()) {
@@ -134,19 +134,19 @@ public class ChestAura extends Module {
       }
    }
 
-   private class_2338 findNextChest() {
-      if (mc.field_1724 != null && mc.field_1687 != null) {
-         class_2338 playerPos = mc.field_1724.method_24515();
-         class_243 playerVec = mc.field_1724.method_19538();
+   private BlockPos findNextChest() {
+      if (mc.player != null && mc.world != null) {
+         BlockPos playerPos = mc.player.getBlockPos();
+         Vec3d playerVec = mc.player.getPos();
          int rangeInt = (int)Math.ceil(this.range.getValue().floatValue());
-         class_2338 nearestChest = null;
+         BlockPos nearestChest = null;
          double nearestDistance = Double.MAX_VALUE;
 
          for (int x = -rangeInt; x <= rangeInt; x++) {
             for (int y = -rangeInt; y <= rangeInt; y++) {
                for (int z = -rangeInt; z <= rangeInt; z++) {
-                  class_2338 pos = playerPos.method_10069(x, y, z);
-                  double distance = playerVec.method_1022(class_243.method_24953(pos));
+                  BlockPos pos = playerPos.add(x, y, z);
+                  double distance = playerVec.distanceTo(Vec3d.ofCenter(pos));
                   ChestManager manager = Southside.get().getChestManager();
                   if (!manager.isStolen(pos) && this.isChestBlock(pos) && !this.isBlockedByNonLeaf(pos) && distance < nearestDistance) {
                      nearestChest = pos;
@@ -162,35 +162,35 @@ public class ChestAura extends Module {
       }
    }
 
-   private boolean isChestBlock(class_2338 pos) {
-      if (mc.field_1687 == null) {
+   private boolean isChestBlock(BlockPos pos) {
+      if (mc.world == null) {
          return false;
       } else {
-         class_2680 state = mc.field_1687.method_8320(pos);
-         return state.method_26204() instanceof class_2281
-            || state.method_26204() instanceof class_2336 && this.pickEnderChest.getValue()
-            || state.method_26204() instanceof class_2480;
+         BlockState state = mc.world.getBlockState(pos);
+         return state.getBlock() instanceof ChestBlock
+            || state.getBlock() instanceof EnderChestBlock && this.pickEnderChest.getValue()
+            || state.getBlock() instanceof ShulkerBoxBlock;
       }
    }
 
-   private boolean isChestBlock(class_2680 state) {
-      return state.method_26204() instanceof class_2281 || state.method_26204() instanceof class_2336 || state.method_26204() instanceof class_2480;
+   private boolean isChestBlock(BlockState state) {
+      return state.getBlock() instanceof ChestBlock || state.getBlock() instanceof EnderChestBlock || state.getBlock() instanceof ShulkerBoxBlock;
    }
 
-   private boolean isBlockedByNonLeaf(class_2338 pos) {
-      if (mc.field_1687 == null) {
+   private boolean isBlockedByNonLeaf(BlockPos pos) {
+      if (mc.world == null) {
          return false;
       } else {
-         class_2680 aboveState = mc.field_1687.method_8320(pos.method_10084());
-         return aboveState.method_26204() instanceof class_2397 ? false : ChestWreck.isChestBlocked(pos);
+         BlockState aboveState = mc.world.getBlockState(pos.up());
+         return aboveState.getBlock() instanceof LeavesBlock ? false : ChestWreck.isChestBlocked(pos);
       }
    }
 
-   private void lookAtChest(class_2338 chestPos) {
-      if (mc.field_1724 != null) {
-         Rotation tmp = RotationUtils.getRandomRotationTo(chestPos, class_2350.field_11036);
+   private void lookAtChest(BlockPos chestPos) {
+      if (mc.player != null) {
+         Rotation tmp = RotationUtils.getRandomRotationTo(chestPos, Direction.UP);
          if (ClientRayTraceUtil.didHitBlockFace(
-            mc.field_1724, tmp.yaw, tmp.pitch, chestPos, class_2350.field_11036, false, blockState -> !this.isChestBlock(blockState)
+            mc.player, tmp.yaw, tmp.pitch, chestPos, Direction.UP, false, blockState -> !this.isChestBlock(blockState)
          )) {
             this.rotation = tmp;
             RotationUtils.setRotation(this.rotation, 1);
@@ -198,18 +198,18 @@ public class ChestAura extends Module {
       }
    }
 
-   private void openChestWithPacket(class_2338 pos) {
-      if (mc.field_1724 != null && mc.method_1562() != null) {
+   private void openChestWithPacket(BlockPos pos) {
+      if (mc.player != null && mc.getNetworkHandler() != null) {
          if (Southside.INSTANCE.getModuleManager().get(StealerN.class).isEnabled() && !Southside.INSTANCE.getModuleManager().get(Scaffold.class).isEnabled()) {
-            class_3965 hit = ClientRayTraceUtil.getFacedBlock(
+            BlockHitResult hit = ClientRayTraceUtil.getFacedBlock(
                RotationUtils.getRotation().yaw, RotationUtils.getRotation().pitch, blockState -> !this.isChestBlock(blockState)
             );
             boolean raycasted = hit != null
-               && hit.method_17777().method_10263() == pos.method_10263()
-               && hit.method_17777().method_10264() == pos.method_10264()
-               && hit.method_17777().method_10260() == pos.method_10260();
+               && hit.getBlockPos().getX() == pos.getX()
+               && hit.getBlockPos().getY() == pos.getY()
+               && hit.getBlockPos().getZ() == pos.getZ();
             if (raycasted || !this.raycast.getValue()) {
-               PacketUtils.sendSequencedPacket(id -> new class_2885(class_1268.field_5808, hit, id));
+               PacketUtils.sendSequencedPacket(id -> new PlayerInteractBlockC2SPacket(Hand.MAIN_HAND, hit, id));
                ChestManager manager = Southside.get().getChestManager();
                manager.onSteal(pos);
             }
@@ -217,17 +217,17 @@ public class ChestAura extends Module {
       }
    }
 
-   private class_2350 calculateHitSide(class_243 playerPos, class_243 chestCenter) {
-      class_243 diff = playerPos.method_1020(chestCenter);
-      double absX = Math.abs(diff.field_1352);
-      double absY = Math.abs(diff.field_1351);
-      double absZ = Math.abs(diff.field_1350);
+   private Direction calculateHitSide(Vec3d playerPos, Vec3d chestCenter) {
+      Vec3d diff = playerPos.subtract(chestCenter);
+      double absX = Math.abs(diff.x);
+      double absY = Math.abs(diff.y);
+      double absZ = Math.abs(diff.z);
       if (absX > absY && absX > absZ) {
-         return diff.field_1352 > 0.0 ? class_2350.field_11034 : class_2350.field_11039;
+         return diff.x > 0.0 ? Direction.EAST : Direction.WEST;
       } else if (absY > absZ) {
-         return diff.field_1351 > 0.0 ? class_2350.field_11036 : class_2350.field_11033;
+         return diff.y > 0.0 ? Direction.UP : Direction.DOWN;
       } else {
-         return diff.field_1350 > 0.0 ? class_2350.field_11035 : class_2350.field_11043;
+         return diff.z > 0.0 ? Direction.SOUTH : Direction.NORTH;
       }
    }
 

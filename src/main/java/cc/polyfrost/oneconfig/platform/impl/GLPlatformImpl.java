@@ -5,16 +5,16 @@ import cc.polyfrost.oneconfig.libs.universal.UMinecraft;
 import cc.polyfrost.oneconfig.platform.GLPlatform;
 import dev.southside.render.RenderBuffer;
 import dev.southside.render.RenderBuffers;
-import net.minecraft.class_1921;
-import net.minecraft.class_327;
-import net.minecraft.class_4588;
-import net.minecraft.class_9848;
-import net.minecraft.class_327.class_6415;
-import net.minecraft.class_4597.class_4598;
+import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.render.VertexConsumer;
+import net.minecraft.util.math.ColorHelper;
+import net.minecraft.client.font.TextRenderer.TextLayerType;
+import net.minecraft.client.render.VertexConsumerProvider.Immediate;
 import org.joml.Matrix4f;
 
 public class GLPlatformImpl implements GLPlatform {
-   private final class_327 textRenderer = UMinecraft.getMinecraft().field_1772;
+   private final TextRenderer textRenderer = UMinecraft.getMinecraft().textRenderer;
 
    @Override
    public void drawRect(UMatrixStack matrixStack, float x, float y, float x2, float y2, int color) {
@@ -31,15 +31,15 @@ public class GLPlatformImpl implements GLPlatform {
          y2 = i;
       }
 
-      float alpha = class_9848.method_61320(color) / 255.0F;
-      float red = class_9848.method_61327(color) / 255.0F;
-      float green = class_9848.method_61329(color) / 255.0F;
-      float blue = class_9848.method_61331(color) / 255.0F;
-      class_4588 vertexConsumer = RenderBuffers.base.use(matrix4f).getVertexConsumer().getBuffer(class_1921.method_51784());
-      vertexConsumer.method_22918(matrix4f, x, y, 0.0F).method_22915(red, green, blue, alpha);
-      vertexConsumer.method_22918(matrix4f, x, y2, 0.0F).method_22915(red, green, blue, alpha);
-      vertexConsumer.method_22918(matrix4f, x2, y2, 0.0F).method_22915(red, green, blue, alpha);
-      vertexConsumer.method_22918(matrix4f, x2, y, 0.0F).method_22915(red, green, blue, alpha);
+      float alpha = ColorHelper.getAlpha(color) / 255.0F;
+      float red = ColorHelper.getRed(color) / 255.0F;
+      float green = ColorHelper.getGreen(color) / 255.0F;
+      float blue = ColorHelper.getBlue(color) / 255.0F;
+      VertexConsumer vertexConsumer = RenderBuffers.base.use(matrix4f).getVertexConsumer().getBuffer(RenderLayer.getGui());
+      vertexConsumer.vertex(matrix4f, x, y, 0.0F).color(red, green, blue, alpha);
+      vertexConsumer.vertex(matrix4f, x, y2, 0.0F).color(red, green, blue, alpha);
+      vertexConsumer.vertex(matrix4f, x2, y2, 0.0F).color(red, green, blue, alpha);
+      vertexConsumer.vertex(matrix4f, x2, y, 0.0F).color(red, green, blue, alpha);
    }
 
    @Override
@@ -50,12 +50,12 @@ public class GLPlatformImpl implements GLPlatform {
    @Override
    public float drawText(UMatrixStack matrixStack, String text, float x, float y, int color, boolean shadow) {
       RenderBuffer buffer = RenderBuffers.text.use(matrixStack.peek().model());
-      class_4598 consumer = buffer.getVertexConsumer();
-      return this.textRenderer.method_27521(text, x, y, color, shadow, buffer.getPositionMat(), consumer, class_6415.field_33993, 0, 15728880);
+      Immediate consumer = buffer.getVertexConsumer();
+      return this.textRenderer.draw(text, x, y, color, shadow, buffer.getPositionMat(), consumer, TextLayerType.NORMAL, 0, 15728880);
    }
 
    @Override
    public int getStringWidth(String text) {
-      return UMinecraft.getMinecraft().field_1772.method_1727(text);
+      return UMinecraft.getMinecraft().textRenderer.getWidth(text);
    }
 }

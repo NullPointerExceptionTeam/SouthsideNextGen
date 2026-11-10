@@ -12,21 +12,21 @@ import dev.southside.event.events.SprintPacketSendEvent;
 import dev.southside.module.impl.misc.Disabler;
 import dev.southside.utils.network.PacketUtils;
 import dev.southside.utils.player.PlayerUtils;
-import net.minecraft.class_1313;
-import net.minecraft.class_1657;
-import net.minecraft.class_1937;
-import net.minecraft.class_2338;
-import net.minecraft.class_243;
-import net.minecraft.class_2848;
-import net.minecraft.class_310;
-import net.minecraft.class_3532;
-import net.minecraft.class_634;
-import net.minecraft.class_746;
-import net.minecraft.class_2828.class_2829;
-import net.minecraft.class_2828.class_2830;
-import net.minecraft.class_2828.class_2831;
-import net.minecraft.class_2828.class_5911;
-import net.minecraft.class_2848.class_2849;
+import net.minecraft.entity.MovementType;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.world.World;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.client.network.ClientPlayNetworkHandler;
+import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket.PositionAndOnGround;
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket.Full;
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket.LookAndOnGround;
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket.OnGroundOnly;
+import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket.Mode;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -36,59 +36,59 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.At.Shift;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin({class_746.class})
-public abstract class MixinClientPlayerEntity extends class_1657 {
+@Mixin({ClientPlayerEntity.class})
+public abstract class MixinClientPlayerEntity extends PlayerEntity {
    @Shadow
-   public int field_3923;
+   public int ticksSinceLastPositionPacketSent;
    @Shadow
-   public double field_3926;
+   public double lastX;
    @Shadow
-   public double field_3940;
+   public double lastBaseY;
    @Shadow
-   public double field_3924;
+   public double lastZ;
    @Shadow
-   public float field_3941;
+   public float lastYaw;
    @Shadow
-   public float field_3925;
+   public float lastPitch;
    @Shadow
-   public boolean field_3920;
+   public boolean lastOnGround;
    @Shadow
-   public boolean field_3919;
+   public boolean lastSprinting;
    @Shadow
-   public boolean field_3936;
+   public boolean lastSneaking;
    @Shadow
-   private boolean field_3927 = true;
-   @Shadow
-   @Final
-   public class_634 field_3944;
+   private boolean autoJumpEnabled = true;
    @Shadow
    @Final
-   protected class_310 field_3937;
+   public ClientPlayNetworkHandler networkHandler;
    @Shadow
-   private boolean field_53040;
+   @Final
+   protected MinecraftClient client;
+   @Shadow
+   private boolean lastHorizontalCollision;
 
-   public MixinClientPlayerEntity(class_1937 world, class_2338 pos, float yaw, GameProfile gameProfile) {
+   public MixinClientPlayerEntity(World world, BlockPos pos, float yaw, GameProfile gameProfile) {
       super(world, pos, yaw, gameProfile);
    }
 
    @Shadow
-   public abstract boolean method_5715();
+   public abstract boolean isSneaking();
 
    @Shadow
-   protected abstract boolean method_3134();
+   protected abstract boolean isCamera();
 
    @Inject(
-      method = {"method_5773()V"},
+      method = {"tick()V"},
       at = {@At("HEAD")}
    )
    public void tick(CallbackInfo callbackInfo) {
    }
 
    @Inject(
-      method = {"method_5773()V"},
+      method = {"tick()V"},
       at = {@At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_742;method_5773()V",
+         target = "Lnet/minecraft/client/network/AbstractClientPlayerEntity;tick()V",
          shift = Shift.BEFORE,
          ordinal = 0
       )},
@@ -98,7 +98,7 @@ public abstract class MixinClientPlayerEntity extends class_1657 {
       PlayerUtils.ticksSinceTeleport++;
       PlayerUpdateEvent event = new PlayerUpdateEvent();
       Southside.INSTANCE.getEventBus().call(event);
-      class_310.method_1551().method_1508();
+      MinecraftClient.getInstance().handleInputEvents();
       if (PlayerUtils.playerStuckTicks > 0) {
          PlayerUtils.playerStuckTicks--;
          ci.cancel();
@@ -106,8 +106,8 @@ public abstract class MixinClientPlayerEntity extends class_1657 {
    }
 
    @Overwrite
-   private void method_3136() {
-      if (!this.method_24828()) {
+   private void sendMovementPackets() {
+      if (!this.isOnGround()) {
          PlayerUtils.offGroundTicks++;
          PlayerUtils.onGroundTicks = 0;
       } else {
@@ -116,70 +116,70 @@ public abstract class MixinClientPlayerEntity extends class_1657 {
          PlayerUtils.lastOnGroundTicks = PlayerUtils.onGroundTicks;
       }
 
-      this.method_46742();
+      this.sendSprintingPacket();
       MotionEvent event = new MotionEvent(
-         this.method_23317(),
-         this.method_23318(),
-         this.method_23321(),
-         this.method_36454(),
-         this.method_36455(),
-         this.method_24828(),
-         this.field_5976,
+         this.getX(),
+         this.getY(),
+         this.getZ(),
+         this.getYaw(),
+         this.getPitch(),
+         this.isOnGround(),
+         this.horizontalCollision,
          Stage.PRE
       );
       Southside.INSTANCE.getEventBus().call(event);
-      float yaw = Disabler.normalizeYawDiff(event.getYaw(), this.field_3941);
-      if (this.method_3134()) {
-         double d = event.getX() - this.field_3926;
-         double e = event.getY() - this.field_3940;
-         double f = event.getZ() - this.field_3924;
-         double g = yaw - this.field_3941;
-         double h = event.getPitch() - this.field_3925;
+      float yaw = Disabler.normalizeYawDiff(event.getYaw(), this.lastYaw);
+      if (this.isCamera()) {
+         double d = event.getX() - this.lastX;
+         double e = event.getY() - this.lastBaseY;
+         double f = event.getZ() - this.lastZ;
+         double g = yaw - this.lastYaw;
+         double h = event.getPitch() - this.lastPitch;
          PlayerUtils.lastPitchDiff = Math.abs(h);
-         this.field_3923++;
-         boolean bl = class_3532.method_41190(d, e, f) > class_3532.method_33723(2.0E-4) || this.field_3923 >= 20;
+         this.ticksSinceLastPositionPacketSent++;
+         boolean bl = MathHelper.squaredMagnitude(d, e, f) > MathHelper.square(2.0E-4) || this.ticksSinceLastPositionPacketSent >= 20;
          boolean bl2 = g != 0.0 || h != 0.0;
          if (bl && bl2) {
-            this.field_3944
-               .method_52787(new class_2830(event.getX(), event.getY(), event.getZ(), yaw, event.getPitch(), event.isOnGround(), event.isHorizontalCollision()));
+            this.networkHandler
+               .sendPacket(new Full(event.getX(), event.getY(), event.getZ(), yaw, event.getPitch(), event.isOnGround(), event.isHorizontalCollision()));
          } else if (bl) {
-            this.field_3944.method_52787(new class_2829(event.getX(), event.getY(), event.getZ(), event.isOnGround(), event.isHorizontalCollision()));
+            this.networkHandler.sendPacket(new PositionAndOnGround(event.getX(), event.getY(), event.getZ(), event.isOnGround(), event.isHorizontalCollision()));
          } else if (bl2) {
-            this.field_3944.method_52787(new class_2831(yaw, event.getPitch(), event.isOnGround(), event.isHorizontalCollision()));
-         } else if (this.field_3920 != event.isOnGround() || this.field_53040 != event.isHorizontalCollision()) {
-            this.field_3944.method_52787(new class_5911(event.isOnGround(), event.isHorizontalCollision()));
+            this.networkHandler.sendPacket(new LookAndOnGround(yaw, event.getPitch(), event.isOnGround(), event.isHorizontalCollision()));
+         } else if (this.lastOnGround != event.isOnGround() || this.lastHorizontalCollision != event.isHorizontalCollision()) {
+            this.networkHandler.sendPacket(new OnGroundOnly(event.isOnGround(), event.isHorizontalCollision()));
          } else if (event.isShouldSendExtraC03()) {
-            this.field_3944.method_52787(new class_5911(event.isOnGround(), event.isHorizontalCollision()));
+            this.networkHandler.sendPacket(new OnGroundOnly(event.isOnGround(), event.isHorizontalCollision()));
          } else {
-            PacketUtils.callPacket(new class_5911(event.isOnGround(), event.isHorizontalCollision()));
+            PacketUtils.callPacket(new OnGroundOnly(event.isOnGround(), event.isHorizontalCollision()));
          }
 
          Disabler.processPackets();
          if (bl) {
-            this.field_3926 = event.getX();
-            this.field_3940 = event.getY();
-            this.field_3924 = event.getZ();
-            this.field_3923 = 0;
+            this.lastX = event.getX();
+            this.lastBaseY = event.getY();
+            this.lastZ = event.getZ();
+            this.ticksSinceLastPositionPacketSent = 0;
          }
 
          if (bl2) {
-            this.field_3941 = yaw;
-            this.field_3925 = event.getPitch();
+            this.lastYaw = yaw;
+            this.lastPitch = event.getPitch();
          }
 
-         this.field_3920 = event.isOnGround();
-         this.field_53040 = event.isHorizontalCollision();
-         this.field_3927 = (Boolean)this.field_3937.field_1690.method_42423().method_41753();
+         this.lastOnGround = event.isOnGround();
+         this.lastHorizontalCollision = event.isHorizontalCollision();
+         this.autoJumpEnabled = (Boolean)this.client.options.getAutoJump().getValue();
          event.setState(Stage.POST);
          Southside.INSTANCE.getEventBus().call(event);
       }
    }
 
    @ModifyExpressionValue(
-      method = {"method_6007()V"},
+      method = {"tickMovement()V"},
       at = {@At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_746;method_6115()Z"
+         target = "Lnet/minecraft/client/network/ClientPlayerEntity;isUsingItem()Z"
       )}
    )
    private boolean redirectUsingItem(boolean isUsingItem) {
@@ -189,32 +189,32 @@ public abstract class MixinClientPlayerEntity extends class_1657 {
    }
 
    @Inject(
-      method = {"method_5784(Lnet/minecraft/class_1313;Lnet/minecraft/class_243;)V"},
+      method = {"move(Lnet/minecraft/entity/MovementType;Lnet/minecraft/util/math/Vec3d;)V"},
       at = {@At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_742;method_5784(Lnet/minecraft/class_1313;Lnet/minecraft/class_243;)V"
+         target = "Lnet/minecraft/client/network/AbstractClientPlayerEntity;move(Lnet/minecraft/entity/MovementType;Lnet/minecraft/util/math/Vec3d;)V"
       )},
       cancellable = true
    )
-   public void onMoveHook(class_1313 movementType, class_243 movement, CallbackInfo ci) {
-      MoveEvent event = new MoveEvent(movement.field_1352, movement.field_1351, movement.field_1350);
+   public void onMoveHook(MovementType movementType, Vec3d movement, CallbackInfo ci) {
+      MoveEvent event = new MoveEvent(movement.x, movement.y, movement.z);
       Southside.INSTANCE.getEventBus().call(event);
       if (event.isCancelled()) {
-         super.method_5784(movementType, new class_243(event.getX(), event.getY(), event.getZ()));
+         super.move(movementType, new Vec3d(event.getX(), event.getY(), event.getZ()));
          ci.cancel();
       }
    }
 
    @Overwrite
-   private void method_46742() {
-      SprintPacketSendEvent event = new SprintPacketSendEvent(this.method_5624());
+   private void sendSprintingPacket() {
+      SprintPacketSendEvent event = new SprintPacketSendEvent(this.isSprinting());
       Southside.INSTANCE.getEventBus().call(event);
       if (!event.isCancelled()) {
          boolean bl = event.isSprinting();
-         if (bl != this.field_3919) {
-            class_2849 mode = bl ? class_2849.field_12981 : class_2849.field_12985;
-            this.field_3944.method_52787(new class_2848(this, mode));
-            this.field_3919 = bl;
+         if (bl != this.lastSprinting) {
+            Mode mode = bl ? Mode.START_SPRINTING : Mode.STOP_SPRINTING;
+            this.networkHandler.sendPacket(new ClientCommandC2SPacket(this, mode));
+            this.lastSprinting = bl;
          }
       }
    }

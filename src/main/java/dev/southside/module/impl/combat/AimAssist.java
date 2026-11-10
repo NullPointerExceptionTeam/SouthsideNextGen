@@ -15,16 +15,16 @@ import dev.southside.utils.player.InventoryUtils;
 import dev.southside.utils.player.TargetUtils;
 import dev.southside.utils.rotation.RotationUtils;
 import dev.southside.utils.types.Rotation;
-import net.minecraft.class_1657;
-import net.minecraft.class_243;
-import net.minecraft.class_3532;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.math.MathHelper;
 
 public class AimAssist extends Module {
    private final Slider range = new Slider("范围", 4.5, 1.0, 8.0, 0.1);
    private final Slider fov = new Slider("视野", 90, 10, 180, 1);
    private final Slider smoothness = new Slider("平滑度", 8.0, 2.0, 20.0, 0.5);
    private final Switch onlyWhileAttacking = new Switch("仅攻击时", true);
-   private class_1657 target;
+   private PlayerEntity target;
    private Rotation pendingRotation;
 
    public AimAssist() {
@@ -71,11 +71,11 @@ public class AimAssist extends Module {
    }
 
    private boolean shouldPause() {
-      if (mc.field_1724 == null || mc.field_1687 == null || !mc.field_1724.method_5805() || mc.field_1755 != null) {
+      if (mc.player == null || mc.world == null || !mc.player.isAlive() || mc.currentScreen != null) {
          return true;
-      } else if (this.onlyWhileAttacking.getValue() && !mc.field_1690.field_1886.method_1434()) {
+      } else if (this.onlyWhileAttacking.getValue() && !mc.options.attackKey.isPressed()) {
          return true;
-      } else if (!mc.field_1724.method_6115() && !InventoryUtils.shouldDisableFeatures()) {
+      } else if (!mc.player.isUsingItem() && !InventoryUtils.shouldDisableFeatures()) {
          ModuleManager moduleManager = Southside.INSTANCE.getModuleManager();
          if (moduleManager.isEnabled(AutoBucket.class) && moduleManager.get(AutoBucket.class).isBusy()) {
             return true;
@@ -87,11 +87,11 @@ public class AimAssist extends Module {
       }
    }
 
-   private class_1657 findTarget() {
-      class_1657 bestTarget = null;
+   private PlayerEntity findTarget() {
+      PlayerEntity bestTarget = null;
       double bestAngle = Double.MAX_VALUE;
 
-      for (class_1657 player : mc.field_1687.method_18456()) {
+      for (PlayerEntity player : mc.world.getPlayers()) {
          if (this.isValidTarget(player)) {
             double angle = this.getAngleDistance(player);
             if (angle < bestAngle) {
@@ -104,37 +104,37 @@ public class AimAssist extends Module {
       return bestTarget;
    }
 
-   private boolean isValidTarget(class_1657 player) {
+   private boolean isValidTarget(PlayerEntity player) {
       return player != null
-         && player.method_5805()
-         && !player.method_31481()
-         && !player.method_7325()
-         && mc.field_1724.method_5739(player) <= this.range.getValue().doubleValue()
-         && mc.field_1724.method_6057(player)
+         && player.isAlive()
+         && !player.isRemoved()
+         && !player.isSpectator()
+         && mc.player.distanceTo(player) <= this.range.getValue().doubleValue()
+         && mc.player.canSee(player)
          && TargetUtils.isTarget(player, true, true)
          && this.getAngleDistance(player) <= this.fov.getValue().doubleValue() / 2.0;
    }
 
-   private Rotation getSmoothedRotation(class_1657 player) {
-      Rotation desired = Rotation.from(mc.field_1724.method_33571(), this.getAimPoint(player));
-      float currentYaw = mc.field_1724.method_36454();
-      float currentPitch = mc.field_1724.method_36455();
+   private Rotation getSmoothedRotation(PlayerEntity player) {
+      Rotation desired = Rotation.from(mc.player.getEyePos(), this.getAimPoint(player));
+      float currentYaw = mc.player.getYaw();
+      float currentPitch = mc.player.getPitch();
       float divisor = this.smoothness.getValue().floatValue();
-      float nextYaw = currentYaw + class_3532.method_15393(desired.yaw - currentYaw) / divisor;
-      float nextPitch = class_3532.method_15363(currentPitch + (desired.pitch - currentPitch) / divisor, -90.0F, 90.0F);
+      float nextYaw = currentYaw + MathHelper.wrapDegrees(desired.yaw - currentYaw) / divisor;
+      float nextPitch = MathHelper.clamp(currentPitch + (desired.pitch - currentPitch) / divisor, -90.0F, 90.0F);
       float[] fixed = RotationUtils.fixMouseSensitivity(nextYaw, nextPitch, currentYaw, currentPitch);
       return new Rotation(fixed[0], fixed[1]);
    }
 
-   private double getAngleDistance(class_1657 player) {
-      Rotation desired = Rotation.from(mc.field_1724.method_33571(), this.getAimPoint(player));
-      float yawDifference = class_3532.method_15393(desired.yaw - mc.field_1724.method_36454());
-      float pitchDifference = desired.pitch - mc.field_1724.method_36455();
+   private double getAngleDistance(PlayerEntity player) {
+      Rotation desired = Rotation.from(mc.player.getEyePos(), this.getAimPoint(player));
+      float yawDifference = MathHelper.wrapDegrees(desired.yaw - mc.player.getYaw());
+      float pitchDifference = desired.pitch - mc.player.getPitch();
       return Math.hypot(yawDifference, pitchDifference);
    }
 
-   private class_243 getAimPoint(class_1657 player) {
-      return new class_243(player.method_23317(), player.method_23318() + player.method_17682() * 0.75, player.method_23321());
+   private Vec3d getAimPoint(PlayerEntity player) {
+      return new Vec3d(player.getX(), player.getY() + player.getHeight() * 0.75, player.getZ());
    }
 
    @Override

@@ -2,59 +2,59 @@ package dev.southside.event.events;
 
 import dev.southside.event.CancellableEvent;
 import lombok.Generated;
-import net.minecraft.class_1297;
-import net.minecraft.class_1937;
-import net.minecraft.class_2338;
-import net.minecraft.class_2680;
+import net.minecraft.entity.Entity;
+import net.minecraft.world.World;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.block.BlockState;
 
 public class EntityCobwebCollisionEvent extends CancellableEvent {
-   public class_2680 state;
-   public class_1937 world;
-   public class_2338 pos;
-   public class_1297 entity;
+   public BlockState state;
+   public World world;
+   public BlockPos pos;
+   public Entity entity;
 
    @Generated
-   public class_2680 getState() {
+   public BlockState getState() {
       return this.state;
    }
 
    @Generated
-   public class_1937 getWorld() {
+   public World getWorld() {
       return this.world;
    }
 
    @Generated
-   public class_2338 getPos() {
+   public BlockPos getPos() {
       return this.pos;
    }
 
    @Generated
-   public class_1297 getEntity() {
+   public Entity getEntity() {
       return this.entity;
    }
 
    @Generated
-   public void setState(class_2680 state) {
+   public void setState(BlockState state) {
       this.state = state;
    }
 
    @Generated
-   public void setWorld(class_1937 world) {
+   public void setWorld(World world) {
       this.world = world;
    }
 
    @Generated
-   public void setPos(class_2338 pos) {
+   public void setPos(BlockPos pos) {
       this.pos = pos;
    }
 
    @Generated
-   public void setEntity(class_1297 entity) {
+   public void setEntity(Entity entity) {
       this.entity = entity;
    }
 
    @Generated
-   public EntityCobwebCollisionEvent(class_2680 state, class_1937 world, class_2338 pos, class_1297 entity) {
+   public EntityCobwebCollisionEvent(BlockState state, World world, BlockPos pos, Entity entity) {
       this.state = state;
       this.world = world;
       this.pos = pos;

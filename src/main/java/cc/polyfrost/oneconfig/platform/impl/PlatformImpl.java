@@ -2,12 +2,12 @@ package cc.polyfrost.oneconfig.platform.impl;
 
 import cc.polyfrost.oneconfig.platform.Platform;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.class_310;
+import net.minecraft.client.MinecraftClient;
 
 public class PlatformImpl implements Platform {
    @Override
    public boolean isCallingFromMinecraftThread() {
-      return class_310.method_1551().method_18854();
+      return MinecraftClient.getInstance().isOnThread();
    }
 
    @Override

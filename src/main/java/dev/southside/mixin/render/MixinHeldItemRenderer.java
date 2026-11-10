@@ -4,34 +4,34 @@ import dev.southside.Southside;
 import dev.southside.event.events.UpdateHeldItemEvent;
 import dev.southside.module.impl.render.OldHitting;
 import dev.southside.utils.BlockingHandler;
-import net.minecraft.class_1268;
-import net.minecraft.class_1306;
-import net.minecraft.class_1309;
-import net.minecraft.class_1657;
-import net.minecraft.class_1743;
-import net.minecraft.class_1764;
-import net.minecraft.class_1771;
-import net.minecraft.class_1776;
-import net.minecraft.class_1779;
-import net.minecraft.class_1799;
-import net.minecraft.class_1802;
-import net.minecraft.class_1803;
-import net.minecraft.class_1812;
-import net.minecraft.class_1819;
-import net.minecraft.class_1823;
-import net.minecraft.class_1828;
-import net.minecraft.class_1829;
-import net.minecraft.class_1839;
-import net.minecraft.class_310;
-import net.minecraft.class_3532;
-import net.minecraft.class_4587;
-import net.minecraft.class_4597;
-import net.minecraft.class_742;
-import net.minecraft.class_746;
-import net.minecraft.class_759;
-import net.minecraft.class_7833;
-import net.minecraft.class_811;
-import net.minecraft.class_9334;
+import net.minecraft.util.Hand;
+import net.minecraft.util.Arm;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.AxeItem;
+import net.minecraft.item.CrossbowItem;
+import net.minecraft.item.EggItem;
+import net.minecraft.item.EnderPearlItem;
+import net.minecraft.item.ExperienceBottleItem;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.item.LingeringPotionItem;
+import net.minecraft.item.PotionItem;
+import net.minecraft.item.ShieldItem;
+import net.minecraft.item.SnowballItem;
+import net.minecraft.item.SplashPotionItem;
+import net.minecraft.item.SwordItem;
+import net.minecraft.item.consume.UseAction;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.network.AbstractClientPlayerEntity;
+import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.client.render.item.HeldItemRenderer;
+import net.minecraft.util.math.RotationAxis;
+import net.minecraft.item.ModelTransformationMode;
+import net.minecraft.component.DataComponentTypes;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -40,157 +40,157 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin({class_759.class})
+@Mixin({HeldItemRenderer.class})
 public abstract class MixinHeldItemRenderer {
    @Shadow
    @Final
-   private class_310 field_4050;
+   private MinecraftClient client;
    @Shadow
-   private class_1799 field_4048;
+   private ItemStack offHand;
 
    @Shadow
-   protected abstract void method_3219(class_4587 var1, class_4597 var2, int var3, float var4, float var5, class_1306 var6);
+   protected abstract void renderArmHoldingItem(MatrixStack var1, VertexConsumerProvider var2, int var3, float var4, float var5, Arm var6);
 
    @Shadow
-   protected abstract void method_3231(class_4587 var1, class_4597 var2, int var3, float var4, float var5, float var6);
+   protected abstract void renderMapInBothHands(MatrixStack var1, VertexConsumerProvider var2, int var3, float var4, float var5, float var6);
 
    @Shadow
-   protected abstract void method_3222(class_4587 var1, class_4597 var2, int var3, float var4, class_1306 var5, float var6, class_1799 var7);
+   protected abstract void renderMapInOneHand(MatrixStack var1, VertexConsumerProvider var2, int var3, float var4, Arm var5, float var6, ItemStack var7);
 
    @Shadow
-   protected abstract void method_3224(class_4587 var1, class_1306 var2, float var3);
+   protected abstract void applyEquipOffset(MatrixStack var1, Arm var2, float var3);
 
    @Shadow
-   protected abstract void method_65816(float var1, float var2, class_4587 var3, int var4, class_1306 var5);
+   protected abstract void swingArm(float var1, float var2, MatrixStack var3, int var4, Arm var5);
 
    @Shadow
-   public abstract void method_3233(class_1309 var1, class_1799 var2, class_811 var3, boolean var4, class_4587 var5, class_4597 var6, int var7);
+   public abstract void renderItem(LivingEntity var1, ItemStack var2, ModelTransformationMode var3, boolean var4, MatrixStack var5, VertexConsumerProvider var6, int var7);
 
    @Shadow
-   protected abstract void method_3218(class_4587 var1, float var2, class_1306 var3, class_1799 var4, class_1657 var5);
+   protected abstract void applyEatOrDrinkTransformation(MatrixStack var1, float var2, Arm var3, ItemStack var4, PlayerEntity var5);
 
    @Shadow
-   protected abstract void method_49340(class_4587 var1, float var2, class_1306 var3, class_1799 var4, class_1657 var5, float var6);
+   protected abstract void applyBrushTransformation(MatrixStack var1, float var2, Arm var3, ItemStack var4, PlayerEntity var5, float var6);
 
    @Inject(
-      method = {"method_3228(Lnet/minecraft/class_742;FFLnet/minecraft/class_1268;FLnet/minecraft/class_1799;FLnet/minecraft/class_4587;Lnet/minecraft/class_4597;I)V"},
+      method = {"renderFirstPersonItem(Lnet/minecraft/client/network/AbstractClientPlayerEntity;FFLnet/minecraft/util/Hand;FLnet/minecraft/item/ItemStack;FLnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/VertexConsumerProvider;I)V"},
       at = {@At("HEAD")},
       cancellable = true
    )
    private void renderFirstPersonItem(
-      class_742 player,
+      AbstractClientPlayerEntity player,
       float tickDelta,
       float pitch,
-      class_1268 hand,
+      Hand hand,
       float swingProgress,
-      class_1799 item,
+      ItemStack item,
       float equipProgress,
-      class_4587 matrices,
-      class_4597 vertexConsumers,
+      MatrixStack matrices,
+      VertexConsumerProvider vertexConsumers,
       int light,
       CallbackInfo ci
    ) {
-      if (!player.method_31550()) {
+      if (!player.isUsingSpyglass()) {
          OldHitting oldHitting = Southside.get().getModuleManager().get(OldHitting.class);
-         boolean isMainHand = hand == class_1268.field_5808;
-         class_1306 arm = isMainHand ? player.method_6068() : player.method_6068().method_5928();
-         boolean isRightArm = arm == class_1306.field_6183;
+         boolean isMainHand = hand == Hand.MAIN_HAND;
+         Arm arm = isMainHand ? player.getMainArm() : player.getMainArm().getOpposite();
+         boolean isRightArm = arm == Arm.RIGHT;
          int side = isRightArm ? 1 : -1;
-         matrices.method_22903();
-         if (item.method_7960()) {
-            if (isMainHand && !player.method_5767()) {
-               this.method_3219(matrices, vertexConsumers, light, equipProgress, swingProgress, arm);
+         matrices.push();
+         if (item.isEmpty()) {
+            if (isMainHand && !player.isInvisible()) {
+               this.renderArmHoldingItem(matrices, vertexConsumers, light, equipProgress, swingProgress, arm);
             }
-         } else if (item.method_57826(class_9334.field_49646)) {
-            if (isMainHand && this.field_4048.method_7960()) {
-               this.method_3231(matrices, vertexConsumers, light, pitch, equipProgress, swingProgress);
+         } else if (item.contains(DataComponentTypes.MAP_ID)) {
+            if (isMainHand && this.offHand.isEmpty()) {
+               this.renderMapInBothHands(matrices, vertexConsumers, light, pitch, equipProgress, swingProgress);
             } else {
-               this.method_3222(matrices, vertexConsumers, light, equipProgress, arm, swingProgress, item);
+               this.renderMapInOneHand(matrices, vertexConsumers, light, equipProgress, arm, swingProgress, item);
             }
-         } else if (item.method_31574(class_1802.field_8399)) {
-            boolean isCharged = class_1764.method_7781(item);
-            if (player.method_6115() && player.method_6014() > 0 && player.method_6058() == hand) {
-               this.method_3224(matrices, arm, equipProgress);
-               matrices.method_46416(side * -0.4785682F, -0.094387F, 0.05731531F);
-               matrices.method_22907(class_7833.field_40714.rotationDegrees(-11.935F));
-               matrices.method_22907(class_7833.field_40716.rotationDegrees(side * 65.3F));
-               matrices.method_22907(class_7833.field_40718.rotationDegrees(side * -9.785F));
-               float timeDelta = item.method_7935(player) - (player.method_6014() - tickDelta + 1.0F);
-               float pullDelta = timeDelta / class_1764.method_7775(item, player);
+         } else if (item.isOf(Items.CROSSBOW)) {
+            boolean isCharged = CrossbowItem.isCharged(item);
+            if (player.isUsingItem() && player.getItemUseTimeLeft() > 0 && player.getActiveHand() == hand) {
+               this.applyEquipOffset(matrices, arm, equipProgress);
+               matrices.translate(side * -0.4785682F, -0.094387F, 0.05731531F);
+               matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-11.935F));
+               matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(side * 65.3F));
+               matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(side * -9.785F));
+               float timeDelta = item.getMaxUseTime(player) - (player.getItemUseTimeLeft() - tickDelta + 1.0F);
+               float pullDelta = timeDelta / CrossbowItem.getPullTime(item, player);
                if (pullDelta > 1.0F) {
                   pullDelta = 1.0F;
                }
 
                if (pullDelta > 0.1F) {
-                  float sx = class_3532.method_15374((timeDelta - 0.1F) * 1.3F);
+                  float sx = MathHelper.sin((timeDelta - 0.1F) * 1.3F);
                   float dt = pullDelta - 0.1F;
                   float px = sx * dt;
-                  matrices.method_46416(px * 0.0F, px * 0.004F, px * 0.0F);
+                  matrices.translate(px * 0.0F, px * 0.004F, px * 0.0F);
                }
 
-               matrices.method_46416(pullDelta * 0.0F, pullDelta * 0.0F, pullDelta * 0.04F);
-               matrices.method_22905(1.0F, 1.0F, 1.0F + pullDelta * 0.2F);
-               matrices.method_22907(class_7833.field_40715.rotationDegrees(side * 45.0F));
+               matrices.translate(pullDelta * 0.0F, pullDelta * 0.0F, pullDelta * 0.04F);
+               matrices.scale(1.0F, 1.0F, 1.0F + pullDelta * 0.2F);
+               matrices.multiply(RotationAxis.NEGATIVE_Y.rotationDegrees(side * 45.0F));
             } else {
-               this.method_65816(swingProgress, equipProgress, matrices, side, arm);
+               this.swingArm(swingProgress, equipProgress, matrices, side, arm);
                if (isCharged && swingProgress < 0.001F && isMainHand) {
-                  matrices.method_46416(side * -0.641864F, 0.0F, 0.0F);
-                  matrices.method_22907(class_7833.field_40716.rotationDegrees(side * 10.0F));
+                  matrices.translate(side * -0.641864F, 0.0F, 0.0F);
+                  matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(side * 10.0F));
                }
             }
 
-            this.method_3233(player, item, isRightArm ? class_811.field_4322 : class_811.field_4321, !isRightArm, matrices, vertexConsumers, light);
+            this.renderItem(player, item, isRightArm ? ModelTransformationMode.FIRST_PERSON_RIGHT_HAND : ModelTransformationMode.FIRST_PERSON_LEFT_HAND, !isRightArm, matrices, vertexConsumers, light);
          } else {
             boolean throwable = this.isThrowable(player);
-            boolean isEatOrDrinkMain = player.method_6047().method_7976() == class_1839.field_8950
-               || player.method_6047().method_7976() == class_1839.field_8946;
-            boolean isEatOrDrinkOff = player.method_6079().method_7976() == class_1839.field_8950
-               || player.method_6079().method_7976() == class_1839.field_8946;
+            boolean isEatOrDrinkMain = player.getMainHandStack().getUseAction() == UseAction.EAT
+               || player.getMainHandStack().getUseAction() == UseAction.DRINK;
+            boolean isEatOrDrinkOff = player.getOffHandStack().getUseAction() == UseAction.EAT
+               || player.getOffHandStack().getUseAction() == UseAction.DRINK;
             boolean tryingToUseOffhand = !isMainHand
-               && this.field_4050.field_1690.field_1904.method_1434()
-               && (throwable || isEatOrDrinkOff && player.method_6058() == class_1268.field_5810);
+               && this.client.options.useKey.isPressed()
+               && (throwable || isEatOrDrinkOff && player.getActiveHand() == Hand.OFF_HAND);
             boolean shouldBlock = false;
             if (isMainHand) {
                shouldBlock = BlockingHandler.isBlocking()
-                  || this.field_4050.field_1690.field_1904.method_1434()
-                     && player.field_7512 == player.field_7498
+                  || this.client.options.useKey.isPressed()
+                     && player.currentScreenHandler == player.playerScreenHandler
                      && !throwable
-                     && (!isEatOrDrinkMain || player.method_6058() != class_1268.field_5808)
-                     && (!isEatOrDrinkOff || player.method_6058() != class_1268.field_5810);
+                     && (!isEatOrDrinkMain || player.getActiveHand() != Hand.MAIN_HAND)
+                     && (!isEatOrDrinkOff || player.getActiveHand() != Hand.OFF_HAND);
             }
 
-            boolean isAllowedBlockingItem = item.method_7909() instanceof class_1829;
+            boolean isAllowedBlockingItem = item.getItem() instanceof SwordItem;
             if (oldHitting.axe.getValue()) {
-               isAllowedBlockingItem = item.method_7909() instanceof class_1829 || item.method_7909() instanceof class_1743;
+               isAllowedBlockingItem = item.getItem() instanceof SwordItem || item.getItem() instanceof AxeItem;
             }
 
             if (oldHitting.isEnabled() && isAllowedBlockingItem && shouldBlock && !tryingToUseOffhand) {
                oldHitting.transform(matrices, side, equipProgress, swingProgress, hand, arm);
             } else {
                if (oldHitting.isEnabled() && isMainHand) {
-                  matrices.method_22904(oldHitting.itemX.getDouble(), oldHitting.itemY.getDouble(), oldHitting.itemZ.getDouble());
+                  matrices.translate(oldHitting.itemX.getDouble(), oldHitting.itemY.getDouble(), oldHitting.itemZ.getDouble());
                }
 
-               if (player.method_6115() && player.method_6014() > 0 && player.method_6058() == hand) {
-                  class_1839 action = item.method_7976();
-                  if (action == class_1839.field_8952) {
-                     this.method_3224(matrices, arm, equipProgress);
-                  } else if (action != class_1839.field_8950 && action != class_1839.field_8946) {
-                     if (action == class_1839.field_8949) {
-                        this.method_3224(matrices, arm, equipProgress);
-                        if (!(item.method_7909() instanceof class_1819)) {
-                           matrices.method_46416(side * -0.14142136F, 0.08F, 0.14142136F);
-                           matrices.method_22907(class_7833.field_40714.rotationDegrees(-102.25F));
-                           matrices.method_22907(class_7833.field_40716.rotationDegrees(side * 13.365F));
-                           matrices.method_22907(class_7833.field_40718.rotationDegrees(side * 78.05F));
+               if (player.isUsingItem() && player.getItemUseTimeLeft() > 0 && player.getActiveHand() == hand) {
+                  UseAction action = item.getUseAction();
+                  if (action == UseAction.NONE) {
+                     this.applyEquipOffset(matrices, arm, equipProgress);
+                  } else if (action != UseAction.EAT && action != UseAction.DRINK) {
+                     if (action == UseAction.BLOCK) {
+                        this.applyEquipOffset(matrices, arm, equipProgress);
+                        if (!(item.getItem() instanceof ShieldItem)) {
+                           matrices.translate(side * -0.14142136F, 0.08F, 0.14142136F);
+                           matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-102.25F));
+                           matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(side * 13.365F));
+                           matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(side * 78.05F));
                         }
-                     } else if (action == class_1839.field_8953) {
-                        this.method_3224(matrices, arm, equipProgress);
-                        matrices.method_46416(side * -0.2785682F, 0.18344387F, 0.15731531F);
-                        matrices.method_22907(class_7833.field_40714.rotationDegrees(-13.935F));
-                        matrices.method_22907(class_7833.field_40716.rotationDegrees(side * 35.3F));
-                        matrices.method_22907(class_7833.field_40718.rotationDegrees(side * -9.785F));
-                        float timeDeltax = item.method_7935(player) - (player.method_6014() - tickDelta + 1.0F);
+                     } else if (action == UseAction.BOW) {
+                        this.applyEquipOffset(matrices, arm, equipProgress);
+                        matrices.translate(side * -0.2785682F, 0.18344387F, 0.15731531F);
+                        matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-13.935F));
+                        matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(side * 35.3F));
+                        matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(side * -9.785F));
+                        float timeDeltax = item.getMaxUseTime(player) - (player.getItemUseTimeLeft() - tickDelta + 1.0F);
                         float normalized = timeDeltax / 20.0F;
                         normalized = (normalized * normalized + normalized * 2.0F) / 3.0F;
                         if (normalized > 1.0F) {
@@ -198,113 +198,113 @@ public abstract class MixinHeldItemRenderer {
                         }
 
                         if (normalized > 0.1F) {
-                           float g = class_3532.method_15374((timeDeltax - 0.1F) * 1.3F);
+                           float g = MathHelper.sin((timeDeltax - 0.1F) * 1.3F);
                            float h = normalized - 0.1F;
                            float j = g * h;
-                           matrices.method_46416(j * 0.0F, j * 0.004F, j * 0.0F);
+                           matrices.translate(j * 0.0F, j * 0.004F, j * 0.0F);
                         }
 
-                        matrices.method_46416(normalized * 0.0F, normalized * 0.0F, normalized * 0.04F);
-                        matrices.method_22905(1.0F, 1.0F, 1.0F + normalized * 0.2F);
-                        matrices.method_22907(class_7833.field_40715.rotationDegrees(side * 45.0F));
-                     } else if (action == class_1839.field_8951) {
-                        this.method_3224(matrices, arm, equipProgress);
-                        matrices.method_46416(side * -0.5F, 0.7F, 0.1F);
-                        matrices.method_22907(class_7833.field_40714.rotationDegrees(-55.0F));
-                        matrices.method_22907(class_7833.field_40716.rotationDegrees(side * 35.3F));
-                        matrices.method_22907(class_7833.field_40718.rotationDegrees(side * -9.785F));
-                        float m = item.method_7935(player) - (player.method_6014() - tickDelta + 1.0F);
+                        matrices.translate(normalized * 0.0F, normalized * 0.0F, normalized * 0.04F);
+                        matrices.scale(1.0F, 1.0F, 1.0F + normalized * 0.2F);
+                        matrices.multiply(RotationAxis.NEGATIVE_Y.rotationDegrees(side * 45.0F));
+                     } else if (action == UseAction.SPEAR) {
+                        this.applyEquipOffset(matrices, arm, equipProgress);
+                        matrices.translate(side * -0.5F, 0.7F, 0.1F);
+                        matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-55.0F));
+                        matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(side * 35.3F));
+                        matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(side * -9.785F));
+                        float m = item.getMaxUseTime(player) - (player.getItemUseTimeLeft() - tickDelta + 1.0F);
                         float f = m / 10.0F;
                         if (f > 1.0F) {
                            f = 1.0F;
                         }
 
                         if (f > 0.1F) {
-                           float g = class_3532.method_15374((m - 0.1F) * 1.3F);
+                           float g = MathHelper.sin((m - 0.1F) * 1.3F);
                            float h = f - 0.1F;
                            float j = g * h;
-                           matrices.method_46416(j * 0.0F, j * 0.004F, j * 0.0F);
+                           matrices.translate(j * 0.0F, j * 0.004F, j * 0.0F);
                         }
 
-                        matrices.method_46416(0.0F, 0.0F, f * 0.2F);
-                        matrices.method_22905(1.0F, 1.0F, 1.0F + f * 0.2F);
-                        matrices.method_22907(class_7833.field_40715.rotationDegrees(side * 45.0F));
-                     } else if (action == class_1839.field_42717) {
-                        this.method_49340(matrices, tickDelta, arm, item, player, equipProgress);
-                     } else if (action == class_1839.field_55494) {
-                        this.method_65816(swingProgress, equipProgress, matrices, side, arm);
+                        matrices.translate(0.0F, 0.0F, f * 0.2F);
+                        matrices.scale(1.0F, 1.0F, 1.0F + f * 0.2F);
+                        matrices.multiply(RotationAxis.NEGATIVE_Y.rotationDegrees(side * 45.0F));
+                     } else if (action == UseAction.BRUSH) {
+                        this.applyBrushTransformation(matrices, tickDelta, arm, item, player, equipProgress);
+                     } else if (action == UseAction.BUNDLE) {
+                        this.swingArm(swingProgress, equipProgress, matrices, side, arm);
                      }
                   } else if (oldHitting.isEnabled()) {
                      if (swingProgress != 0.0F) {
-                        matrices.method_22904(side * 0.56, -0.52 + equipProgress * -0.6, -0.72);
-                        float progress = class_3532.method_15374(swingProgress * swingProgress * (float) Math.PI);
-                        matrices.method_22907(class_7833.field_40715.rotationDegrees(progress * 20.0F));
-                        matrices.method_22907(class_7833.field_40717.rotationDegrees(progress * 20.0F));
-                        matrices.method_22907(class_7833.field_40713.rotationDegrees(progress * 80.0F));
-                        matrices.method_46416(-0.8F, 0.2F, 0.0F);
-                        matrices.method_22907(class_7833.field_40716.rotationDegrees(30.0F));
-                        matrices.method_22907(class_7833.field_40714.rotationDegrees(-80.0F));
-                        matrices.method_22907(class_7833.field_40716.rotationDegrees(60.0F));
-                        matrices.method_22905(1.4F, 1.4F, 1.4F);
+                        matrices.translate(side * 0.56, -0.52 + equipProgress * -0.6, -0.72);
+                        float progress = MathHelper.sin(swingProgress * swingProgress * (float) Math.PI);
+                        matrices.multiply(RotationAxis.NEGATIVE_Y.rotationDegrees(progress * 20.0F));
+                        matrices.multiply(RotationAxis.NEGATIVE_Z.rotationDegrees(progress * 20.0F));
+                        matrices.multiply(RotationAxis.NEGATIVE_X.rotationDegrees(progress * 80.0F));
+                        matrices.translate(-0.8F, 0.2F, 0.0F);
+                        matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(30.0F));
+                        matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-80.0F));
+                        matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(60.0F));
+                        matrices.scale(1.4F, 1.4F, 1.4F);
                      } else {
-                        this.method_3218(matrices, tickDelta, arm, item, player);
-                        this.method_3224(matrices, arm, equipProgress);
+                        this.applyEatOrDrinkTransformation(matrices, tickDelta, arm, item, player);
+                        this.applyEquipOffset(matrices, arm, equipProgress);
                         this.doSwingAnimation(matrices, swingProgress);
                      }
                   } else {
-                     this.method_3218(matrices, tickDelta, arm, item, player);
-                     this.method_3224(matrices, arm, equipProgress);
+                     this.applyEatOrDrinkTransformation(matrices, tickDelta, arm, item, player);
+                     this.applyEquipOffset(matrices, arm, equipProgress);
                   }
-               } else if (player.method_6123()) {
-                  this.method_3224(matrices, arm, equipProgress);
-                  matrices.method_46416(side * -0.4F, 0.8F, 0.3F);
-                  matrices.method_22907(class_7833.field_40716.rotationDegrees(side * 65.0F));
-                  matrices.method_22907(class_7833.field_40718.rotationDegrees(side * -85.0F));
+               } else if (player.isUsingRiptide()) {
+                  this.applyEquipOffset(matrices, arm, equipProgress);
+                  matrices.translate(side * -0.4F, 0.8F, 0.3F);
+                  matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(side * 65.0F));
+                  matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(side * -85.0F));
                } else {
-                  this.method_65816(swingProgress, equipProgress, matrices, side, arm);
+                  this.swingArm(swingProgress, equipProgress, matrices, side, arm);
                }
             }
 
-            this.method_3233(player, item, isRightArm ? class_811.field_4322 : class_811.field_4321, !isRightArm, matrices, vertexConsumers, light);
+            this.renderItem(player, item, isRightArm ? ModelTransformationMode.FIRST_PERSON_RIGHT_HAND : ModelTransformationMode.FIRST_PERSON_LEFT_HAND, !isRightArm, matrices, vertexConsumers, light);
          }
 
-         matrices.method_22909();
+         matrices.pop();
          ci.cancel();
       }
    }
 
-   private boolean isThrowable(class_742 player) {
-      class_1799 stack = player.method_6079();
-      return !stack.method_7960()
+   private boolean isThrowable(AbstractClientPlayerEntity player) {
+      ItemStack stack = player.getOffHandStack();
+      return !stack.isEmpty()
          && (
-            stack.method_7909() instanceof class_1823
-               || stack.method_7909() instanceof class_1771
-               || stack.method_7909() instanceof class_1776
-               || stack.method_7909() instanceof class_1779
-               || stack.method_7909() instanceof class_1812
-               || stack.method_7909() instanceof class_1803
-               || stack.method_7909() instanceof class_1828
+            stack.getItem() instanceof SnowballItem
+               || stack.getItem() instanceof EggItem
+               || stack.getItem() instanceof EnderPearlItem
+               || stack.getItem() instanceof ExperienceBottleItem
+               || stack.getItem() instanceof PotionItem
+               || stack.getItem() instanceof LingeringPotionItem
+               || stack.getItem() instanceof SplashPotionItem
          );
    }
 
-   private void doSwingAnimation(class_4587 m, float swingProgress) {
-      float f = class_3532.method_15374(swingProgress * swingProgress * (float) Math.PI);
-      float f1 = class_3532.method_15374(class_3532.method_15355(swingProgress) * (float) Math.PI);
-      m.method_22907(class_7833.field_40716.rotationDegrees(f * -20.0F));
-      m.method_22907(class_7833.field_40718.rotationDegrees(f1 * -20.0F));
-      m.method_22907(class_7833.field_40714.rotationDegrees(f1 * -80.0F));
+   private void doSwingAnimation(MatrixStack m, float swingProgress) {
+      float f = MathHelper.sin(swingProgress * swingProgress * (float) Math.PI);
+      float f1 = MathHelper.sin(MathHelper.sqrt(swingProgress) * (float) Math.PI);
+      m.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(f * -20.0F));
+      m.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(f1 * -20.0F));
+      m.multiply(RotationAxis.POSITIVE_X.rotationDegrees(f1 * -80.0F));
    }
 
    @Redirect(
-      method = {"method_3220()V"},
+      method = {"updateHeldItems()V"},
       at = @At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_746;method_6047()Lnet/minecraft/class_1799;"
+         target = "Lnet/minecraft/client/network/ClientPlayerEntity;getMainHandStack()Lnet/minecraft/item/ItemStack;"
       )
    )
-   public class_1799 hookMainHand(class_746 player) {
-      UpdateHeldItemEvent event = new UpdateHeldItemEvent(class_1268.field_5808, player.method_6047());
-      if (player == class_310.method_1551().field_1724) {
+   public ItemStack hookMainHand(ClientPlayerEntity player) {
+      UpdateHeldItemEvent event = new UpdateHeldItemEvent(Hand.MAIN_HAND, player.getMainHandStack());
+      if (player == MinecraftClient.getInstance().player) {
          Southside.get().getEventBus().call(event);
       }
 
@@ -312,15 +312,15 @@ public abstract class MixinHeldItemRenderer {
    }
 
    @Redirect(
-      method = {"method_3220()V"},
+      method = {"updateHeldItems()V"},
       at = @At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_746;method_6079()Lnet/minecraft/class_1799;"
+         target = "Lnet/minecraft/client/network/ClientPlayerEntity;getOffHandStack()Lnet/minecraft/item/ItemStack;"
       )
    )
-   public class_1799 hookOffHand(class_746 player) {
-      UpdateHeldItemEvent event = new UpdateHeldItemEvent(class_1268.field_5810, player.method_6079());
-      if (player == class_310.method_1551().field_1724) {
+   public ItemStack hookOffHand(ClientPlayerEntity player) {
+      UpdateHeldItemEvent event = new UpdateHeldItemEvent(Hand.OFF_HAND, player.getOffHandStack());
+      if (player == MinecraftClient.getInstance().player) {
          Southside.get().getEventBus().call(event);
       }
 

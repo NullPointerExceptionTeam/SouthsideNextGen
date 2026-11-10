@@ -2,24 +2,24 @@ package dev.southside.mixin.block;
 
 import dev.southside.Southside;
 import dev.southside.event.events.EntityCobwebCollisionEvent;
-import net.minecraft.class_1297;
-import net.minecraft.class_1937;
-import net.minecraft.class_2338;
-import net.minecraft.class_2560;
-import net.minecraft.class_2680;
+import net.minecraft.entity.Entity;
+import net.minecraft.world.World;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.block.CobwebBlock;
+import net.minecraft.block.BlockState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin({class_2560.class})
+@Mixin({CobwebBlock.class})
 public class MixinCobwebBlock {
    @Inject(
-      method = {"method_9548(Lnet/minecraft/class_2680;Lnet/minecraft/class_1937;Lnet/minecraft/class_2338;Lnet/minecraft/class_1297;)V"},
+      method = {"onEntityCollision(Lnet/minecraft/block/BlockState;Lnet/minecraft/world/World;Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/entity/Entity;)V"},
       at = {@At("HEAD")},
       cancellable = true
    )
-   public void onEntityCollision(class_2680 state, class_1937 world, class_2338 pos, class_1297 entity, CallbackInfo ci) {
+   public void onEntityCollision(BlockState state, World world, BlockPos pos, Entity entity, CallbackInfo ci) {
       EntityCobwebCollisionEvent event = new EntityCobwebCollisionEvent(state, world, pos, entity);
       Southside.get().getEventBus().post(event);
       if (event.isCancelled()) {

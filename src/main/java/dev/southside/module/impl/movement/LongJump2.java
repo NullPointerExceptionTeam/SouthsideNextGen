@@ -13,11 +13,11 @@ import dev.southside.utils.ChatUtils;
 import dev.southside.utils.MinecraftTickTimerUtils;
 import dev.southside.utils.network.PacketUtils;
 import lombok.Generated;
-import net.minecraft.class_2596;
-import net.minecraft.class_2708;
-import net.minecraft.class_2743;
-import net.minecraft.class_2828;
-import net.minecraft.class_2828.class_5911;
+import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
+import net.minecraft.network.packet.s2c.play.EntityVelocityUpdateS2CPacket;
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket.OnGroundOnly;
 
 public class LongJump2 extends Module {
    private int jumpStage;
@@ -41,12 +41,12 @@ public class LongJump2 extends Module {
          if (this.jumpTimer == 0) {
          }
 
-         mc.field_1724.method_18799(mc.field_1724.method_18798().method_1031(0.0, 0.42, 0.0));
+         mc.player.setVelocity(mc.player.getVelocity().add(0.0, 0.42, 0.0));
          if (this.state == 1) {
             this.state = 2;
             this.motionStage = 0;
          } else if (this.state == 3) {
-            mc.field_1724.method_18799(mc.field_1724.method_18798().method_1021(0.0));
+            mc.player.setVelocity(mc.player.getVelocity().multiply(0.0));
             this.packetCounter = 1;
             this.motionStage++;
             if (this.motionStage > 20) {
@@ -59,14 +59,14 @@ public class LongJump2 extends Module {
    @EventHandler
    public void onPostStrafe(PostStrafeEvent event) {
       if (this.boostCounter == 0) {
-         mc.field_1724.method_6043();
+         mc.player.jump();
       }
 
       if (this.boostCounter == 1) {
          this.jumpStage = 1;
 
          for (int i = 0; i < 10; i++) {
-            PacketUtils.sendPacket(new class_5911(true, mc.field_1724.field_5976));
+            PacketUtils.sendPacket(new OnGroundOnly(true, mc.player.horizontalCollision));
          }
 
          ChatUtils.info("321");
@@ -79,7 +79,7 @@ public class LongJump2 extends Module {
 
    @EventHandler
    public void onPacketReceive(PacketEvent event) {
-      if (event.getPacket() instanceof class_2828) {
+      if (event.getPacket() instanceof PlayerMoveC2SPacket) {
          if (this.packetCounter != 1) {
             return;
          }
@@ -89,14 +89,14 @@ public class LongJump2 extends Module {
       }
 
       if (!event.getOrigin().equals(TransferOrigin.SEND)) {
-         class_2596<?> packet = event.getPacket();
-         if (packet instanceof class_2743 velocityPacket
-            && velocityPacket.method_11818() == mc.field_1724.method_5628()
-            && velocityPacket.method_11816() / 8000.0 < 0.0) {
+         Packet<?> packet = event.getPacket();
+         if (packet instanceof EntityVelocityUpdateS2CPacket velocityPacket
+            && velocityPacket.getEntityId() == mc.player.getId()
+            && velocityPacket.getVelocityY() / 8000.0 < 0.0) {
             this.toggle();
          }
 
-         if (packet instanceof class_2708) {
+         if (packet instanceof PlayerPositionLookS2CPacket) {
             this.state = 1;
          }
       }

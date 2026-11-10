@@ -18,18 +18,18 @@ import dev.southside.utils.rotation.RotationUtils;
 import dev.southside.utils.types.Rotation;
 import dev.southside.utils.world.ProjectilePredictionUtils;
 import java.util.Optional;
-import net.minecraft.class_1268;
-import net.minecraft.class_1269;
-import net.minecraft.class_1297;
-import net.minecraft.class_1309;
-import net.minecraft.class_1657;
-import net.minecraft.class_1753;
-import net.minecraft.class_1764;
-import net.minecraft.class_1776;
-import net.minecraft.class_1799;
-import net.minecraft.class_1802;
-import net.minecraft.class_243;
-import net.minecraft.class_9334;
+import net.minecraft.util.Hand;
+import net.minecraft.util.ActionResult;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.BowItem;
+import net.minecraft.item.CrossbowItem;
+import net.minecraft.item.EnderPearlItem;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.component.DataComponentTypes;
 
 public class AutoKnockBack extends Module {
    public Slider minRangeValue = new Slider("Min Range", 3, 2, 10, 0.1F);
@@ -41,7 +41,7 @@ public class AutoKnockBack extends Module {
    public Slider predictionTicks = new Slider("Predict Ticks", 4, 1, 10, 1);
    public Switch wallCheck = new Switch("Wall Check", true);
    TimerUtil delay = new TimerUtil();
-   class_1309 target;
+   LivingEntity target;
    int currentSlot = -1;
    public boolean interactRequired;
 
@@ -65,10 +65,10 @@ public class AutoKnockBack extends Module {
    @EventHandler
    public void onTick(TickEvent event) {
       if (event.getState() == Stage.PRE) {
-         if (mc.field_1724 != null && mc.field_1687 != null && this.predictionEnabled.getValue()) {
-            for (class_1297 entity : mc.field_1687.method_18112()) {
-               if (entity instanceof class_1657 player && player.method_5805() && TargetUtils.isTarget(player, true, true)) {
-                  double distSq = mc.field_1724.method_5858(player);
+         if (mc.player != null && mc.world != null && this.predictionEnabled.getValue()) {
+            for (Entity entity : mc.world.getEntities()) {
+               if (entity instanceof PlayerEntity player && player.isAlive() && TargetUtils.isTarget(player, true, true)) {
+                  double distSq = mc.player.squaredDistanceTo(player);
                   double maxR = this.maxRangeValue.getValue().floatValue();
                   if (distSq <= maxR * maxR) {
                      ProjectilePredictionUtils.recordPosition(player);
@@ -81,29 +81,29 @@ public class AutoKnockBack extends Module {
 
    @EventHandler
    public void onRotation(RotationEvent event) {
-      if (mc.field_1724 != null
-         && mc.field_1687 != null
-         && !mc.field_1724.method_6115()
+      if (mc.player != null
+         && mc.world != null
+         && !mc.player.isUsingItem()
          && !Southside.get().getModuleManager().get(Scaffold.class).isEnabled()
-         && mc.field_1755 == null
-         && !mc.field_1690.field_1886.method_1434()) {
+         && mc.currentScreen == null
+         && !mc.options.attackKey.isPressed()) {
          if (!BowSpammer.isWorking) {
             if (!KeyPearl.isWorking()) {
-               Optional<class_1657> target = getTarget(this.minRangeValue.getValue().floatValue(), this.maxRangeValue.getValue().floatValue());
+               Optional<PlayerEntity> target = getTarget(this.minRangeValue.getValue().floatValue(), this.maxRangeValue.getValue().floatValue());
                this.target = null;
                if (!target.isEmpty()) {
-                  this.target = (class_1309)target.get();
-                  class_1657 player = target.get();
+                  this.target = (LivingEntity)target.get();
+                  PlayerEntity player = target.get();
                   Rotation targetRotation;
                   if (this.predictionEnabled.getValue()) {
                      int ticks = this.predictionTicks.getValue().intValue();
-                     class_243 predictedPos = ProjectilePredictionUtils.predictTargetPosition(player, ticks, this.wallCheck.getValue());
+                     Vec3d predictedPos = ProjectilePredictionUtils.predictTargetPosition(player, ticks, this.wallCheck.getValue());
                      targetRotation = ProjectilePredictionUtils.getThrowableRotation(predictedPos);
                   } else {
                      targetRotation = RotationUtils.getPlayerRotations(player);
                   }
 
-                  if (mc.field_1724.method_6057(player)) {
+                  if (mc.player.canSee(player)) {
                      if (this.delay.hasReached(this.delayValue.getValue().longValue())
                         && (this.autoSwitchValue.getValue() && this.getThrowSlot() != -1 || !this.isOffHandStackEmpty())) {
                         RotationUtils.setRotation(targetRotation);
@@ -118,35 +118,35 @@ public class AutoKnockBack extends Module {
 
    @EventHandler
    public void onRotationApplied(RotationAppliedEvent event) {
-      if (mc.field_1724 != null) {
+      if (mc.player != null) {
          if (this.currentSlot != -1) {
-            mc.field_1724.method_31548().field_7545 = this.currentSlot;
+            mc.player.getInventory().selectedSlot = this.currentSlot;
             this.currentSlot = -1;
          }
 
-         if (this.interactRequired && !mc.field_1724.field_3915) {
+         if (this.interactRequired && !mc.player.usingItem) {
             if (this.delay.hasReached(this.delayValue.getValue().longValue()) && !this.isOffHandStackEmpty() && !this.autoSwitchValue.getValue()) {
-               class_1269 res = this.interactItem(mc.field_1724, class_1268.field_5810);
-               if (res.method_23665()) {
-                  mc.field_1724.method_6104(class_1268.field_5810);
+               ActionResult res = this.interactItem(mc.player, Hand.OFF_HAND);
+               if (res.isAccepted()) {
+                  mc.player.swingHand(Hand.OFF_HAND);
                   this.delay.reset();
                   this.interactRequired = false;
                }
             }
 
             if (this.delay.hasReached(this.delayValue.getValue().longValue()) && this.getThrowSlot() != -1 && this.autoSwitchValue.getValue()) {
-               if (KillAura.targets.isEmpty() && mc.field_1724.method_31548().method_7391().method_7909() != class_1802.field_8102) {
+               if (KillAura.targets.isEmpty() && mc.player.getInventory().getMainHandStack().getItem() != Items.BOW) {
                   int slot = this.getThrowSlot();
                   if (slot != -1) {
-                     this.currentSlot = mc.field_1724.method_31548().field_7545;
-                     mc.field_1724.method_31548().field_7545 = slot;
+                     this.currentSlot = mc.player.getInventory().selectedSlot;
+                     mc.player.getInventory().selectedSlot = slot;
                   }
                }
 
-               if (mc.field_1724.method_6047().method_7909() == class_1802.field_8543 || mc.field_1724.method_6047().method_7909() == class_1802.field_8803) {
-                  class_1269 res = this.interactItem(mc.field_1724, class_1268.field_5808);
-                  if (res.method_23665()) {
-                     mc.field_1724.method_6104(class_1268.field_5808);
+               if (mc.player.getMainHandStack().getItem() == Items.SNOWBALL || mc.player.getMainHandStack().getItem() == Items.EGG) {
+                  ActionResult res = this.interactItem(mc.player, Hand.MAIN_HAND);
+                  if (res.isAccepted()) {
+                     mc.player.swingHand(Hand.MAIN_HAND);
                      this.delay.reset();
                      this.interactRequired = false;
                   }
@@ -156,25 +156,25 @@ public class AutoKnockBack extends Module {
       }
    }
 
-   private boolean hasCustomName(class_1799 stack) {
-      return stack.method_57826(class_9334.field_49631);
+   private boolean hasCustomName(ItemStack stack) {
+      return stack.contains(DataComponentTypes.CUSTOM_NAME);
    }
 
-   private boolean isThrowable(class_1799 stack) {
-      return stack.method_7909() == class_1802.field_8543 || stack.method_7909() == class_1802.field_8803;
+   private boolean isThrowable(ItemStack stack) {
+      return stack.getItem() == Items.SNOWBALL || stack.getItem() == Items.EGG;
    }
 
    public boolean isOffHandStackEmpty() {
-      class_1799 offHandStack = mc.field_1724.method_6079();
+      ItemStack offHandStack = mc.player.getOffHandStack();
       return !this.isThrowable(offHandStack) ? true : this.noSpecialItems.getValue() && this.hasCustomName(offHandStack);
    }
 
    int getThrowSlot() {
-      if (!(mc.field_1724.method_31548().method_7391().method_7909() instanceof class_1776)
-         && !(mc.field_1724.method_31548().method_7391().method_7909() instanceof class_1753)
-         && !(mc.field_1724.method_31548().method_7391().method_7909() instanceof class_1764)) {
+      if (!(mc.player.getInventory().getMainHandStack().getItem() instanceof EnderPearlItem)
+         && !(mc.player.getInventory().getMainHandStack().getItem() instanceof BowItem)
+         && !(mc.player.getInventory().getMainHandStack().getItem() instanceof CrossbowItem)) {
          for (int i = 0; i < 9; i++) {
-            class_1799 stack = mc.field_1724.method_31548().method_5438(i);
+            ItemStack stack = mc.player.getInventory().getStack(i);
             if (this.isThrowable(stack) && (!this.noSpecialItems.getValue() || !this.hasCustomName(stack))) {
                return i;
             }
@@ -186,15 +186,15 @@ public class AutoKnockBack extends Module {
       }
    }
 
-   public static Optional<class_1657> getTarget(float min, float max) {
+   public static Optional<PlayerEntity> getTarget(float min, float max) {
       double minRange = min * min;
       double maxRange = max * max;
-      class_1657 closestTarget = null;
+      PlayerEntity closestTarget = null;
       double closestDistanceSq = Double.MAX_VALUE;
 
-      for (class_1297 entity : mc.field_1687.method_18112()) {
-         if (entity instanceof class_1657 player && player.method_5805() && TargetUtils.isTarget(player, true, true)) {
-            double distanceSq = mc.field_1724.method_5858(player);
+      for (Entity entity : mc.world.getEntities()) {
+         if (entity instanceof PlayerEntity player && player.isAlive() && TargetUtils.isTarget(player, true, true)) {
+            double distanceSq = mc.player.squaredDistanceTo(player);
             if (distanceSq <= maxRange && distanceSq >= minRange && distanceSq < closestDistanceSq) {
                closestDistanceSq = distanceSq;
                closestTarget = player;
@@ -205,7 +205,7 @@ public class AutoKnockBack extends Module {
       return Optional.ofNullable(closestTarget);
    }
 
-   public class_1269 interactItem(class_1657 player, class_1268 hand) {
-      return (class_1269)(mc.field_1761 != null ? mc.field_1761.method_2919(player, hand) : class_1269.field_5814);
+   public ActionResult interactItem(PlayerEntity player, Hand hand) {
+      return (ActionResult)(mc.interactionManager != null ? mc.interactionManager.interactItem(player, hand) : ActionResult.FAIL);
    }
 }

@@ -16,7 +16,7 @@ public class NoJumpDelay extends Module {
    )
    public void onRotate(RotationEvent event) {
       if (!ClientUtils.nullCheck()) {
-         mc.field_1724.field_6228 = 0;
+         mc.player.jumpingCooldown = 0;
       }
    }
 }

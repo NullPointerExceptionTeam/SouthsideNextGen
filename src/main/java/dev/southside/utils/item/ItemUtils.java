@@ -2,51 +2,51 @@ package dev.southside.utils.item;
 
 import dev.southside.MinecraftAccessor;
 import java.util.Objects;
-import net.minecraft.class_10192;
-import net.minecraft.class_10394;
-import net.minecraft.class_1268;
-import net.minecraft.class_1304;
-import net.minecraft.class_1320;
-import net.minecraft.class_1766;
-import net.minecraft.class_1792;
-import net.minecraft.class_1799;
-import net.minecraft.class_1829;
-import net.minecraft.class_1839;
-import net.minecraft.class_5321;
-import net.minecraft.class_6880;
-import net.minecraft.class_9285;
-import net.minecraft.class_9334;
+import net.minecraft.component.type.EquippableComponent;
+import net.minecraft.item.equipment.EquipmentAsset;
+import net.minecraft.util.Hand;
+import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.entity.attribute.EntityAttribute;
+import net.minecraft.item.MiningToolItem;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.SwordItem;
+import net.minecraft.item.consume.UseAction;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.component.type.AttributeModifiersComponent;
+import net.minecraft.component.DataComponentTypes;
 
 public class ItemUtils {
-   public static boolean instanceofToolItem(class_1792 item) {
-      return item instanceof class_1766 || item instanceof class_1829;
+   public static boolean instanceofToolItem(Item item) {
+      return item instanceof MiningToolItem || item instanceof SwordItem;
    }
 
-   public static class_1304 getEquippableSlotType(class_1799 item) {
-      return ((class_10192)Objects.requireNonNull((class_10192)item.method_57824(class_9334.field_54196))).comp_3174();
+   public static EquipmentSlot getEquippableSlotType(ItemStack item) {
+      return ((EquippableComponent)Objects.requireNonNull((EquippableComponent)item.get(DataComponentTypes.EQUIPPABLE))).slot();
    }
 
-   public static class_5321<class_10394> getArmorAsset(class_1799 item) {
-      class_10192 component = (class_10192)item.method_57824(class_9334.field_54196);
-      return component != null ? (class_5321)component.comp_3176().orElse(null) : null;
+   public static RegistryKey<EquipmentAsset> getArmorAsset(ItemStack item) {
+      EquippableComponent component = (EquippableComponent)item.get(DataComponentTypes.EQUIPPABLE);
+      return component != null ? (RegistryKey)component.assetId().orElse(null) : null;
    }
 
-   public static double armorAttributeValueWithStack(class_1799 stack, class_6880<class_1320> attribute) {
-      class_1304 slot = getEquippableSlotType(stack);
-      double base = MinecraftAccessor.mc.field_1724.method_6127().method_45331(attribute) ? MinecraftAccessor.mc.field_1724.method_45326(attribute) : 0.0;
-      class_9285 component = (class_9285)stack.method_57825(class_9334.field_49636, class_9285.field_49326);
-      return component.method_57481(base, slot);
+   public static double armorAttributeValueWithStack(ItemStack stack, RegistryEntry<EntityAttribute> attribute) {
+      EquipmentSlot slot = getEquippableSlotType(stack);
+      double base = MinecraftAccessor.mc.player.getAttributes().hasAttribute(attribute) ? MinecraftAccessor.mc.player.getAttributeBaseValue(attribute) : 0.0;
+      AttributeModifiersComponent component = (AttributeModifiersComponent)stack.getOrDefault(DataComponentTypes.ATTRIBUTE_MODIFIERS, AttributeModifiersComponent.DEFAULT);
+      return component.applyOperations(base, slot);
    }
 
-   public static double handAttributeValueWithStack(class_1799 stack, class_6880<class_1320> attribute, class_1268 hand) {
-      class_1304 slot = hand.equals(class_1268.field_5808) ? class_1304.field_6173 : class_1304.field_6171;
-      double base = MinecraftAccessor.mc.field_1724.method_6127().method_45331(attribute) ? MinecraftAccessor.mc.field_1724.method_45326(attribute) : 0.0;
-      class_9285 component = (class_9285)stack.method_57825(class_9334.field_49636, class_9285.field_49326);
-      return component.method_57481(base, slot);
+   public static double handAttributeValueWithStack(ItemStack stack, RegistryEntry<EntityAttribute> attribute, Hand hand) {
+      EquipmentSlot slot = hand.equals(Hand.MAIN_HAND) ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND;
+      double base = MinecraftAccessor.mc.player.getAttributes().hasAttribute(attribute) ? MinecraftAccessor.mc.player.getAttributeBaseValue(attribute) : 0.0;
+      AttributeModifiersComponent component = (AttributeModifiersComponent)stack.getOrDefault(DataComponentTypes.ATTRIBUTE_MODIFIERS, AttributeModifiersComponent.DEFAULT);
+      return component.applyOperations(base, slot);
    }
 
-   public static boolean isConsumable(class_1799 stack) {
-      class_1839 action = stack.method_7976();
-      return !action.equals(class_1839.field_8952);
+   public static boolean isConsumable(ItemStack stack) {
+      UseAction action = stack.getUseAction();
+      return !action.equals(UseAction.NONE);
    }
 }

@@ -1,24 +1,24 @@
 package dev.southside.utils.types;
 
 import dev.southside.MinecraftAccessor;
-import net.minecraft.class_1268;
-import net.minecraft.class_1799;
+import net.minecraft.util.Hand;
+import net.minecraft.item.ItemStack;
 
 public record FindItemResult(int slot, int count) {
    public boolean found() {
       return this.slot != -1;
    }
 
-   public class_1268 getHand() {
-      return this.slot == 45 ? class_1268.field_5810 : null;
+   public Hand getHand() {
+      return this.slot == 45 ? Hand.OFF_HAND : null;
    }
 
    public boolean isMainHand() {
-      return this.getHand() == class_1268.field_5808;
+      return this.getHand() == Hand.MAIN_HAND;
    }
 
    public boolean isOffhand() {
-      return this.getHand() == class_1268.field_5810;
+      return this.getHand() == Hand.OFF_HAND;
    }
 
    public boolean isHotbar() {
@@ -50,7 +50,7 @@ public record FindItemResult(int slot, int count) {
       return this.slot;
    }
 
-   public class_1799 stack() {
-      return MinecraftAccessor.mc.field_1724.method_31548().method_5438(this.slot);
+   public ItemStack stack() {
+      return MinecraftAccessor.mc.player.getInventory().getStack(this.slot);
    }
 }

@@ -21,11 +21,11 @@ import java.awt.Color;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
-import net.minecraft.class_1799;
-import net.minecraft.class_1802;
-import net.minecraft.class_2596;
-import net.minecraft.class_2708;
-import net.minecraft.class_2743;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
+import net.minecraft.network.packet.s2c.play.EntityVelocityUpdateS2CPacket;
 import org.lwjgl.glfw.GLFW;
 
 public class LongJump extends Module {
@@ -44,7 +44,7 @@ public class LongJump extends Module {
    private int rotateTick = 0;
    private int initialFireballCount = 0;
    private final List<Integer> knockbackPositions = new ArrayList<>();
-   private final LinkedBlockingQueue<class_2596<?>> packets = new LinkedBlockingQueue<>();
+   private final LinkedBlockingQueue<Packet<?>> packets = new LinkedBlockingQueue<>();
    private final List<Double> knockbackStrengths = new ArrayList<>();
 
    public LongJump() {
@@ -64,8 +64,8 @@ public class LongJump extends Module {
          int rgb = Color.HSBtoRGB(hue, 1.0F, 1.0F);
          int color = 0xFF000000 | rgb & 16777215;
          float textWidth = instance.getTextWidth(vg, text, 10.0F, Fonts.WQY);
-         float x = (mc.method_22683().method_4486() - textWidth) / 2.0F;
-         float y = mc.method_22683().method_4502() / 2.0F + 50.0F;
+         float x = (mc.getWindow().getScaledWidth() - textWidth) / 2.0F;
+         float y = mc.getWindow().getScaledHeight() / 2.0F + 50.0F;
          instance.drawTextWithFormatting(vg, text, x, y, color, 10.0F, Fonts.WQY);
       });
    }
@@ -96,8 +96,8 @@ public class LongJump extends Module {
    public void onDisable() {
       this.releaseAll();
       this.slotBack();
-      mc.field_1690.field_1904.method_23481(false);
-      mc.field_1690.field_1903.method_23481(false);
+      mc.options.useKey.setPressed(false);
+      mc.options.jumpKey.setPressed(false);
       rotation = null;
       this.isUsingItem = false;
       this.usedFireballCount = 0;
@@ -110,8 +110,8 @@ public class LongJump extends Module {
    }
 
    private void slotBack() {
-      if (this.lastSlot != -1 && mc.field_1724 != null) {
-         mc.field_1724.method_31548().field_7545 = this.lastSlot;
+      if (this.lastSlot != -1 && mc.player != null) {
+         mc.player.getInventory().selectedSlot = this.lastSlot;
          this.lastSlot = -1;
       }
    }
@@ -119,8 +119,8 @@ public class LongJump extends Module {
    private void releaseAll() {
       while (!this.packets.isEmpty()) {
          try {
-            class_2596<?> packet = this.packets.poll();
-            if (packet != null && mc.method_1562() != null) {
+            Packet<?> packet = this.packets.poll();
+            if (packet != null && mc.getNetworkHandler() != null) {
                PacketUtils.handlePacketNoEvent(packet);
             }
          } catch (Exception var2) {
@@ -136,8 +136,8 @@ public class LongJump extends Module {
 
          while (!this.packets.isEmpty() && releasedCount <= targetPosition) {
             try {
-               class_2596<?> packet = this.packets.poll();
-               if (packet != null && mc.method_1562() != null) {
+               Packet<?> packet = this.packets.poll();
+               if (packet != null && mc.getNetworkHandler() != null) {
                   PacketUtils.handlePacketNoEvent(packet);
                }
 
@@ -169,14 +169,14 @@ public class LongJump extends Module {
             this.enabled = false;
          }
 
-         boolean currentMouse4 = GLFW.glfwGetMouseButton(mc.method_22683().method_4490(), 3) == 1;
+         boolean currentMouse4 = GLFW.glfwGetMouseButton(mc.getWindow().getHandle(), 3) == 1;
          if (currentMouse4 && !this.mouse4Pressed) {
             this.mouse4Pressed = true;
             if (!this.isUsingItem && this.rotateTick == 0) {
                int fireballSlot = this.setupFireballSlot();
                if (fireballSlot != -1) {
-                  this.lastSlot = mc.field_1724.method_31548().field_7545;
-                  mc.field_1724.method_31548().field_7545 = fireballSlot;
+                  this.lastSlot = mc.player.getInventory().selectedSlot;
+                  mc.player.getInventory().selectedSlot = fireballSlot;
                   this.rotateTick = 1;
                }
             }
@@ -184,7 +184,7 @@ public class LongJump extends Module {
             this.mouse4Pressed = false;
          }
 
-         boolean currentMouse5 = GLFW.glfwGetMouseButton(mc.method_22683().method_4490(), 4) == 1;
+         boolean currentMouse5 = GLFW.glfwGetMouseButton(mc.getWindow().getHandle(), 4) == 1;
          if (currentMouse5 && !this.mouse5Pressed) {
             this.mouse5Pressed = true;
             if (this.delayed && this.releasedKnockbacks < this.receivedKnockbacks) {
@@ -205,18 +205,18 @@ public class LongJump extends Module {
 
    @EventHandler
    public void onPacket(PacketEvent event) {
-      if (this.isEnabled() && mc.field_1724 != null) {
+      if (this.isEnabled() && mc.player != null) {
          if (this.delayed && event.getOrigin() == TransferOrigin.RECEIVE) {
-            class_2596<?> packet = event.getPacket();
-            if (packet instanceof class_2708) {
+            Packet<?> packet = event.getPacket();
+            if (packet instanceof PlayerPositionLookS2CPacket) {
                event.setCancelled(true);
             } else {
-               if (packet instanceof class_2743 vel && vel.method_11818() == mc.field_1724.method_5628()) {
+               if (packet instanceof EntityVelocityUpdateS2CPacket vel && vel.getEntityId() == mc.player.getId()) {
                   this.receivedKnockbacks++;
                   this.knockbackPositions.add(this.packets.size());
-                  double vx = vel.method_11815() / 8000.0;
-                  double vy = vel.method_11816() / 8000.0;
-                  double vz = vel.method_11819() / 8000.0;
+                  double vx = vel.getVelocityX() / 8000.0;
+                  double vy = vel.getVelocityY() / 8000.0;
+                  double vz = vel.getVelocityZ() / 8000.0;
                   double strength = Math.sqrt(vx * vx + vy * vy + vz * vz);
                   this.knockbackStrengths.add(strength);
                }
@@ -225,16 +225,16 @@ public class LongJump extends Module {
                this.packets.add(packet);
             }
          } else {
-            if (event.getPacket() instanceof class_2743 vel
+            if (event.getPacket() instanceof EntityVelocityUpdateS2CPacket vel
                && event.getOrigin() == TransferOrigin.RECEIVE
-               && vel.method_11818() == mc.field_1724.method_5628()
+               && vel.getEntityId() == mc.player.getId()
                && this.usedFireballCount > 0
                && !this.delayed) {
                this.receivedKnockbacks++;
                this.knockbackPositions.add(this.packets.size());
-               double vx = vel.method_11815() / 8000.0;
-               double vy = vel.method_11816() / 8000.0;
-               double vz = vel.method_11819() / 8000.0;
+               double vx = vel.getVelocityX() / 8000.0;
+               double vy = vel.getVelocityY() / 8000.0;
+               double vz = vel.getVelocityZ() / 8000.0;
                double strength = Math.sqrt(vx * vx + vy * vy + vz * vz);
                this.knockbackStrengths.add(strength);
                event.setCancelled(true);
@@ -254,20 +254,20 @@ public class LongJump extends Module {
 
    @EventHandler
    public void onMotion(MotionEvent event) {
-      if (mc.field_1724 != null) {
+      if (mc.player != null) {
          if (this.isEnabled()) {
             if (event.getState() == Stage.PRE) {
                if (this.rotateTick > 0) {
                   if (this.rotateTick == 1) {
                      this.usedFireballCount++;
-                     mc.field_1690.field_1903.method_23481(true);
+                     mc.options.jumpKey.setPressed(true);
                      float yaw;
                      float pitch;
                      if (!this.notMoving) {
-                        yaw = mc.field_1724.method_36454() - 180.0F;
+                        yaw = mc.player.getYaw() - 180.0F;
                         pitch = 88.0F;
                      } else {
-                        yaw = mc.field_1724.method_36454();
+                        yaw = mc.player.getYaw();
                         pitch = 90.0F;
                      }
 
@@ -278,9 +278,9 @@ public class LongJump extends Module {
                      this.rotateTick = 0;
                      int fireballSlot = this.setupFireballSlot();
                      if (fireballSlot != -1) {
-                        mc.field_1724.method_31548().field_7545 = fireballSlot;
+                        mc.player.getInventory().selectedSlot = fireballSlot;
                         this.initialFireballCount = this.getFireballCount();
-                        mc.field_1690.field_1904.method_23481(true);
+                        mc.options.useKey.setPressed(true);
                         this.isUsingItem = true;
                      } else {
                         this.setEnable(false);
@@ -294,13 +294,13 @@ public class LongJump extends Module {
             } else if (this.isUsingItem) {
                int currentFireballCount = this.getFireballCount();
                if (currentFireballCount < this.initialFireballCount) {
-                  mc.field_1690.field_1904.method_23481(false);
-                  mc.field_1690.field_1903.method_23481(false);
+                  mc.options.useKey.setPressed(false);
+                  mc.options.jumpKey.setPressed(false);
                   rotation = null;
                   this.isUsingItem = false;
                } else if (this.getFireballSlot() == -1) {
-                  mc.field_1690.field_1904.method_23481(false);
-                  mc.field_1690.field_1903.method_23481(false);
+                  mc.options.useKey.setPressed(false);
+                  mc.options.jumpKey.setPressed(false);
                   rotation = null;
                   this.isUsingItem = false;
                   this.slotBack();
@@ -320,8 +320,8 @@ public class LongJump extends Module {
 
    private int getFireballSlot() {
       for (int i = 0; i < 9; i++) {
-         class_1799 stack = mc.field_1724.method_31548().method_5438(i);
-         if (!stack.method_7960() && stack.method_7909() == class_1802.field_8814) {
+         ItemStack stack = mc.player.getInventory().getStack(i);
+         if (!stack.isEmpty() && stack.getItem() == Items.FIRE_CHARGE) {
             return i;
          }
       }
@@ -333,9 +333,9 @@ public class LongJump extends Module {
       int count = 0;
 
       for (int i = 0; i < 9; i++) {
-         class_1799 itemStack = mc.field_1724.method_31548().method_5438(i);
-         if (itemStack.method_7909() == class_1802.field_8814) {
-            count += itemStack.method_7947();
+         ItemStack itemStack = mc.player.getInventory().getStack(i);
+         if (itemStack.getItem() == Items.FIRE_CHARGE) {
+            count += itemStack.getCount();
          }
       }
 

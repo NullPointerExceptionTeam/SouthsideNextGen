@@ -1,15 +1,15 @@
 package dev.southside.mixin.accessors;
 
-import net.minecraft.class_2960;
-import net.minecraft.class_757;
+import net.minecraft.util.Identifier;
+import net.minecraft.client.render.GameRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Invoker;
 
-@Mixin({class_757.class})
+@Mixin({GameRenderer.class})
 public interface IGameRenderer {
-   @Invoker("method_62904")
-   void invokeLoadPostProcessor(class_2960 var1);
+   @Invoker("setPostProcessor")
+   void invokeLoadPostProcessor(Identifier var1);
 
-   @Invoker("method_62905")
+   @Invoker("clearPostProcessor")
    void invokeClearPostProcessor();
 }

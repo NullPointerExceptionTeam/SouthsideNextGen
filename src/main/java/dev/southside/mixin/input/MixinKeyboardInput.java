@@ -8,12 +8,12 @@ import dev.southside.utils.player.PlayerUtils;
 import dev.southside.utils.rotation.RotationUtils;
 import dev.southside.utils.types.Rotation;
 import java.util.ArrayList;
-import net.minecraft.class_10185;
-import net.minecraft.class_310;
-import net.minecraft.class_315;
-import net.minecraft.class_743;
-import net.minecraft.class_744;
-import net.minecraft.class_746;
+import net.minecraft.util.PlayerInput;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.option.GameOptions;
+import net.minecraft.client.input.KeyboardInput;
+import net.minecraft.client.input.Input;
+import net.minecraft.client.network.ClientPlayerEntity;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -22,64 +22,64 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin({class_743.class})
-public abstract class MixinKeyboardInput extends class_744 {
+@Mixin({KeyboardInput.class})
+public abstract class MixinKeyboardInput extends Input {
    @Unique
    private final ArrayList<Rotation> possible = new ArrayList<>();
    @Shadow
    @Final
-   private class_315 field_3902;
+   private GameOptions settings;
 
    @Shadow
-   private static float method_40218(boolean positive, boolean negative) {
+   private static float getMovementMultiplier(boolean positive, boolean negative) {
       return 0.0F;
    }
 
    @Inject(
-      method = {"method_3129()V"},
+      method = {"tick()V"},
       at = {@At("TAIL")},
       allow = 1
    )
    private void injectMovementInputEvent(CallbackInfo ci) {
-      this.field_54155 = new class_10185(
-         this.field_3902.field_1894.method_1434(),
-         this.field_3902.field_1881.method_1434(),
-         this.field_3902.field_1913.method_1434(),
-         this.field_3902.field_1849.method_1434(),
-         this.field_3902.field_1903.method_1434(),
-         this.field_3902.field_1832.method_1434(),
-         this.field_3902.field_1867.method_1434()
+      this.playerInput = new PlayerInput(
+         this.settings.forwardKey.isPressed(),
+         this.settings.backKey.isPressed(),
+         this.settings.leftKey.isPressed(),
+         this.settings.rightKey.isPressed(),
+         this.settings.jumpKey.isPressed(),
+         this.settings.sneakKey.isPressed(),
+         this.settings.sprintKey.isPressed()
       );
-      this.field_3905 = method_40218(this.field_54155.comp_3159(), this.field_54155.comp_3160());
-      this.field_3907 = method_40218(this.field_54155.comp_3161(), this.field_54155.comp_3162());
+      this.movementForward = getMovementMultiplier(this.playerInput.forward(), this.playerInput.backward());
+      this.movementSideways = getMovementMultiplier(this.playerInput.left(), this.playerInput.right());
       MovementInputEvent event = Southside.INSTANCE
          .getEventBus()
          .post(
             new MovementInputEvent(
-               this.field_54155.comp_3159(),
-               this.field_54155.comp_3160(),
-               this.field_54155.comp_3161(),
-               this.field_54155.comp_3162(),
-               this.field_54155.comp_3164(),
-               this.field_54155.comp_3163(),
-               this.field_54155.comp_3165(),
+               this.playerInput.forward(),
+               this.playerInput.backward(),
+               this.playerInput.left(),
+               this.playerInput.right(),
+               this.playerInput.sneak(),
+               this.playerInput.jump(),
+               this.playerInput.sprint(),
                false
             )
          );
 
       RotationUtils.setSilentFixSkipped(event.isSkipSilent());
-      this.field_54155 = new class_10185(event.isForward(), event.isBack(), event.isLeft(), event.isRight(), event.isJump(), event.isSneak(), event.isSprint());
-      this.field_3905 = method_40218(this.field_54155.comp_3159(), this.field_54155.comp_3160());
-      this.field_3907 = method_40218(this.field_54155.comp_3161(), this.field_54155.comp_3162());
+      this.playerInput = new PlayerInput(event.isForward(), event.isBack(), event.isLeft(), event.isRight(), event.isJump(), event.isSneak(), event.isSprint());
+      this.movementForward = getMovementMultiplier(this.playerInput.forward(), this.playerInput.backward());
+      this.movementSideways = getMovementMultiplier(this.playerInput.left(), this.playerInput.right());
       this.fixStrafeMovement(event);
-      this.field_3905 = method_40218(this.field_54155.comp_3159(), this.field_54155.comp_3160());
-      this.field_3907 = method_40218(this.field_54155.comp_3161(), this.field_54155.comp_3162());
+      this.movementForward = getMovementMultiplier(this.playerInput.forward(), this.playerInput.backward());
+      this.movementSideways = getMovementMultiplier(this.playerInput.left(), this.playerInput.right());
       if (MovementUtils.consumeInputHold()) {
-         this.field_54155 = new class_10185(
-            false, false, false, false, this.field_54155.comp_3163(), this.field_54155.comp_3164(), this.field_54155.comp_3165()
+         this.playerInput = new PlayerInput(
+            false, false, false, false, this.playerInput.jump(), this.playerInput.sneak(), this.playerInput.sprint()
          );
-         this.field_3905 = method_40218(this.field_54155.comp_3159(), this.field_54155.comp_3160());
-         this.field_3907 = method_40218(this.field_54155.comp_3161(), this.field_54155.comp_3162());
+         this.movementForward = getMovementMultiplier(this.playerInput.forward(), this.playerInput.backward());
+         this.movementSideways = getMovementMultiplier(this.playerInput.left(), this.playerInput.right());
       }
       Southside.INSTANCE.getEventBus().post(new PostMoveInput());
    }
@@ -87,14 +87,14 @@ public abstract class MixinKeyboardInput extends class_744 {
    @Unique
    private void fixStrafeMovement(MovementInputEvent event) {
       if (!event.isSkipSilent()) {
-         class_746 player = class_310.method_1551().field_1724;
+         ClientPlayerEntity player = MinecraftClient.getInstance().player;
          if (player != null) {
             if (!RotationUtils.isStrictFix()) {
                if (RotationUtils.isStrafeFix()) {
                   if (RotationUtils.getRotation() != null) {
                      Rotation rotation = RotationUtils.getRotationSafely();
-                     float forward = this.field_3905;
-                     float strafe = this.field_3907;
+                     float forward = this.movementForward;
+                     float strafe = this.movementSideways;
                      int angleUnit = 45;
                      float angleTolerance = 22.5F;
                      float directionFactor = Math.max(Math.abs(forward), Math.abs(strafe));
@@ -142,7 +142,7 @@ public abstract class MixinKeyboardInput extends class_744 {
                         right = true;
                      }
 
-                     this.field_54155 = new class_10185(up, down, left, right, event.isJump(), event.isSneak(), event.isSprint());
+                     this.playerInput = new PlayerInput(up, down, left, right, event.isJump(), event.isSneak(), event.isSprint());
                   }
                }
             }

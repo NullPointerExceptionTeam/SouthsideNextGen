@@ -34,9 +34,9 @@ import java.util.UUID;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-import net.minecraft.class_1297;
-import net.minecraft.class_1657;
-import net.minecraft.class_640;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.client.network.PlayerListEntry;
 
 public class HackerDetector extends Module {
    public final Switch logValue = new Switch("Log", false);
@@ -50,9 +50,9 @@ public class HackerDetector extends Module {
    public final Slider vlDecay = new Slider("VL Decay/s", 0.5, 0.0, 5.0, 0.1);
    private final List<Check> manageChecks = new ArrayList<>();
    private final ConcurrentHashMap<UUID, PlayerData> playDataMap = new ConcurrentHashMap<>();
-   public List<class_1657> hackerList = new ArrayList<>();
+   public List<PlayerEntity> hackerList = new ArrayList<>();
    private Map<UUID, Float> tempHackerList;
-   public List<class_1657> filteredHackerList = new ArrayList<>();
+   public List<PlayerEntity> filteredHackerList = new ArrayList<>();
    private boolean initialized = false;
 
    public HackerDetector() {
@@ -120,7 +120,7 @@ public class HackerDetector extends Module {
 
    @EventHandler
    public void onWorld(WorldEvent event) {
-      if (mc.field_1687 != null) {
+      if (mc.world != null) {
          if (this.persistValue.getValue()) {
             save(this.playDataMap.entrySet().stream().collect(Collectors.toMap(Entry::getKey, entry -> entry.getValue().getVl())));
          }
@@ -134,23 +134,23 @@ public class HackerDetector extends Module {
    @EventHandler
    public void onUpdate(PlayerUpdateEvent event) {
       if (!ClientUtils.nullCheck()) {
-         if (mc.field_1724.field_6012 > 10) {
+         if (mc.player.age > 10) {
             float decayPerTick = this.vlDecay.getValue().floatValue() / 20.0F;
 
-            for (class_1297 entity : mc.field_1687.method_18112()) {
-               if (entity instanceof class_1657 player
-                  && (player != mc.field_1724 || this.testMode.getValue())
-                  && (player == mc.field_1724 || !this.testMode.getValue())) {
+            for (Entity entity : mc.world.getEntities()) {
+               if (entity instanceof PlayerEntity player
+                  && (player != mc.player || this.testMode.getValue())
+                  && (player == mc.player || !this.testMode.getValue())) {
                   PlayerData playerData;
-                  if (this.playDataMap.containsKey(player.method_5667())) {
-                     playerData = this.playDataMap.get(player.method_5667());
+                  if (this.playDataMap.containsKey(player.getUuid())) {
+                     playerData = this.playDataMap.get(player.getUuid());
                   } else {
                      playerData = new PlayerData(player);
-                     if (this.persistValue.getValue() && this.tempHackerList != null && this.tempHackerList.containsKey(player.method_5667())) {
-                        playerData.setVl(this.tempHackerList.get(player.method_5667()));
+                     if (this.persistValue.getValue() && this.tempHackerList != null && this.tempHackerList.containsKey(player.getUuid())) {
+                        playerData.setVl(this.tempHackerList.get(player.getUuid()));
                      }
 
-                     this.playDataMap.put(player.method_5667(), playerData);
+                     this.playDataMap.put(player.getUuid(), playerData);
                   }
 
                   if (decayPerTick > 0.0F && playerData.getVl() > 0.0F) {
@@ -164,7 +164,7 @@ public class HackerDetector extends Module {
                   }
 
                   if (playerData.getVl() > this.flagVlValue.getValue().intValue() && playerData.isFirstDectected()) {
-                     ChatUtils.warning(player.method_5477().getString() + " flagged as hacker (VL: " + String.format("%.1f", playerData.getVl()) + ")");
+                     ChatUtils.warning(player.getName().getString() + " flagged as hacker (VL: " + String.format("%.1f", playerData.getVl()) + ")");
                      if (!this.hackerList.contains(player)) {
                         this.hackerList.add(player);
                      }
@@ -178,17 +178,17 @@ public class HackerDetector extends Module {
                }
             }
 
-            Set<UUID> tabPlayers = mc.method_1562()
-               .method_2880()
+            Set<UUID> tabPlayers = mc.getNetworkHandler()
+               .getPlayerList()
                .stream()
-               .map(class_640::method_2966)
+               .map(PlayerListEntry::getProfile)
                .<UUID>map(GameProfile::getId)
                .collect(Collectors.toSet());
-            this.hackerList.removeIf(p -> !tabPlayers.contains(p.method_5667()));
+            this.hackerList.removeIf(p -> !tabPlayers.contains(p.getUuid()));
             this.filteredHackerList = this.hackerList
                .stream()
-               .filter(playerx -> tabPlayers.contains(playerx.method_5667()))
-               .filter(playerx -> playerx.method_6032() != 0.0F)
+               .filter(playerx -> tabPlayers.contains(playerx.getUuid()))
+               .filter(playerx -> playerx.getHealth() != 0.0F)
                .collect(Collectors.toList());
          }
       }
@@ -219,8 +219,8 @@ public class HackerDetector extends Module {
       }
    }
 
-   public boolean isHacker(class_1297 player) {
-      PlayerData playerData = this.playDataMap.get(player.method_5667());
+   public boolean isHacker(Entity player) {
+      PlayerData playerData = this.playDataMap.get(player.getUuid());
       return playerData != null && playerData.getVl() > this.flagVlValue.getValue().intValue();
    }
 }

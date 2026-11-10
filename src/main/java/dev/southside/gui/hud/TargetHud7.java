@@ -11,13 +11,13 @@ import dev.southside.utils.math.MathUtils;
 import dev.southside.utils.misc.BezierUtil;
 import dev.southside.utils.render.animation.TimerUtil;
 import java.awt.Color;
-import net.minecraft.class_1799;
-import net.minecraft.class_1802;
-import net.minecraft.class_1829;
-import net.minecraft.class_332;
-import net.minecraft.class_4587;
-import net.minecraft.class_742;
-import net.minecraft.class_7532;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.item.SwordItem;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.network.AbstractClientPlayerEntity;
+import net.minecraft.client.gui.PlayerSkinDrawer;
 import org.lwjgl.nanovg.NVGColor;
 import org.lwjgl.nanovg.NVGPaint;
 import org.lwjgl.nanovg.NanoVG;
@@ -31,7 +31,7 @@ public class TargetHud7 extends Hud {
    }
 
    @Override
-   protected void draw(class_332 context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
+   protected void draw(DrawContext context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
    }
 
    @Override
@@ -62,9 +62,9 @@ public class TargetHud7 extends Hud {
       public final BezierUtil y = new BezierUtil(3.0F, 0.0F);
       private final BezierUtil health = new BezierUtil(3.0F, 1.0F);
       private long blockHistoryMask = 0L;
-      public class_742 entity;
+      public AbstractClientPlayerEntity entity;
 
-      public TargetHUDComponent(class_742 entity) {
+      public TargetHUDComponent(AbstractClientPlayerEntity entity) {
          this.entity = entity;
       }
 
@@ -88,14 +88,14 @@ public class TargetHud7 extends Hud {
             float pad = 6.0F * scale;
             float headX = originX + 5.0F * scale;
             float contentX = headX + 24.0F * scale + pad;
-            String name = this.entity.method_5476().getString();
+            String name = this.entity.getDisplayName().getString();
             float nameSize = 9.0F * scale;
             float nameMaxW = originX + width - contentX - pad;
             name = fitText(helper, vg, name, nameMaxW, nameSize, Fonts.SEMIBOLD);
             float nameY = baseY + 4.0F * scale - -5.5F * scale;
             helper.drawText(vg, name, contentX, nameY, Color.WHITE.getRGB(), nameSize, Fonts.SEMIBOLD);
-            float maxHealth = Math.max(this.entity.method_6063(), 1.0F);
-            float rate = MathUtils.clamp(this.entity.method_6032() / maxHealth, 0.0F, 1.0F);
+            float maxHealth = Math.max(this.entity.getMaxHealth(), 1.0F);
+            float rate = MathUtils.clamp(this.entity.getHealth() / maxHealth, 0.0F, 1.0F);
             this.health.update(rate);
             float easedRate = this.health.get();
             float barHeight = 2.5F * scale;
@@ -109,7 +109,7 @@ public class TargetHud7 extends Hud {
                helper.drawRoundedRect(vg, contentX, barY, fillW, barHeight, Color.WHITE.getRGB(), barHeight / 2.0F);
             }
 
-            String extra = String.format("Health: %.1f  Block Rate: %d%%", this.entity.method_6032(), this.getBlockPercentage());
+            String extra = String.format("Health: %.1f  Block Rate: %d%%", this.entity.getHealth(), this.getBlockPercentage());
             float infoSize = 8.0F * scale;
             float infoTextX = originX + pad;
             float infoTextY = infoY + (infoH - infoSize) / 2.0F - -5.0F * scale;
@@ -117,16 +117,16 @@ public class TargetHud7 extends Hud {
          }
       }
 
-      public void drawHead(class_332 context, float scale, float originX, float yOffset) {
+      public void drawHead(DrawContext context, float scale, float originX, float yOffset) {
          float animY = this.y.get();
          if (!(animY < -(50.0F * scale))) {
             float baseY = yOffset + animY;
-            class_4587 matrices = context.method_51448();
-            matrices.method_22903();
-            matrices.method_46416(originX + 5.0F * scale, baseY + 2.0F * scale, 0.0F);
+            MatrixStack matrices = context.getMatrices();
+            matrices.push();
+            matrices.translate(originX + 5.0F * scale, baseY + 2.0F * scale, 0.0F);
             int size = Math.max(1, Math.round(24.0F * scale));
-            class_7532.method_52722(context, this.entity.method_52814(), 0, 0, size);
-            matrices.method_22909();
+            PlayerSkinDrawer.draw(context, this.entity.getSkinTextures(), 0, 0, size);
+            matrices.pop();
          }
       }
 
@@ -160,12 +160,12 @@ public class TargetHud7 extends Hud {
       }
 
       private void sampleBlockHistory() {
-         boolean blocking = this.entity.method_6115() && this.isBlockingItem(this.entity.method_6030());
+         boolean blocking = this.entity.isUsingItem() && this.isBlockingItem(this.entity.getActiveItem());
          this.blockHistoryMask = (this.blockHistoryMask << 1 | (blocking ? 1L : 0L)) & 1048575L;
       }
 
-      private boolean isBlockingItem(class_1799 stack) {
-         return stack != null && !stack.method_7960() ? stack.method_7909() instanceof class_1829 || stack.method_31574(class_1802.field_8255) : false;
+      private boolean isBlockingItem(ItemStack stack) {
+         return stack != null && !stack.isEmpty() ? stack.getItem() instanceof SwordItem || stack.isOf(Items.SHIELD) : false;
       }
 
       private int getBlockPercentage() {

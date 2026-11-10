@@ -1,19 +1,19 @@
 package dev.southside.utils.render;
 
 import java.awt.Color;
-import net.minecraft.class_3532;
+import net.minecraft.util.math.MathHelper;
 
 public class ColorUtils {
    public static Color getHealthColor(float health, float maxHealth) {
       float clampedHealth = health * (20.0F / maxHealth);
       float[] fractions = new float[]{0.0F, 0.3F, 0.7F, 1.0F};
       Color[] colors = new Color[]{Color.RED, Color.RED, Color.YELLOW, Color.GREEN};
-      float progress = class_3532.method_15363(clampedHealth / 20.0F, 0.0F, 1.0F);
+      float progress = MathHelper.clamp(clampedHealth / 20.0F, 0.0F, 1.0F);
       return blendColors(fractions, colors, progress).brighter();
    }
 
    public static Color injectAlpha(Color color, int alpha) {
-      return new Color(color.getRed(), color.getGreen(), color.getBlue(), class_3532.method_15340(alpha, 0, 255));
+      return new Color(color.getRed(), color.getGreen(), color.getBlue(), MathHelper.clamp(alpha, 0, 255));
    }
 
    public static Color blendColors(float[] fractions, Color[] colors, float progress) {

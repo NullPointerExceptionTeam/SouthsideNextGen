@@ -21,37 +21,37 @@ import dev.southside.utils.types.Rotation;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import net.minecraft.class_1268;
-import net.minecraft.class_1269;
-import net.minecraft.class_1747;
-import net.minecraft.class_1792;
-import net.minecraft.class_1799;
-import net.minecraft.class_2246;
-import net.minecraft.class_2248;
-import net.minecraft.class_2281;
-import net.minecraft.class_2336;
-import net.minecraft.class_2338;
-import net.minecraft.class_2350;
-import net.minecraft.class_238;
-import net.minecraft.class_243;
-import net.minecraft.class_2480;
-import net.minecraft.class_2623;
-import net.minecraft.class_265;
-import net.minecraft.class_2680;
-import net.minecraft.class_2682;
-import net.minecraft.class_3965;
+import net.minecraft.util.Hand;
+import net.minecraft.util.ActionResult;
+import net.minecraft.item.BlockItem;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.block.Blocks;
+import net.minecraft.block.Block;
+import net.minecraft.block.ChestBlock;
+import net.minecraft.block.EnderChestBlock;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.block.ShulkerBoxBlock;
+import net.minecraft.network.packet.s2c.play.BlockEventS2CPacket;
+import net.minecraft.util.shape.VoxelShape;
+import net.minecraft.block.BlockState;
+import net.minecraft.world.EmptyBlockView;
+import net.minecraft.util.hit.BlockHitResult;
 
 public class ChestWreck extends Module {
-   public static final List<class_2248> invalidBlocks = Arrays.asList(
-      class_2246.field_10485,
-      class_2246.field_10034,
-      class_2246.field_10443,
-      class_2246.field_10380,
-      class_2246.field_10336,
-      class_2246.field_10158,
-      class_2246.field_40284,
-      class_2246.field_10375,
-      class_2246.field_10523
+   public static final List<Block> invalidBlocks = Arrays.asList(
+      Blocks.ENCHANTING_TABLE,
+      Blocks.CHEST,
+      Blocks.ENDER_CHEST,
+      Blocks.TRAPPED_CHEST,
+      Blocks.TORCH,
+      Blocks.STONE_PRESSURE_PLATE,
+      Blocks.BAMBOO_PRESSURE_PLATE,
+      Blocks.TNT,
+      Blocks.REDSTONE_TORCH
    );
    private final Slider range = new Slider("Range", 4.0, 1.0, 8.0, 0.1);
    private final Slider minDelay = new Slider("Min Delay", 50, 0, 1000, 10);
@@ -61,10 +61,10 @@ public class ChestWreck extends Module {
    private ChestWreck.SlotData slot;
    private boolean prevSneak;
    private boolean shouldPlace = false;
-   private class_2338 chestPos = null;
+   private BlockPos chestPos = null;
    private int lastSlot = -1;
    private long currentDelay = 0L;
-   private final List<class_2338> openedChests = new ArrayList<>();
+   private final List<BlockPos> openedChests = new ArrayList<>();
 
    public ChestWreck() {
       super(Category.World, "ChestWreck", "esu");
@@ -83,54 +83,54 @@ public class ChestWreck extends Module {
 
    @EventHandler
    private void onRot(RotationEvent e) {
-      if (mc.field_1755 != null) {
+      if (mc.currentScreen != null) {
          this.timer.reset();
       } else if (this.timer.hasTimePassed(this.currentDelay)) {
          if ((KillAura.target == null || !Southside.get().getModuleManager().get(KillAura.class).isEnabled())
-            && !mc.field_1724.method_6115()
+            && !mc.player.isUsingItem()
             && !Southside.get().getModuleManager().get(Scaffold.class).isEnabled()
             && !Southside.get().getModuleManager().get(Blink.class).isEnabled()
-            && mc.field_1724.field_6235 == 0) {
-            if (this.shouldPlace && mc.field_1724.field_3936) {
-               if (!(this.chestPos.method_10264() + 1 > mc.field_1724.method_23318() + mc.field_1724.method_18381(mc.field_1724.method_18376()))) {
-                  class_1269 result = mc.field_1761
-                     .method_2896(
-                        mc.field_1724,
+            && mc.player.hurtTime == 0) {
+            if (this.shouldPlace && mc.player.lastSneaking) {
+               if (!(this.chestPos.getY() + 1 > mc.player.getY() + mc.player.getEyeHeight(mc.player.getPose()))) {
+                  ActionResult result = mc.interactionManager
+                     .interactBlock(
+                        mc.player,
                         this.slot.hand,
-                        new class_3965(Scaffold.getVec3(this.chestPos, class_2350.field_11036), class_2350.field_11036, this.chestPos, false)
+                        new BlockHitResult(Scaffold.getVec3(this.chestPos, Direction.UP), Direction.UP, this.chestPos, false)
                      );
-                  if (result == class_1269.field_5812) {
-                     mc.field_1724.method_6104(this.slot.hand());
+                  if (result == ActionResult.SUCCESS) {
+                     mc.player.swingHand(this.slot.hand());
                   }
 
-                  if (!this.slot.hand.equals(class_1268.field_5810)) {
-                     mc.field_1724.method_31548().field_7545 = this.lastSlot;
+                  if (!this.slot.hand.equals(Hand.OFF_HAND)) {
+                     mc.player.getInventory().selectedSlot = this.lastSlot;
                   }
                }
 
                this.timer.reset();
                this.generateRandomDelay();
-               mc.field_1690.field_1832.method_23481(this.prevSneak);
-               mc.field_1724.method_5660(this.prevSneak);
+               mc.options.sneakKey.setPressed(this.prevSneak);
+               mc.player.setSneaking(this.prevSneak);
                this.shouldPlace = false;
             } else {
-               class_2338 nearest = this.findNextChest();
+               BlockPos nearest = this.findNextChest();
                if (nearest != null) {
-                  this.lastSlot = mc.field_1724.method_31548().field_7545;
+                  this.lastSlot = mc.player.getInventory().selectedSlot;
                   this.slot = null;
-                  if (InventoryUtil.isFullBlock(mc.field_1724.method_6079()) && isValid(mc.field_1724.method_6079().method_7909())) {
-                     this.slot = new ChestWreck.SlotData(45, class_1268.field_5810);
+                  if (InventoryUtil.isFullBlock(mc.player.getOffHandStack()) && isValid(mc.player.getOffHandStack().getItem())) {
+                     this.slot = new ChestWreck.SlotData(45, Hand.OFF_HAND);
                   }
 
-                  if (this.slot == null && InventoryUtil.isFullBlock(mc.field_1724.method_6047()) && isValid(mc.field_1724.method_6047().method_7909())) {
-                     this.slot = new ChestWreck.SlotData(mc.field_1724.method_31548().field_7545, class_1268.field_5808);
+                  if (this.slot == null && InventoryUtil.isFullBlock(mc.player.getMainHandStack()) && isValid(mc.player.getMainHandStack().getItem())) {
+                     this.slot = new ChestWreck.SlotData(mc.player.getInventory().selectedSlot, Hand.MAIN_HAND);
                   }
 
                   if (this.slot == null) {
                      for (int i = 0; i <= 8; i++) {
-                        class_1799 is = mc.field_1724.method_31548().method_5438(i);
-                        if (InventoryUtil.isFullBlock(is) && isValid(is.method_7909())) {
-                           this.slot = new ChestWreck.SlotData(i, class_1268.field_5808);
+                        ItemStack is = mc.player.getInventory().getStack(i);
+                        if (InventoryUtil.isFullBlock(is) && isValid(is.getItem())) {
+                           this.slot = new ChestWreck.SlotData(i, Hand.MAIN_HAND);
                         }
                      }
                   }
@@ -139,14 +139,14 @@ public class ChestWreck extends Module {
                      return;
                   }
 
-                  if (nearest.method_10264() + 1 < mc.field_1724.method_23318() + mc.field_1724.method_18381(mc.field_1724.method_18376())) {
-                     class_243 minPos = null;
+                  if (nearest.getY() + 1 < mc.player.getY() + mc.player.getEyeHeight(mc.player.getPose())) {
+                     Vec3d minPos = null;
                      double lastDis = Double.MAX_VALUE;
 
                      for (double x = 0.1; x <= 0.9; x += 0.1) {
                         for (double z = 0.1; z <= 0.9; z += 0.1) {
-                           class_243 pos = new class_243(nearest.method_10263() + x, nearest.method_10264() + 1, nearest.method_10260() + z);
-                           double dis = mc.field_1724.method_5836(1.0F).method_1025(pos);
+                           Vec3d pos = new Vec3d(nearest.getX() + x, nearest.getY() + 1, nearest.getZ() + z);
+                           double dis = mc.player.getCameraPosVec(1.0F).squaredDistanceTo(pos);
                            if (dis < lastDis) {
                               minPos = pos;
                               lastDis = dis;
@@ -156,18 +156,18 @@ public class ChestWreck extends Module {
 
                      if (minPos != null) {
                         Rotation rot = RotationUtils.calculate(minPos);
-                        class_3965 raycast = RayCastUtils.raycast(4.5, rot, false, 1.0F);
-                        if (raycast != null && raycast.method_17777().equals(nearest)) {
+                        BlockHitResult raycast = RayCastUtils.raycast(4.5, rot, false, 1.0F);
+                        if (raycast != null && raycast.getBlockPos().equals(nearest)) {
                            RotationUtils.setRotation(rot);
-                           if (!this.slot.hand.equals(class_1268.field_5810)) {
-                              mc.field_1724.method_31548().field_7545 = this.slot.slot;
+                           if (!this.slot.hand.equals(Hand.OFF_HAND)) {
+                              mc.player.getInventory().selectedSlot = this.slot.slot;
                            }
 
                            this.chestPos = nearest;
                            this.shouldPlace = true;
-                           this.prevSneak = mc.field_1690.field_1832.method_1434();
-                           mc.field_1690.field_1832.method_23481(true);
-                           mc.field_1724.method_5660(true);
+                           this.prevSneak = mc.options.sneakKey.isPressed();
+                           mc.options.sneakKey.setPressed(true);
+                           mc.player.setSneaking(true);
                         }
                      }
                   }
@@ -181,26 +181,26 @@ public class ChestWreck extends Module {
       }
    }
 
-   private class_2338 findNextChest() {
-      if (mc.field_1724 != null && mc.field_1687 != null) {
-         class_2338 playerPos = mc.field_1724.method_24515();
-         class_243 playerVec = mc.field_1724.method_19538();
+   private BlockPos findNextChest() {
+      if (mc.player != null && mc.world != null) {
+         BlockPos playerPos = mc.player.getBlockPos();
+         Vec3d playerVec = mc.player.getPos();
          int rangeInt = (int)Math.ceil(this.range.getValue().floatValue());
-         class_2338 nearestChest = null;
+         BlockPos nearestChest = null;
          double nearestDistance = Double.MAX_VALUE;
          ChestManager manager = Southside.get().getChestManager();
 
          for (int x = -rangeInt; x <= rangeInt; x++) {
             for (int y = -rangeInt; y <= rangeInt; y++) {
                for (int z = -rangeInt; z <= rangeInt; z++) {
-                  class_2338 pos = playerPos.method_10069(x, y, z);
-                  double distance = playerVec.method_1022(class_243.method_24953(pos));
+                  BlockPos pos = playerPos.add(x, y, z);
+                  double distance = playerVec.distanceTo(Vec3d.ofCenter(pos));
                   if (!(distance > this.range.getValue().floatValue())
                      && (this.blockAllOpened.getValue() ? manager.isStolen(pos) : manager.isSelfStolen(pos))
                      && this.openedChests.contains(pos)
                      && this.isChestBlock(pos)
                      && !isChestBlocked(pos)
-                     && this.isSpaceEmpty(pos.method_10084())
+                     && this.isSpaceEmpty(pos.up())
                      && distance < nearestDistance) {
                      nearestChest = pos;
                      nearestDistance = distance;
@@ -215,28 +215,28 @@ public class ChestWreck extends Module {
       }
    }
 
-   public static boolean isChestBlocked(class_2338 pos) {
-      return mc.field_1687 == null ? false : isValidBlock(mc.field_1687.method_8320(pos.method_10084()).method_26204());
+   public static boolean isChestBlocked(BlockPos pos) {
+      return mc.world == null ? false : isValidBlock(mc.world.getBlockState(pos.up()).getBlock());
    }
 
-   private boolean isSpaceEmpty(class_2338 pos) {
-      return mc.field_1687 == null ? false : mc.field_1687.method_8587(mc.field_1724, new class_238(pos));
+   private boolean isSpaceEmpty(BlockPos pos) {
+      return mc.world == null ? false : mc.world.isSpaceEmpty(mc.player, new Box(pos));
    }
 
-   private boolean isChestBlock(class_2338 pos) {
-      if (mc.field_1687 == null) {
+   private boolean isChestBlock(BlockPos pos) {
+      if (mc.world == null) {
          return false;
       } else {
-         class_2680 state = mc.field_1687.method_8320(pos);
-         return state.method_26204() instanceof class_2281 || state.method_26204() instanceof class_2336 || state.method_26204() instanceof class_2480;
+         BlockState state = mc.world.getBlockState(pos);
+         return state.getBlock() instanceof ChestBlock || state.getBlock() instanceof EnderChestBlock || state.getBlock() instanceof ShulkerBoxBlock;
       }
    }
 
-   private static boolean isValid(class_1792 item) {
-      return item instanceof class_1747 && !invalidBlocks.contains(((class_1747)item).method_7711()) && SlotUtils.isGoodForBridging(item);
+   private static boolean isValid(Item item) {
+      return item instanceof BlockItem && !invalidBlocks.contains(((BlockItem)item).getBlock()) && SlotUtils.isGoodForBridging(item);
    }
 
-   private static boolean isValidBlock(class_2248 b) {
+   private static boolean isValidBlock(Block b) {
       return !invalidBlocks.contains(b) && SlotUtils.isGoodForBridging(b);
    }
 
@@ -252,35 +252,35 @@ public class ChestWreck extends Module {
 
    @EventHandler
    public void onPacket(PacketEvent event) {
-      if (mc.field_1687 != null) {
-         if (event.getPacket() instanceof class_2623 sb) {
-            class_2680 state = mc.field_1687.method_8320(sb.method_11298());
-            if (state.method_26204() instanceof class_2281 && sb.method_11294() == 1 && sb.method_11296() == 1) {
-               this.openedChests.add(sb.method_11298());
+      if (mc.world != null) {
+         if (event.getPacket() instanceof BlockEventS2CPacket sb) {
+            BlockState state = mc.world.getBlockState(sb.getPos());
+            if (state.getBlock() instanceof ChestBlock && sb.getType() == 1 && sb.getData() == 1) {
+               this.openedChests.add(sb.getPos());
             }
          }
       }
    }
 
-   record SlotData(int slot, class_1268 hand) {
+   record SlotData(int slot, Hand hand) {
       public boolean check() {
-         if (this.hand.equals(class_1268.field_5810)) {
-            class_1799 stack = ChestWreck.mc.field_1724.method_6079();
-            boolean success = !stack.method_7960() && stack.method_7909() instanceof class_1747;
+         if (this.hand.equals(Hand.OFF_HAND)) {
+            ItemStack stack = ChestWreck.mc.player.getOffHandStack();
+            boolean success = !stack.isEmpty() && stack.getItem() instanceof BlockItem;
             if (success) {
-               return this.checkBlocked(class_2248.method_9503(stack.method_7909()));
+               return this.checkBlocked(Block.getBlockFromItem(stack.getItem()));
             }
          }
 
-         class_1799 stack = ChestWreck.mc.field_1724.method_31548().method_5438(this.slot);
-         boolean success = !stack.method_7960() && stack.method_7909() instanceof class_1747;
-         return success ? this.checkBlocked(class_2248.method_9503(stack.method_7909())) : false;
+         ItemStack stack = ChestWreck.mc.player.getInventory().getStack(this.slot);
+         boolean success = !stack.isEmpty() && stack.getItem() instanceof BlockItem;
+         return success ? this.checkBlocked(Block.getBlockFromItem(stack.getItem())) : false;
       }
 
-      public boolean checkBlocked(class_2248 block) {
-         class_2680 state = block.method_9564();
-         class_265 shape = state.method_26218(class_2682.field_12294, class_2338.field_10980);
-         return class_2248.method_9501(shape, class_2350.field_11033);
+      public boolean checkBlocked(Block block) {
+         BlockState state = block.getDefaultState();
+         VoxelShape shape = state.getOutlineShape(EmptyBlockView.INSTANCE, BlockPos.ORIGIN);
+         return Block.isFaceFullSquare(shape, Direction.DOWN);
       }
    }
 }

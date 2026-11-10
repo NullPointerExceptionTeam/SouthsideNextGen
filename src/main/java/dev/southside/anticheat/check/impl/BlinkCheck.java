@@ -2,8 +2,8 @@ package dev.southside.anticheat.check.impl;
 
 import dev.southside.anticheat.check.NormalCheck;
 import dev.southside.anticheat.player.PlayerData;
-import net.minecraft.class_1657;
-import net.minecraft.class_243;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.math.Vec3d;
 
 public class BlinkCheck implements NormalCheck {
    private static final double FROZEN_THRESHOLD = 0.01;
@@ -13,17 +13,17 @@ public class BlinkCheck implements NormalCheck {
 
    @Override
    public void onUpdate(PlayerData playerData) {
-      class_1657 player = playerData.getPlayer();
-      int tick = player.field_6012;
-      class_243 currentPos = player.method_19538();
-      class_243 lastPos = playerData.getLastPos();
+      PlayerEntity player = playerData.getPlayer();
+      int tick = player.age;
+      Vec3d currentPos = player.getPos();
+      Vec3d lastPos = playerData.getLastPos();
       if (lastPos == null) {
          playerData.setLastPos(currentPos);
       } else {
-         double dx = currentPos.field_1352 - lastPos.field_1352;
-         double dz = currentPos.field_1350 - lastPos.field_1350;
+         double dx = currentPos.x - lastPos.x;
+         double dz = currentPos.z - lastPos.z;
          double dist = Math.sqrt(dx * dx + dz * dz);
-         if (dist < 0.01 && player.method_5805() && !player.method_5765()) {
+         if (dist < 0.01 && player.isAlive() && !player.hasVehicle()) {
             playerData.setBlinkFrozenTicks(playerData.getBlinkFrozenTicks() + 1);
          } else if (playerData.getBlinkFrozenTicks() >= 5) {
             if (dist > 1.5 && tick - playerData.getBlinkLastFlagTick() > 30) {

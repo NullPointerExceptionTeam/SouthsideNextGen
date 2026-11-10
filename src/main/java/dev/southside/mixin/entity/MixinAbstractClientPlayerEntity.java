@@ -2,16 +2,16 @@ package dev.southside.mixin.entity;
 
 import dev.southside.Southside;
 import dev.southside.event.events.UpdateFoVEvent;
-import net.minecraft.class_742;
+import net.minecraft.client.network.AbstractClientPlayerEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin({class_742.class})
+@Mixin({AbstractClientPlayerEntity.class})
 public abstract class MixinAbstractClientPlayerEntity {
    @Inject(
-      method = {"method_3118(ZF)F"},
+      method = {"getFovMultiplier(ZF)F"},
       at = {@At("RETURN")},
       cancellable = true
    )

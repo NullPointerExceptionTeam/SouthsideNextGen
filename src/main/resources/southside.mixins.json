@@ -1,6 +1,7 @@
 {
   "required": true,
   "minVersion": "0.8",
+  "refmap": "southside-refmap.json",
   "package": "dev.southside.mixin",
   "compatibilityLevel": "JAVA_17",
   "mixinPriority": 3,

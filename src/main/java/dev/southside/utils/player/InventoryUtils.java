@@ -6,62 +6,62 @@ import dev.southside.utils.item.ItemUtils;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import net.minecraft.class_10191;
-import net.minecraft.class_10394;
-import net.minecraft.class_1268;
-import net.minecraft.class_1304;
-import net.minecraft.class_1738;
-import net.minecraft.class_1743;
-import net.minecraft.class_1744;
-import net.minecraft.class_1747;
-import net.minecraft.class_1753;
-import net.minecraft.class_1764;
-import net.minecraft.class_1779;
-import net.minecraft.class_1781;
-import net.minecraft.class_1787;
-import net.minecraft.class_1792;
-import net.minecraft.class_1799;
-import net.minecraft.class_1802;
-import net.minecraft.class_1809;
-import net.minecraft.class_1810;
-import net.minecraft.class_1821;
-import net.minecraft.class_1829;
-import net.minecraft.class_1840;
-import net.minecraft.class_1843;
-import net.minecraft.class_1893;
-import net.minecraft.class_1922;
-import net.minecraft.class_2246;
-import net.minecraft.class_2338;
-import net.minecraft.class_2484;
-import net.minecraft.class_2680;
-import net.minecraft.class_2682;
-import net.minecraft.class_310;
-import net.minecraft.class_5134;
-import net.minecraft.class_5321;
-import net.minecraft.class_638;
-import net.minecraft.class_9334;
+import net.minecraft.item.equipment.EquipmentAssetKeys;
+import net.minecraft.item.equipment.EquipmentAsset;
+import net.minecraft.util.Hand;
+import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.item.ArmorItem;
+import net.minecraft.item.AxeItem;
+import net.minecraft.item.ArrowItem;
+import net.minecraft.item.BlockItem;
+import net.minecraft.item.BowItem;
+import net.minecraft.item.CrossbowItem;
+import net.minecraft.item.ExperienceBottleItem;
+import net.minecraft.item.FireworkRocketItem;
+import net.minecraft.item.FishingRodItem;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.item.PlayerHeadItem;
+import net.minecraft.item.PickaxeItem;
+import net.minecraft.item.ShovelItem;
+import net.minecraft.item.SwordItem;
+import net.minecraft.item.WritableBookItem;
+import net.minecraft.item.WrittenBookItem;
+import net.minecraft.enchantment.Enchantments;
+import net.minecraft.world.BlockView;
+import net.minecraft.block.Blocks;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.block.SkullBlock;
+import net.minecraft.block.BlockState;
+import net.minecraft.world.EmptyBlockView;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.entity.attribute.EntityAttributes;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.client.world.ClientWorld;
+import net.minecraft.component.DataComponentTypes;
 
 public class InventoryUtils {
-   private static final class_310 mc = class_310.method_1551();
+   private static final MinecraftClient mc = MinecraftClient.getInstance();
 
    public static boolean shouldDisableFeatures() {
       return NoSlowTest.shouldEnable ? true : getAllItems().stream().anyMatch(item -> {
-         if (item.method_7960()) {
+         if (item.isEmpty()) {
             return false;
          } else {
-            String string = item.method_7964().getString();
+            String string = item.getName().getString();
             return string.contains("长按点击") || string.contains("点击使用") || string.contains("离开游戏") || string.contains("选择一个队伍") || string.contains("再来一局");
          }
       });
    }
 
-   public static boolean isGoldenHead(class_1799 e) {
-      if (e.method_7960()) {
+   public static boolean isGoldenHead(ItemStack e) {
+      if (e.isEmpty()) {
          return false;
       } else {
-         if (e.method_7909() instanceof class_1747) {
-            class_1747 item = (class_1747)e.method_7909();
-            if (item.method_7711() instanceof class_2484) {
+         if (e.getItem() instanceof BlockItem) {
+            BlockItem item = (BlockItem)e.getItem();
+            if (item.getBlock() instanceof SkullBlock) {
                return true;
             }
          }
@@ -70,13 +70,13 @@ public class InventoryUtils {
       }
    }
 
-   public static int findItem(int startSlot, int endSlot, class_1792 item) {
-      if (mc.field_1724 == null) {
+   public static int findItem(int startSlot, int endSlot, Item item) {
+      if (mc.player == null) {
          return -1;
       } else {
          for (int i = startSlot; i < endSlot; i++) {
-            class_1799 stack = mc.field_1724.method_31548().method_5438(i);
-            if (!stack.method_7960() && stack.method_7909() == item) {
+            ItemStack stack = mc.player.getInventory().getStack(i);
+            if (!stack.isEmpty() && stack.getItem() == item) {
                return i;
             }
          }
@@ -85,59 +85,59 @@ public class InventoryUtils {
       }
    }
 
-   public static boolean isSharpnessAxe(class_1799 stack) {
-      if (stack.method_7960()) {
+   public static boolean isSharpnessAxe(ItemStack stack) {
+      if (stack.isEmpty()) {
          return false;
-      } else if (!(stack.method_7909() instanceof class_1743)) {
+      } else if (!(stack.getItem() instanceof AxeItem)) {
          return false;
       } else {
-         int itemEnchantmentLevel = EnchantmentUtils.getLevel(class_1893.field_9118, stack);
+         int itemEnchantmentLevel = EnchantmentUtils.getLevel(Enchantments.SHARPNESS, stack);
          return itemEnchantmentLevel >= 8 && itemEnchantmentLevel < 50;
       }
    }
 
-   public static boolean isGodAxe(class_1799 stack) {
-      if (stack.method_7960()) {
+   public static boolean isGodAxe(ItemStack stack) {
+      if (stack.isEmpty()) {
          return false;
       } else {
-         String displayName = stack.method_7964().getString();
+         String displayName = stack.getName().getString();
          if (displayName.contains("一刀")) {
             return true;
          } else {
-            return stack.method_57353() != null && stack.method_57353().toString().contains("一刀")
+            return stack.getComponents() != null && stack.getComponents().toString().contains("一刀")
                ? true
-               : stack.method_7909() == class_1802.field_8825 && EnchantmentUtils.getLevel(class_1893.field_9118, stack) > 100;
+               : stack.getItem() == Items.GOLDEN_AXE && EnchantmentUtils.getLevel(Enchantments.SHARPNESS, stack) > 100;
          }
       }
    }
 
-   public static boolean isEnchantedGApple(class_1799 stack) {
-      return stack.method_7960() ? false : stack.method_7909() == class_1802.field_8367;
+   public static boolean isEnchantedGApple(ItemStack stack) {
+      return stack.isEmpty() ? false : stack.getItem() == Items.ENCHANTED_GOLDEN_APPLE;
    }
 
-   public static boolean isEndCrystal(class_1799 stack) {
-      return stack.method_7960() ? false : stack.method_7909() == class_1802.field_8301;
+   public static boolean isEndCrystal(ItemStack stack) {
+      return stack.isEmpty() ? false : stack.getItem() == Items.END_CRYSTAL;
    }
 
-   public static boolean isKBBall(class_1799 stack) {
-      if (stack.method_7960()) {
+   public static boolean isKBBall(ItemStack stack) {
+      if (stack.isEmpty()) {
          return false;
       } else {
-         return stack.method_7909() != class_1802.field_8777 ? false : !stack.method_57826(class_9334.field_49631);
+         return stack.getItem() != Items.SLIME_BALL ? false : !stack.contains(DataComponentTypes.CUSTOM_NAME);
       }
    }
 
-   public static boolean isKBStick(class_1799 stack) {
-      if (stack.method_7960()) {
+   public static boolean isKBStick(ItemStack stack) {
+      if (stack.isEmpty()) {
          return false;
       } else {
-         return stack.method_7909() != class_1802.field_8600 ? false : EnchantmentUtils.getLevel(class_1893.field_9121, stack) > 1;
+         return stack.getItem() != Items.STICK ? false : EnchantmentUtils.getLevel(Enchantments.KNOCKBACK, stack) > 1;
       }
    }
 
    public static int findEmptyInventory() {
-      for (int i = 9; i < mc.field_1724.method_31548().field_7547.size(); i++) {
-         if (((class_1799)mc.field_1724.method_31548().field_7547.get(i)).method_7960()) {
+      for (int i = 9; i < mc.player.getInventory().main.size(); i++) {
+         if (((ItemStack)mc.player.getInventory().main.get(i)).isEmpty()) {
             return i;
          }
       }
@@ -147,7 +147,7 @@ public class InventoryUtils {
 
    public static int findEmptySlot() {
       for (int i = 0; i < 9; i++) {
-         if (((class_1799)mc.field_1724.method_31548().field_7547.get(i)).method_7960()) {
+         if (((ItemStack)mc.player.getInventory().main.get(i)).isEmpty()) {
             return i;
          }
       }
@@ -155,28 +155,28 @@ public class InventoryUtils {
       return -1;
    }
 
-   public static int getPunchLevel(class_1799 stack) {
-      return EnchantmentUtils.getLevel(class_1893.field_9116, stack);
+   public static int getPunchLevel(ItemStack stack) {
+      return EnchantmentUtils.getLevel(Enchantments.PUNCH, stack);
    }
 
-   public static int getPowerLevel(class_1799 stack) {
-      return EnchantmentUtils.getLevel(class_1893.field_9103, stack);
+   public static int getPowerLevel(ItemStack stack) {
+      return EnchantmentUtils.getLevel(Enchantments.POWER, stack);
    }
 
-   public static List<class_1799> getAllItems() {
-      ArrayList<class_1799> list = new ArrayList<>(40);
-      list.addAll(mc.field_1724.method_31548().field_7547);
-      list.addAll(mc.field_1724.method_31548().field_7548);
+   public static List<ItemStack> getAllItems() {
+      ArrayList<ItemStack> list = new ArrayList<>(40);
+      list.addAll(mc.player.getInventory().main);
+      list.addAll(mc.player.getInventory().armor);
       return list;
    }
 
-   public static boolean isInvalidBlock(class_1799 stack) {
-      if (stack != null && !stack.method_7960()) {
-         if (stack.method_7909() instanceof class_1747 blockItem) {
-            class_2680 state = blockItem.method_7711().method_9564();
-            class_638 world = class_310.method_1551().field_1687;
-            class_1922 view = (class_1922)(world != null ? world : class_2682.field_12294);
-            return !state.method_26234(view, class_2338.field_10980) || Scaffold.invalidBlocks.contains(blockItem.method_7711());
+   public static boolean isInvalidBlock(ItemStack stack) {
+      if (stack != null && !stack.isEmpty()) {
+         if (stack.getItem() instanceof BlockItem blockItem) {
+            BlockState state = blockItem.getBlock().getDefaultState();
+            ClientWorld world = MinecraftClient.getInstance().world;
+            BlockView view = (BlockView)(world != null ? world : EmptyBlockView.INSTANCE);
+            return !state.isFullCube(view, BlockPos.ORIGIN) || Scaffold.invalidBlocks.contains(blockItem.getBlock());
          } else {
             return false;
          }
@@ -185,50 +185,50 @@ public class InventoryUtils {
       }
    }
 
-   public static float getBestArmorScore(class_1304 slot) {
+   public static float getBestArmorScore(EquipmentSlot slot) {
       return getAllItems()
          .stream()
-         .filter(item -> !item.method_7960() && item.method_7909() instanceof class_1738 && ItemUtils.getEquippableSlotType(item) == slot)
+         .filter(item -> !item.isEmpty() && item.getItem() instanceof ArmorItem && ItemUtils.getEquippableSlotType(item) == slot)
          .map(InventoryUtils::getProtection)
          .max(Float::compareTo)
          .orElse(0.0F);
    }
 
-   public static float getCurrentArmorScore(class_1304 slot) {
-      if (slot == class_1304.field_6169) {
-         return getProtection((class_1799)mc.field_1724.method_31548().field_7548.get(3));
-      } else if (slot == class_1304.field_6174) {
-         return getProtection((class_1799)mc.field_1724.method_31548().field_7548.get(2));
-      } else if (slot == class_1304.field_6172) {
-         return getProtection((class_1799)mc.field_1724.method_31548().field_7548.get(1));
+   public static float getCurrentArmorScore(EquipmentSlot slot) {
+      if (slot == EquipmentSlot.HEAD) {
+         return getProtection((ItemStack)mc.player.getInventory().armor.get(3));
+      } else if (slot == EquipmentSlot.CHEST) {
+         return getProtection((ItemStack)mc.player.getInventory().armor.get(2));
+      } else if (slot == EquipmentSlot.LEGS) {
+         return getProtection((ItemStack)mc.player.getInventory().armor.get(1));
       } else {
-         return slot == class_1304.field_6166 ? getProtection((class_1799)mc.field_1724.method_31548().field_7548.get(0)) : 0.0F;
+         return slot == EquipmentSlot.FEET ? getProtection((ItemStack)mc.player.getInventory().armor.get(0)) : 0.0F;
       }
    }
 
    public static float getBestSwordDamage() {
       return getAllItems()
          .stream()
-         .filter(item -> !item.method_7960() && item.method_7909() instanceof class_1829)
+         .filter(item -> !item.isEmpty() && item.getItem() instanceof SwordItem)
          .map(InventoryUtils::getSwordDamage)
          .max(Float::compareTo)
          .orElse(0.0F);
    }
 
-   public static class_1799 getBestSword() {
+   public static ItemStack getBestSword() {
       return getAllItems()
          .stream()
-         .filter(item -> !item.method_7960() && item.method_7909() instanceof class_1829)
+         .filter(item -> !item.isEmpty() && item.getItem() instanceof SwordItem)
          .max(Comparator.comparingInt(s -> (int)(getSwordDamage(s) * 100.0F)))
          .orElse(null);
    }
 
-   public static int getItemStackSlot(class_1799 stack) {
+   public static int getItemStackSlot(ItemStack stack) {
       if (stack == null) {
          return -1;
       } else {
-         for (int i = 0; i < mc.field_1724.method_31548().field_7547.size(); i++) {
-            if (mc.field_1724.method_31548().field_7547.get(i) == stack) {
+         for (int i = 0; i < mc.player.getInventory().main.size(); i++) {
+            if (mc.player.getInventory().main.get(i) == stack) {
                return i;
             }
          }
@@ -237,13 +237,13 @@ public class InventoryUtils {
       }
    }
 
-   public static boolean isItemValid(class_1799 s) {
-      if (!s.method_7960()) {
-         if (s.method_7909() instanceof class_1809) {
+   public static boolean isItemValid(ItemStack s) {
+      if (!s.isEmpty()) {
+         if (s.getItem() instanceof PlayerHeadItem) {
             return false;
          }
 
-         String string = s.method_7964().getString();
+         String string = s.getName().getString();
          if (string.contains("Click")) {
             return false;
          }
@@ -276,10 +276,10 @@ public class InventoryUtils {
       return true;
    }
 
-   public static int getItemSlot(class_1792 item) {
-      for (int i = 0; i < mc.field_1724.method_31548().field_7547.size(); i++) {
-         class_1799 itemStack = (class_1799)mc.field_1724.method_31548().field_7547.get(i);
-         if (itemStack.method_7909() == item) {
+   public static int getItemSlot(Item item) {
+      for (int i = 0; i < mc.player.getInventory().main.size(); i++) {
+         ItemStack itemStack = (ItemStack)mc.player.getInventory().main.get(i);
+         if (itemStack.getItem() == item) {
             return i;
          }
       }
@@ -287,79 +287,79 @@ public class InventoryUtils {
       return -1;
    }
 
-   public static class_1799 getBestProjectile() {
+   public static ItemStack getBestProjectile() {
       return getAllItems()
          .stream()
          .filter(
-            item -> !item.method_7960() && (item.method_7909() == class_1802.field_8803 || item.method_7909() == class_1802.field_8543) && isItemValid(item)
+            item -> !item.isEmpty() && (item.getItem() == Items.EGG || item.getItem() == Items.SNOWBALL) && isItemValid(item)
          )
-         .max(Comparator.comparingInt(class_1799::method_7947))
+         .max(Comparator.comparingInt(ItemStack::getCount))
          .orElse(null);
    }
 
-   public static class_1799 getFishingRod() {
-      return getAllItems().stream().filter(item -> !item.method_7960() && item.method_7909() instanceof class_1787 && isItemValid(item)).findAny().orElse(null);
+   public static ItemStack getFishingRod() {
+      return getAllItems().stream().filter(item -> !item.isEmpty() && item.getItem() instanceof FishingRodItem && isItemValid(item)).findAny().orElse(null);
    }
 
    public static int getBlockCountInInventory() {
       return getAllItems()
          .stream()
          .filter(
-            stack -> !stack.method_7960()
-               && stack.method_7909() instanceof class_1747
-               && !stack.method_7909().equals(class_1802.field_8626)
+            stack -> !stack.isEmpty()
+               && stack.getItem() instanceof BlockItem
+               && !stack.getItem().equals(Items.TNT)
                && !isInvalidBlock(stack)
                && isItemValid(stack)
          )
-         .mapToInt(class_1799::method_7947)
+         .mapToInt(ItemStack::getCount)
          .sum();
    }
 
-   public static class_1799 getWorstProjectile() {
+   public static ItemStack getWorstProjectile() {
       return getAllItems()
          .stream()
-         .filter(item -> !item.method_7960() && (item.method_7909() == class_1802.field_8803 || item.method_7909() == class_1802.field_8543))
-         .min(Comparator.comparingInt(class_1799::method_7947))
+         .filter(item -> !item.isEmpty() && (item.getItem() == Items.EGG || item.getItem() == Items.SNOWBALL))
+         .min(Comparator.comparingInt(ItemStack::getCount))
          .orElse(null);
    }
 
-   public static class_1799 getWorstArrow() {
+   public static ItemStack getWorstArrow() {
       return getAllItems()
          .stream()
-         .filter(item -> !item.method_7960() && item.method_7909() instanceof class_1744 && isItemValid(item))
-         .min(Comparator.comparingInt(class_1799::method_7947))
+         .filter(item -> !item.isEmpty() && item.getItem() instanceof ArrowItem && isItemValid(item))
+         .min(Comparator.comparingInt(ItemStack::getCount))
          .orElse(null);
    }
 
-   public static class_1799 getWorstBlock() {
+   public static ItemStack getWorstBlock() {
       return getAllItems()
          .stream()
-         .filter(stack -> !stack.method_7960() && stack.method_7909() instanceof class_1747 && !isInvalidBlock(stack) && isItemValid(stack))
-         .min(Comparator.comparingInt(class_1799::method_7947))
+         .filter(stack -> !stack.isEmpty() && stack.getItem() instanceof BlockItem && !isInvalidBlock(stack) && isItemValid(stack))
+         .min(Comparator.comparingInt(ItemStack::getCount))
          .orElse(null);
    }
 
-   public static class_1799 getBestBlock() {
+   public static ItemStack getBestBlock() {
       return getAllItems()
          .stream()
-         .filter(stack -> !stack.method_7960() && stack.method_7909() instanceof class_1747 && !isInvalidBlock(stack) && isItemValid(stack))
-         .max(Comparator.comparingInt(class_1799::method_7947))
+         .filter(stack -> !stack.isEmpty() && stack.getItem() instanceof BlockItem && !isInvalidBlock(stack) && isItemValid(stack))
+         .max(Comparator.comparingInt(ItemStack::getCount))
          .orElse(null);
    }
 
    public static float getBestPickaxeScore() {
       return getAllItems()
          .stream()
-         .filter(item -> !item.method_7960() && item.method_7909() instanceof class_1810 && isItemValid(item))
+         .filter(item -> !item.isEmpty() && item.getItem() instanceof PickaxeItem && isItemValid(item))
          .map(InventoryUtils::getToolScore)
          .max(Float::compareTo)
          .orElse(0.0F);
    }
 
-   public static class_1799 getBestPickaxe() {
+   public static ItemStack getBestPickaxe() {
       return getAllItems()
          .stream()
-         .filter(item -> !item.method_7960() && item.method_7909() instanceof class_1810 && isItemValid(item))
+         .filter(item -> !item.isEmpty() && item.getItem() instanceof PickaxeItem && isItemValid(item))
          .max(Comparator.comparingInt(s -> (int)(getToolScore(s) * 100.0F)))
          .orElse(null);
    }
@@ -367,24 +367,24 @@ public class InventoryUtils {
    public static float getBestAxeScore() {
       return getAllItems()
          .stream()
-         .filter(item -> !item.method_7960() && item.method_7909() instanceof class_1743 && !isSharpnessAxe(item) && isItemValid(item))
+         .filter(item -> !item.isEmpty() && item.getItem() instanceof AxeItem && !isSharpnessAxe(item) && isItemValid(item))
          .map(InventoryUtils::getToolScore)
          .max(Float::compareTo)
          .orElse(0.0F);
    }
 
-   public static class_1799 getBestAxe() {
+   public static ItemStack getBestAxe() {
       return getAllItems()
          .stream()
-         .filter(item -> !item.method_7960() && item.method_7909() instanceof class_1743 && !isSharpnessAxe(item) && isItemValid(item))
+         .filter(item -> !item.isEmpty() && item.getItem() instanceof AxeItem && !isSharpnessAxe(item) && isItemValid(item))
          .max(Comparator.comparingInt(s -> (int)(getToolScore(s) * 100.0F)))
          .orElse(null);
    }
 
-   public static class_1799 getBestShapeAxe() {
+   public static ItemStack getBestShapeAxe() {
       return getAllItems()
          .stream()
-         .filter(item -> !item.method_7960() && item.method_7909() instanceof class_1743 && isSharpnessAxe(item) && isItemValid(item) && !isGodAxe(item))
+         .filter(item -> !item.isEmpty() && item.getItem() instanceof AxeItem && isSharpnessAxe(item) && isItemValid(item) && !isGodAxe(item))
          .max(Comparator.comparingInt(s -> (int)(getAxeDamage(s) * 100.0F)))
          .orElse(null);
    }
@@ -392,16 +392,16 @@ public class InventoryUtils {
    public static float getBestShovelScore() {
       return getAllItems()
          .stream()
-         .filter(item -> !item.method_7960() && item.method_7909() instanceof class_1821 && isItemValid(item))
+         .filter(item -> !item.isEmpty() && item.getItem() instanceof ShovelItem && isItemValid(item))
          .map(InventoryUtils::getToolScore)
          .max(Float::compareTo)
          .orElse(0.0F);
    }
 
-   public static class_1799 getBestShovel() {
+   public static ItemStack getBestShovel() {
       return getAllItems()
          .stream()
-         .filter(item -> !item.method_7960() && item.method_7909() instanceof class_1821 && isItemValid(item))
+         .filter(item -> !item.isEmpty() && item.getItem() instanceof ShovelItem && isItemValid(item))
          .max(Comparator.comparingInt(s -> (int)(getToolScore(s) * 100.0F)))
          .orElse(null);
    }
@@ -409,16 +409,16 @@ public class InventoryUtils {
    public static float getBestCrossbowScore() {
       return getAllItems()
          .stream()
-         .filter(item -> !item.method_7960() && item.method_7909() instanceof class_1764 && isItemValid(item))
+         .filter(item -> !item.isEmpty() && item.getItem() instanceof CrossbowItem && isItemValid(item))
          .map(InventoryUtils::getCrossbowScore)
          .max(Float::compareTo)
          .orElse(0.0F);
    }
 
-   public static class_1799 getBestCrossbow() {
+   public static ItemStack getBestCrossbow() {
       return getAllItems()
          .stream()
-         .filter(item -> !item.method_7960() && item.method_7909() instanceof class_1764 && isItemValid(item))
+         .filter(item -> !item.isEmpty() && item.getItem() instanceof CrossbowItem && isItemValid(item))
          .max(Comparator.comparingInt(s -> (int)(getCrossbowScore(s) * 100.0F)))
          .orElse(null);
    }
@@ -426,16 +426,16 @@ public class InventoryUtils {
    public static float getBestPunchBowScore() {
       return getAllItems()
          .stream()
-         .filter(item -> !item.method_7960() && item.method_7909() instanceof class_1753 && isItemValid(item))
+         .filter(item -> !item.isEmpty() && item.getItem() instanceof BowItem && isItemValid(item))
          .map(InventoryUtils::getPunchBowScore)
          .max(Float::compareTo)
          .orElse(0.0F);
    }
 
-   public static class_1799 getBestPunchBow() {
+   public static ItemStack getBestPunchBow() {
       return getAllItems()
          .stream()
-         .filter(item -> !item.method_7960() && item.method_7909() instanceof class_1753 && isItemValid(item))
+         .filter(item -> !item.isEmpty() && item.getItem() instanceof BowItem && isItemValid(item))
          .max(Comparator.comparingInt(s -> (int)(getPunchBowScore(s) * 100.0F)))
          .orElse(null);
    }
@@ -443,16 +443,16 @@ public class InventoryUtils {
    public static float getBestPowerBowScore() {
       return getAllItems()
          .stream()
-         .filter(item -> !item.method_7960() && item.method_7909() instanceof class_1753 && isItemValid(item))
+         .filter(item -> !item.isEmpty() && item.getItem() instanceof BowItem && isItemValid(item))
          .map(InventoryUtils::getPowerBowScore)
          .max(Float::compareTo)
          .orElse(0.0F);
    }
 
-   public static class_1799 getBestPowerBow() {
+   public static ItemStack getBestPowerBow() {
       return getAllItems()
          .stream()
-         .filter(item -> !item.method_7960() && item.method_7909() instanceof class_1753 && isItemValid(item))
+         .filter(item -> !item.isEmpty() && item.getItem() instanceof BowItem && isItemValid(item))
          .max(Comparator.comparingInt(s -> (int)(getPowerBowScore(s) * 100.0F)))
          .orElse(null);
    }
@@ -460,115 +460,115 @@ public class InventoryUtils {
    public static float getBestFlameBowScore() {
       return getAllItems()
          .stream()
-         .filter(item -> !item.method_7960() && item.method_7909() instanceof class_1753 && isItemValid(item))
+         .filter(item -> !item.isEmpty() && item.getItem() instanceof BowItem && isItemValid(item))
          .map(InventoryUtils::getFlameBowScore)
          .max(Float::compareTo)
          .orElse(0.0F);
    }
 
-   public static class_1799 getBestFlameBow() {
+   public static ItemStack getBestFlameBow() {
       return getAllItems()
          .stream()
-         .filter(item -> !item.method_7960() && item.method_7909() instanceof class_1753 && isItemValid(item))
+         .filter(item -> !item.isEmpty() && item.getItem() instanceof BowItem && isItemValid(item))
          .max(Comparator.comparingInt(s -> (int)(getFlameBowScore(s) * 100.0F)))
          .orElse(null);
    }
 
-   public static boolean isPunchBow(class_1799 stack) {
+   public static boolean isPunchBow(ItemStack stack) {
       return getPunchBowScore(stack) > 10.0F && isItemValid(stack);
    }
 
-   public static boolean isPowerBow(class_1799 stack) {
+   public static boolean isPowerBow(ItemStack stack) {
       return getPowerBowScore(stack) > 10.0F && isItemValid(stack);
    }
 
-   public static boolean isFlameBow(class_1799 stack) {
+   public static boolean isFlameBow(ItemStack stack) {
       return getFlameBowScore(stack) > 10.0F && isItemValid(stack);
    }
 
-   public static boolean hasItem(class_1792 checkItem) {
-      return getAllItems().stream().anyMatch(item -> !item.method_7960() && item.method_7909() == checkItem);
+   public static boolean hasItem(Item checkItem) {
+      return getAllItems().stream().anyMatch(item -> !item.isEmpty() && item.getItem() == checkItem);
    }
 
-   public static int getItemCount(class_1792 checkItem) {
-      return getAllItems().stream().filter(item -> !item.method_7960() && item.method_7909() == checkItem).mapToInt(class_1799::method_7947).sum();
+   public static int getItemCount(Item checkItem) {
+      return getAllItems().stream().filter(item -> !item.isEmpty() && item.getItem() == checkItem).mapToInt(ItemStack::getCount).sum();
    }
 
-   public static float getPunchBowScore(class_1799 stack) {
+   public static float getPunchBowScore(ItemStack stack) {
       if (stack == null) {
          return 0.0F;
-      } else if (stack.method_7960()) {
+      } else if (stack.isEmpty()) {
          return 0.0F;
-      } else if (stack.method_7909() instanceof class_1753) {
+      } else if (stack.getItem() instanceof BowItem) {
          float valence = 10.0F;
-         valence += EnchantmentUtils.getLevel(class_1893.field_9116, stack);
-         valence += EnchantmentUtils.getLevel(class_1893.field_9125, stack);
-         valence += EnchantmentUtils.getLevel(class_1893.field_9126, stack);
-         valence += EnchantmentUtils.getLevel(class_1893.field_9103, stack) / 10.0F;
-         return valence + (float)stack.method_7919() / stack.method_7936();
+         valence += EnchantmentUtils.getLevel(Enchantments.PUNCH, stack);
+         valence += EnchantmentUtils.getLevel(Enchantments.INFINITY, stack);
+         valence += EnchantmentUtils.getLevel(Enchantments.FLAME, stack);
+         valence += EnchantmentUtils.getLevel(Enchantments.POWER, stack) / 10.0F;
+         return valence + (float)stack.getDamage() / stack.getMaxDamage();
       } else {
          return 0.0F;
       }
    }
 
-   public static float getPowerBowScore(class_1799 stack) {
+   public static float getPowerBowScore(ItemStack stack) {
       if (stack == null) {
          return 0.0F;
-      } else if (stack.method_7960()) {
+      } else if (stack.isEmpty()) {
          return 0.0F;
-      } else if (stack.method_7909() instanceof class_1753) {
+      } else if (stack.getItem() instanceof BowItem) {
          float valence = 10.0F;
-         valence += EnchantmentUtils.getLevel(class_1893.field_9116, stack) / 10.0F;
-         valence += EnchantmentUtils.getLevel(class_1893.field_9125, stack);
-         valence += EnchantmentUtils.getLevel(class_1893.field_9126, stack);
-         valence += EnchantmentUtils.getLevel(class_1893.field_9103, stack);
-         return valence + (float)stack.method_7919() / stack.method_7936();
+         valence += EnchantmentUtils.getLevel(Enchantments.PUNCH, stack) / 10.0F;
+         valence += EnchantmentUtils.getLevel(Enchantments.INFINITY, stack);
+         valence += EnchantmentUtils.getLevel(Enchantments.FLAME, stack);
+         valence += EnchantmentUtils.getLevel(Enchantments.POWER, stack);
+         return valence + (float)stack.getDamage() / stack.getMaxDamage();
       } else {
          return 0.0F;
       }
    }
 
-   public static float getFlameBowScore(class_1799 stack) {
+   public static float getFlameBowScore(ItemStack stack) {
       if (stack == null) {
          return 0.0F;
-      } else if (stack.method_7960()) {
+      } else if (stack.isEmpty()) {
          return 0.0F;
-      } else if (stack.method_7909() instanceof class_1753) {
+      } else if (stack.getItem() instanceof BowItem) {
          float valence = 10.0F;
-         valence += EnchantmentUtils.getLevel(class_1893.field_9126, stack) * 2.0F;
-         valence += EnchantmentUtils.getLevel(class_1893.field_9125, stack);
-         valence += EnchantmentUtils.getLevel(class_1893.field_9103, stack) / 10.0F;
-         valence += EnchantmentUtils.getLevel(class_1893.field_9116, stack) / 10.0F;
-         return valence + (float)stack.method_7919() / stack.method_7936();
+         valence += EnchantmentUtils.getLevel(Enchantments.FLAME, stack) * 2.0F;
+         valence += EnchantmentUtils.getLevel(Enchantments.INFINITY, stack);
+         valence += EnchantmentUtils.getLevel(Enchantments.POWER, stack) / 10.0F;
+         valence += EnchantmentUtils.getLevel(Enchantments.PUNCH, stack) / 10.0F;
+         return valence + (float)stack.getDamage() / stack.getMaxDamage();
       } else {
          return 0.0F;
       }
    }
 
-   public static float getToolScore(class_1799 stack) {
+   public static float getToolScore(ItemStack stack) {
       float valence = 0.0F;
       if (stack == null) {
          return 0.0F;
-      } else if (stack.method_7960()) {
+      } else if (stack.isEmpty()) {
          return 0.0F;
       } else if (isGodItem(stack)) {
          return 0.0F;
       } else if (isSharpnessAxe(stack)) {
          return 0.0F;
       } else {
-         if (stack.method_7909() instanceof class_1810) {
-            valence += stack.method_7924(class_2246.field_10340.method_9564());
-         } else if (stack.method_7909() instanceof class_1743) {
-            valence += stack.method_7924(class_2246.field_10431.method_9564());
+         if (stack.getItem() instanceof PickaxeItem) {
+            valence += stack.getMiningSpeedMultiplier(Blocks.STONE.getDefaultState());
+         } else if (stack.getItem() instanceof AxeItem) {
+            valence += stack.getMiningSpeedMultiplier(Blocks.OAK_LOG.getDefaultState());
          } else {
-            if (!(stack.method_7909() instanceof class_1821)) {
+            if (!(stack.getItem() instanceof ShovelItem)) {
                return 0.0F;
             }
 
-            valence += stack.method_7924(class_2246.field_10566.method_9564());
+            valence += stack.getMiningSpeedMultiplier(Blocks.DIRT.getDefaultState());
          }
 
-         int efficiency = EnchantmentUtils.getLevel(class_1893.field_9131, stack);
+         int efficiency = EnchantmentUtils.getLevel(Enchantments.EFFICIENCY, stack);
          if (efficiency > 0) {
             valence += efficiency * 0.0075F;
          }
@@ -577,18 +577,18 @@ public class InventoryUtils {
       }
    }
 
-   public static float getAxeDamage(class_1799 stack) {
+   public static float getAxeDamage(ItemStack stack) {
       float valence = 0.0F;
       if (stack == null) {
          return 0.0F;
-      } else if (stack.method_7960()) {
+      } else if (stack.isEmpty()) {
          return 0.0F;
       } else {
-         if (stack.method_7909() instanceof class_1743 && isSharpnessAxe(stack)) {
-            valence += (float)ItemUtils.handAttributeValueWithStack(stack, class_5134.field_23721, class_1268.field_5808);
+         if (stack.getItem() instanceof AxeItem && isSharpnessAxe(stack)) {
+            valence += (float)ItemUtils.handAttributeValueWithStack(stack, EntityAttributes.ATTACK_DAMAGE, Hand.MAIN_HAND);
          }
 
-         int itemEnchantmentLevel = EnchantmentUtils.getLevel(class_1893.field_9118, stack);
+         int itemEnchantmentLevel = EnchantmentUtils.getLevel(Enchantments.SHARPNESS, stack);
          if (itemEnchantmentLevel > 0) {
             valence += 1.25F * itemEnchantmentLevel;
          }
@@ -597,18 +597,18 @@ public class InventoryUtils {
       }
    }
 
-   public static float getSwordDamage(class_1799 stack) {
+   public static float getSwordDamage(ItemStack stack) {
       float valence = 0.0F;
       if (stack == null) {
          return 0.0F;
-      } else if (stack.method_7960()) {
+      } else if (stack.isEmpty()) {
          return 0.0F;
       } else {
-         if (stack.method_7909() instanceof class_1829) {
-            valence += (float)ItemUtils.handAttributeValueWithStack(stack, class_5134.field_23721, class_1268.field_5808);
+         if (stack.getItem() instanceof SwordItem) {
+            valence += (float)ItemUtils.handAttributeValueWithStack(stack, EntityAttributes.ATTACK_DAMAGE, Hand.MAIN_HAND);
          }
 
-         int itemEnchantmentLevel = EnchantmentUtils.getLevel(class_1893.field_9118, stack);
+         int itemEnchantmentLevel = EnchantmentUtils.getLevel(Enchantments.SHARPNESS, stack);
          if (itemEnchantmentLevel > 0) {
             valence += 1.25F * itemEnchantmentLevel;
          }
@@ -617,78 +617,78 @@ public class InventoryUtils {
       }
    }
 
-   public static float getProtection(class_1799 itemStack) {
+   public static float getProtection(ItemStack itemStack) {
       int valence = 0;
       if (itemStack == null) {
          return 0.0F;
-      } else if (itemStack.method_7960()) {
+      } else if (itemStack.isEmpty()) {
          return 0.0F;
       } else {
-         if (itemStack.method_7909() instanceof class_1738) {
-            class_5321<class_10394> assets = ItemUtils.getArmorAsset(itemStack);
+         if (itemStack.getItem() instanceof ArmorItem) {
+            RegistryKey<EquipmentAsset> assets = ItemUtils.getArmorAsset(itemStack);
             if (assets != null) {
-               if (class_10191.field_54134.equals(assets)) {
+               if (EquipmentAssetKeys.LEATHER.equals(assets)) {
                   valence += 100;
-               } else if (class_10191.field_54135.equals(assets)) {
+               } else if (EquipmentAssetKeys.CHAINMAIL.equals(assets)) {
                   valence += 200;
-               } else if (class_10191.field_54136.equals(assets)) {
+               } else if (EquipmentAssetKeys.IRON.equals(assets)) {
                   valence += 400;
-               } else if (class_10191.field_54137.equals(assets)) {
+               } else if (EquipmentAssetKeys.GOLD.equals(assets)) {
                   valence += 300;
-               } else if (class_10191.field_54138.equals(assets)) {
+               } else if (EquipmentAssetKeys.DIAMOND.equals(assets)) {
                   valence += 500;
-               } else if (class_10191.field_54140.equals(assets)) {
+               } else if (EquipmentAssetKeys.NETHERITE.equals(assets)) {
                   valence += 600;
                }
             }
          }
 
-         valence += EnchantmentUtils.getLevel(class_1893.field_9111, itemStack);
+         valence += EnchantmentUtils.getLevel(Enchantments.PROTECTION, itemStack);
          return valence;
       }
    }
 
-   public static float getCrossbowScore(class_1799 stack) {
+   public static float getCrossbowScore(ItemStack stack) {
       return ContainerUtils.getCrossbowScore(stack);
    }
 
-   public static boolean isGodItem(class_1799 stack) {
-      if (stack.method_7960()) {
+   public static boolean isGodItem(ItemStack stack) {
+      if (stack.isEmpty()) {
          return false;
-      } else if (stack.method_7909() instanceof class_1743
-         && stack.method_7909() == class_1802.field_8825
-         && EnchantmentUtils.getLevel(class_1893.field_9118, stack) > 100) {
+      } else if (stack.getItem() instanceof AxeItem
+         && stack.getItem() == Items.GOLDEN_AXE
+         && EnchantmentUtils.getLevel(Enchantments.SHARPNESS, stack) > 100) {
          return true;
-      } else if (stack.method_7909() == class_1802.field_8777 && EnchantmentUtils.getLevel(class_1893.field_9121, stack) > 1) {
+      } else if (stack.getItem() == Items.SLIME_BALL && EnchantmentUtils.getLevel(Enchantments.KNOCKBACK, stack) > 1) {
          return true;
       } else {
-         return stack.method_7909() == class_1802.field_8288 ? true : stack.method_7909() == class_1802.field_8301;
+         return stack.getItem() == Items.TOTEM_OF_UNDYING ? true : stack.getItem() == Items.END_CRYSTAL;
       }
    }
 
-   public static boolean isCommonItemUseful(class_1799 stack) {
-      if (stack.method_7960()) {
+   public static boolean isCommonItemUseful(ItemStack stack) {
+      if (stack.isEmpty()) {
          return true;
       } else {
-         class_1792 item = stack.method_7909();
-         if (item instanceof class_1843) {
+         Item item = stack.getItem();
+         if (item instanceof WrittenBookItem) {
             return false;
-         } else if (item instanceof class_1840) {
+         } else if (item instanceof WritableBookItem) {
             return false;
-         } else if (item instanceof class_1779) {
+         } else if (item instanceof ExperienceBottleItem) {
             return false;
-         } else if (item instanceof class_1781) {
+         } else if (item instanceof FireworkRocketItem) {
             return false;
-         } else if (item.equals(class_1802.field_8106) || item.equals(class_1802.field_8782) || item.equals(class_1802.field_8657)) {
+         } else if (item.equals(Items.CHEST) || item.equals(Items.ANVIL) || item.equals(Items.ENCHANTING_TABLE)) {
             return false;
          } else {
-            return item == class_1802.field_8317
-                  || item == class_1802.field_8309
-                  || item == class_1802.field_46250
-                  || item == class_1802.field_46249
-                  || item == class_1802.field_42711
+            return item == Items.WHEAT_SEEDS
+                  || item == Items.BEETROOT_SEEDS
+                  || item == Items.MELON_SEEDS
+                  || item == Items.PUMPKIN_SEEDS
+                  || item == Items.TORCHFLOWER_SEEDS
                ? false
-               : item != class_1802.field_8884;
+               : item != Items.FLINT_AND_STEEL;
          }
       }
    }

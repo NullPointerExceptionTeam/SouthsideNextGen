@@ -9,10 +9,10 @@ import dev.southside.orbit.EventHandler;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-import net.minecraft.class_1657;
-import net.minecraft.class_266;
-import net.minecraft.class_2757;
-import net.minecraft.class_8646;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.scoreboard.ScoreboardObjective;
+import net.minecraft.network.packet.s2c.play.ScoreboardScoreUpdateS2CPacket;
+import net.minecraft.scoreboard.ScoreboardDisplaySlot;
 
 public class HealthBypass extends Module {
    public final Switch smooth = new Switch("Smooth", false);
@@ -25,21 +25,21 @@ public class HealthBypass extends Module {
 
    @EventHandler
    public void onPacket(PacketEvent event) {
-      if (event.getPacket() instanceof class_2757 packet) {
-         if (mc.field_1687 == null || packet.comp_2123() == null) {
+      if (event.getPacket() instanceof ScoreboardScoreUpdateS2CPacket packet) {
+         if (mc.world == null || packet.objectiveName() == null) {
             return;
          }
 
-         class_266 objective = mc.field_1687.method_8428().method_1170(packet.comp_2123());
-         if (mc.field_1687.method_8428().method_1189(class_8646.field_45158) == objective) {
+         ScoreboardObjective objective = mc.world.getScoreboard().getNullableObjective(packet.objectiveName());
+         if (mc.world.getScoreboard().getObjectiveForSlot(ScoreboardDisplaySlot.BELOW_NAME) == objective) {
             mc.execute(() -> {
-               if (mc.field_1724 != null && !packet.comp_2122().equals(mc.field_1724.method_7334().getName())) {
-                  if (!HEALTHS.containsKey(packet.comp_2122())) {
+               if (mc.player != null && !packet.scoreHolderName().equals(mc.player.getGameProfile().getName())) {
+                  if (!HEALTHS.containsKey(packet.scoreHolderName())) {
                      AtomicInteger atomic = new AtomicInteger();
-                     HEALTHS.put(packet.comp_2122(), atomic);
+                     HEALTHS.put(packet.scoreHolderName(), atomic);
                   }
 
-                  HEALTHS.get(packet.comp_2122()).set(packet.comp_2124());
+                  HEALTHS.get(packet.scoreHolderName()).set(packet.score());
                }
             });
          }
@@ -48,10 +48,10 @@ public class HealthBypass extends Module {
 
    @EventHandler
    public void onUpdate(PlayerUpdateEvent event) {
-      if (mc.field_1687 != null) {
-         for (class_1657 player : mc.field_1687.method_18456()) {
-            if (player != mc.field_1724 && HEALTHS.containsKey(player.method_5477().getString())) {
-               String name = player.method_5477().getString();
+      if (mc.world != null) {
+         for (PlayerEntity player : mc.world.getPlayers()) {
+            if (player != mc.player && HEALTHS.containsKey(player.getName().getString())) {
+               String name = player.getName().getString();
                float target = Math.max(1, HEALTHS.get(name).get());
                if (this.smooth.getValue()) {
                   float current = SMOOTH_HEALTHS.getOrDefault(name, target);
@@ -62,9 +62,9 @@ public class HealthBypass extends Module {
                   }
 
                   SMOOTH_HEALTHS.put(name, current);
-                  player.method_6033(current);
+                  player.setHealth(current);
                } else {
-                  player.method_6033(target);
+                  player.setHealth(target);
                }
             }
          }

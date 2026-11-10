@@ -18,10 +18,10 @@ import java.util.Map.Entry;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import net.minecraft.class_1657;
-import net.minecraft.class_640;
-import net.minecraft.class_7438;
-import net.minecraft.class_7439;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.client.network.PlayerListEntry;
+import net.minecraft.network.packet.s2c.play.ChatMessageS2CPacket;
+import net.minecraft.network.packet.s2c.play.GameMessageS2CPacket;
 
 public class AutoReply extends Module {
    public final Switch debug = new Switch("Debug", false);
@@ -101,36 +101,36 @@ public class AutoReply extends Module {
    @EventHandler
    public void onPacket(PacketEvent event) {
       if (event.getOrigin() == TransferOrigin.RECEIVE) {
-         if (mc.field_1724 != null && mc.method_1562() != null) {
+         if (mc.player != null && mc.getNetworkHandler() != null) {
             String message = null;
             String sender = null;
             UUID senderUUID = null;
-            if (event.getPacket() instanceof class_7438 packet) {
-               message = packet.comp_1102().comp_1090();
-               senderUUID = packet.comp_1099();
-               if (senderUUID != null && mc.field_1687 != null) {
-                  class_1657 player = mc.field_1687.method_18470(senderUUID);
+            if (event.getPacket() instanceof ChatMessageS2CPacket packet) {
+               message = packet.body().content();
+               senderUUID = packet.sender();
+               if (senderUUID != null && mc.world != null) {
+                  PlayerEntity player = mc.world.getPlayerByUuid(senderUUID);
                   if (player != null) {
-                     sender = player.method_7334().getName();
+                     sender = player.getGameProfile().getName();
                   }
                }
-            } else if (event.getPacket() instanceof class_7439 packetx) {
-               message = packetx.comp_763().getString();
+            } else if (event.getPacket() instanceof GameMessageS2CPacket packetx) {
+               message = packetx.content().getString();
                sender = this.extractSenderFromFormatted(message);
             }
 
             if (message != null && !message.isEmpty()) {
-               if (!this.autoCooldown.getValue() || !(event.getPacket() instanceof class_7439) || !message.contains("请不要刷屏") && !message.contains("发送重复消息")) {
+               if (!this.autoCooldown.getValue() || !(event.getPacket() instanceof GameMessageS2CPacket) || !message.contains("请不要刷屏") && !message.contains("发送重复消息")) {
                   if (!message.contains("全服喊话")) {
                      String chatContent;
-                     if (event.getPacket() instanceof class_7439) {
+                     if (event.getPacket() instanceof GameMessageS2CPacket) {
                         chatContent = this.extractChatContent(message);
                      } else {
                         chatContent = message;
                      }
 
                      if (chatContent != null && !chatContent.isEmpty()) {
-                        String myName = mc.field_1724.method_7334().getName();
+                        String myName = mc.player.getGameProfile().getName();
                         long now = System.currentTimeMillis();
                         if (this.replyLoop.getValue() && this.loopTargetName != null) {
                            if (now - this.loopLastActivity > this.loopTimeout.getValue().longValue() * 1000L) {
@@ -264,8 +264,8 @@ public class AutoReply extends Module {
 
                      String finalClean = clean;
                      mc.execute(() -> {
-                        if (mc.method_1562() != null) {
-                           mc.method_1562().method_45729(finalClean);
+                        if (mc.getNetworkHandler() != null) {
+                           mc.getNetworkHandler().sendChatMessage(finalClean);
                         }
                      });
                   }
@@ -326,9 +326,9 @@ public class AutoReply extends Module {
             if (playerName.isEmpty()) {
                return null;
             } else {
-               if (mc.method_1562() != null) {
-                  for (class_640 entry : mc.method_1562().method_2880()) {
-                     if (entry.method_2966().getName().equals(playerName)) {
+               if (mc.getNetworkHandler() != null) {
+                  for (PlayerListEntry entry : mc.getNetworkHandler().getPlayerList()) {
+                     if (entry.getProfile().getName().equals(playerName)) {
                         return playerName;
                      }
                   }

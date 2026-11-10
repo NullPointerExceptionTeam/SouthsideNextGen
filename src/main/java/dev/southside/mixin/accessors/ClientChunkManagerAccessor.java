@@ -1,12 +1,12 @@
 package dev.southside.mixin.accessors;
 
-import net.minecraft.class_631;
-import net.minecraft.class_631.class_3681;
+import net.minecraft.client.world.ClientChunkManager;
+import net.minecraft.client.world.ClientChunkManager.ClientChunkMap;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
-@Mixin({class_631.class})
+@Mixin({ClientChunkManager.class})
 public interface ClientChunkManagerAccessor {
-   @Accessor("field_16246")
-   class_3681 getChunks();
+   @Accessor("chunks")
+   ClientChunkMap getChunks();
 }

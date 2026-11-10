@@ -17,24 +17,24 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import net.minecraft.class_1268;
-import net.minecraft.class_1297;
-import net.minecraft.class_1309;
-import net.minecraft.class_1657;
-import net.minecraft.class_1682;
-import net.minecraft.class_1787;
-import net.minecraft.class_1799;
-import net.minecraft.class_2338;
-import net.minecraft.class_243;
-import net.minecraft.class_2824;
-import net.minecraft.class_2846;
-import net.minecraft.class_2886;
-import net.minecraft.class_3959;
-import net.minecraft.class_3965;
-import net.minecraft.class_239.class_240;
-import net.minecraft.class_2846.class_2847;
-import net.minecraft.class_3959.class_242;
-import net.minecraft.class_3959.class_3960;
+import net.minecraft.util.Hand;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.projectile.thrown.ThrownEntity;
+import net.minecraft.item.FishingRodItem;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerInteractItemC2SPacket;
+import net.minecraft.world.RaycastContext;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.HitResult.Type;
+import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket.Action;
+import net.minecraft.world.RaycastContext.FluidHandling;
+import net.minecraft.world.RaycastContext.ShapeType;
 
 public class AutoRod extends Module {
    private final Slider delay = new Slider("Delay", 500, 100, 1000, 10);
@@ -50,10 +50,10 @@ public class AutoRod extends Module {
    public boolean isRodActive;
    private long reelTime;
    private int previousSlot = -1;
-   private class_1268 rodHand;
-   private class_1309 currentTarget;
+   private Hand rodHand;
+   private LivingEntity currentTarget;
    public int rodState = 0;
-   private Map<class_1682, Long> thrownEntities = new HashMap<>();
+   private Map<ThrownEntity, Long> thrownEntities = new HashMap<>();
 
    public AutoRod() {
       super(Category.Combat, "AutoRod", "Automatically uses fishing rods");
@@ -78,16 +78,16 @@ public class AutoRod extends Module {
    @EventHandler
    public void onRotation(RotationEvent event) {
       if (!ClientUtils.nullCheck()) {
-         if (mc.field_1755 == null) {
-            if (!mc.field_1724.method_6115()) {
+         if (mc.currentScreen == null) {
+            if (!mc.player.isUsingItem()) {
                if (!Southside.INSTANCE.getModuleManager().get(Scaffold.class).isEnabled()) {
                   long currentTime = System.currentTimeMillis();
                   if (this.isRodActive) {
                      if (this.currentTarget != null
-                        && mc.field_1724.method_19538().method_1022(this.currentTarget.method_19538()) < this.minRange.getValue().floatValue()) {
-                        mc.field_1761.method_2919(mc.field_1724, this.rodHand);
+                        && mc.player.getPos().distanceTo(this.currentTarget.getPos()) < this.minRange.getValue().floatValue()) {
+                        mc.interactionManager.interactItem(mc.player, this.rodHand);
                         if (this.previousSlot != -1) {
-                           mc.field_1724.method_31548().field_7545 = this.previousSlot;
+                           mc.player.getInventory().selectedSlot = this.previousSlot;
                            this.previousSlot = -1;
                         }
 
@@ -97,9 +97,9 @@ public class AutoRod extends Module {
                         this.rodHand = null;
                         this.currentTarget = null;
                      } else if (currentTime >= this.reelTime) {
-                        mc.field_1761.method_2919(mc.field_1724, this.rodHand);
+                        mc.interactionManager.interactItem(mc.player, this.rodHand);
                         if (this.previousSlot != -1) {
-                           mc.field_1724.method_31548().field_7545 = this.previousSlot;
+                           mc.player.getInventory().selectedSlot = this.previousSlot;
                            this.previousSlot = -1;
                         }
 
@@ -110,10 +110,10 @@ public class AutoRod extends Module {
                         this.currentTarget = null;
                      }
                   } else {
-                     Map<class_1682, Long> newThrown = new HashMap<>();
+                     Map<ThrownEntity, Long> newThrown = new HashMap<>();
 
-                     for (class_1297 entity : mc.field_1687.method_18112()) {
-                        if (entity instanceof class_1682 thrown) {
+                     for (Entity entity : mc.world.getEntities()) {
+                        if (entity instanceof ThrownEntity thrown) {
                            if (this.thrownEntities.containsKey(thrown)) {
                               newThrown.put(thrown, this.thrownEntities.get(thrown));
                            }
@@ -130,13 +130,13 @@ public class AutoRod extends Module {
                            return;
                         }
 
-                        this.rodHand = rodSlot == -2 ? class_1268.field_5810 : class_1268.field_5808;
+                        this.rodHand = rodSlot == -2 ? Hand.OFF_HAND : Hand.MAIN_HAND;
                         if (rodSlot != -2) {
-                           this.previousSlot = mc.field_1724.method_31548().field_7545;
-                           mc.field_1724.method_31548().field_7545 = rodSlot;
+                           this.previousSlot = mc.player.getInventory().selectedSlot;
+                           mc.player.getInventory().selectedSlot = rodSlot;
                         }
 
-                        mc.field_1761.method_2919(mc.field_1724, rodSlot == -2 ? class_1268.field_5810 : class_1268.field_5808);
+                        mc.interactionManager.interactItem(mc.player, rodSlot == -2 ? Hand.OFF_HAND : Hand.MAIN_HAND);
                         this.isRodActive = true;
                         this.rodState = 0;
                         this.rotation = null;
@@ -145,7 +145,7 @@ public class AutoRod extends Module {
                            return;
                         }
 
-                        List<class_1297> targets = (KillAura.target == null
+                        List<Entity> targets = (KillAura.target == null
                               ? TargetUtils.getTargets(this.minRange.getValue().floatValue(), this.maxRange.getValue().floatValue())
                               : KillAura.targets)
                            .stream()
@@ -160,8 +160,8 @@ public class AutoRod extends Module {
                            return;
                         }
 
-                        class_1309 target = (class_1309)targets.get(0);
-                        if (!(target instanceof class_1657)) {
+                        LivingEntity target = (LivingEntity)targets.get(0);
+                        if (!(target instanceof PlayerEntity)) {
                            return;
                         }
 
@@ -169,7 +169,7 @@ public class AutoRod extends Module {
                         double ticks = this.keepTime.getValue().doubleValue() / 50.0;
                         this.reelTime = currentTime + this.keepTime.getValue().intValue();
                         this.currentTarget = target;
-                        class_243 predictedPos = this.predictPosition(target, ticks);
+                        Vec3d predictedPos = this.predictPosition(target, ticks);
                         if (predictedPos == null) {
                            return;
                         }
@@ -190,16 +190,16 @@ public class AutoRod extends Module {
    }
 
    private int findRodSlot() {
-      if (mc.field_1724 == null) {
+      if (mc.player == null) {
          return -1;
       } else {
-         class_1799 offhandStack = mc.field_1724.method_6079();
-         if (!offhandStack.method_7960() && offhandStack.method_7909() instanceof class_1787) {
+         ItemStack offhandStack = mc.player.getOffHandStack();
+         if (!offhandStack.isEmpty() && offhandStack.getItem() instanceof FishingRodItem) {
             return -2;
          } else {
             for (int i = 0; i < 9; i++) {
-               class_1799 stack = mc.field_1724.method_31548().method_5438(i);
-               if (!stack.method_7960() && stack.method_7909() instanceof class_1787) {
+               ItemStack stack = mc.player.getInventory().getStack(i);
+               if (!stack.isEmpty() && stack.getItem() instanceof FishingRodItem) {
                   return i;
                }
             }
@@ -209,38 +209,38 @@ public class AutoRod extends Module {
       }
    }
 
-   private double calculateThrowTime(class_1297 target) {
-      class_243 targetPos = target.method_19538();
-      class_243 playerPos = mc.field_1724.method_19538();
-      double distance = targetPos.method_1022(playerPos);
+   private double calculateThrowTime(Entity target) {
+      Vec3d targetPos = target.getPos();
+      Vec3d playerPos = mc.player.getPos();
+      double distance = targetPos.distanceTo(playerPos);
       return Math.max(distance / 8.0, 1.0);
    }
 
-   private class_243 predictPosition(class_1297 target, double ticks) {
-      if (mc.field_1687 == null) {
+   private Vec3d predictPosition(Entity target, double ticks) {
+      if (mc.world == null) {
          return null;
       } else {
-         class_243 motion = target.method_19538().method_1023(target.field_6014, target.field_6036, target.field_5969);
-         double predictedX = target.method_23317() + motion.field_1352 * ticks;
-         double predictedY = target.method_23318() + motion.field_1351 * ticks;
-         double predictedZ = target.method_23321() + motion.field_1350 * ticks;
-         return new class_243(predictedX, predictedY + target.method_5751(), predictedZ);
+         Vec3d motion = target.getPos().subtract(target.prevX, target.prevY, target.prevZ);
+         double predictedX = target.getX() + motion.x * ticks;
+         double predictedY = target.getY() + motion.y * ticks;
+         double predictedZ = target.getZ() + motion.z * ticks;
+         return new Vec3d(predictedX, predictedY + target.getStandingEyeHeight(), predictedZ);
       }
    }
 
-   private boolean isObstructed(class_243 targetPos, double ticks) {
-      if (mc.field_1724 != null && mc.field_1687 != null) {
-         new class_243(mc.field_1724.method_23317(), mc.field_1724.method_23320(), mc.field_1724.method_23321());
-         List<class_243> trajectory = this.calculateTrajectory(targetPos, ticks);
+   private boolean isObstructed(Vec3d targetPos, double ticks) {
+      if (mc.player != null && mc.world != null) {
+         new Vec3d(mc.player.getX(), mc.player.getEyeY(), mc.player.getZ());
+         List<Vec3d> trajectory = this.calculateTrajectory(targetPos, ticks);
 
          for (int i = 0; i < trajectory.size() - 1; i++) {
-            class_243 current = trajectory.get(i);
-            class_243 next = trajectory.get(i + 1);
-            class_3965 result = mc.field_1687.method_17742(new class_3959(current, next, class_3960.field_17558, class_242.field_1348, mc.field_1724));
-            if (result.method_17783() == class_240.field_1332) {
-               class_2338 blockPos = result.method_17777();
-               if (!mc.field_1687.method_8320(blockPos).method_26215()
-                  && !mc.field_1687.method_8320(blockPos).method_26220(mc.field_1687, blockPos).method_1110()) {
+            Vec3d current = trajectory.get(i);
+            Vec3d next = trajectory.get(i + 1);
+            BlockHitResult result = mc.world.raycast(new RaycastContext(current, next, ShapeType.COLLIDER, FluidHandling.NONE, mc.player));
+            if (result.getType() == Type.BLOCK) {
+               BlockPos blockPos = result.getBlockPos();
+               if (!mc.world.getBlockState(blockPos).isAir()
+                  && !mc.world.getBlockState(blockPos).getCollisionShape(mc.world, blockPos).isEmpty()) {
                   return true;
                }
             }
@@ -252,22 +252,22 @@ public class AutoRod extends Module {
       }
    }
 
-   private List<class_243> calculateTrajectory(class_243 targetPos, double ticks) {
-      if (mc.field_1724 == null) {
+   private List<Vec3d> calculateTrajectory(Vec3d targetPos, double ticks) {
+      if (mc.player == null) {
          return List.of();
       } else {
-         List<class_243> points = new ArrayList<>();
-         class_243 eyePos = new class_243(mc.field_1724.method_23317(), mc.field_1724.method_23320(), mc.field_1724.method_23321());
-         class_243 direction = targetPos.method_1020(eyePos).method_1029();
-         class_243 initialVel = direction.method_1021(1.5);
-         class_243 pos = eyePos;
-         class_243 vel = initialVel;
+         List<Vec3d> points = new ArrayList<>();
+         Vec3d eyePos = new Vec3d(mc.player.getX(), mc.player.getEyeY(), mc.player.getZ());
+         Vec3d direction = targetPos.subtract(eyePos).normalize();
+         Vec3d initialVel = direction.multiply(1.5);
+         Vec3d pos = eyePos;
+         Vec3d vel = initialVel;
          points.add(eyePos);
          int maxTicks = (int)Math.ceil(ticks);
 
          for (int i = 0; i < maxTicks; i++) {
-            pos = pos.method_1019(vel);
-            vel = vel.method_1031(0.0, -0.03, 0.0);
+            pos = pos.add(vel);
+            vel = vel.add(0.0, -0.03, 0.0);
             points.add(pos);
          }
 
@@ -277,18 +277,18 @@ public class AutoRod extends Module {
 
    @EventHandler
    public void onPacketSend(PacketEvent event) {
-      if (event.getPacket() instanceof class_2824) {
+      if (event.getPacket() instanceof PlayerInteractEntityC2SPacket) {
          this.rodState = 0;
          this.rotation = null;
-      } else if (event.getPacket() instanceof class_2886) {
-         class_2886 packet = (class_2886)event.getPacket();
-         if ((packet.method_12551() == class_1268.field_5808 ? mc.field_1724.method_6047() : mc.field_1724.method_6079()).method_7909() instanceof class_1787) {
+      } else if (event.getPacket() instanceof PlayerInteractItemC2SPacket) {
+         PlayerInteractItemC2SPacket packet = (PlayerInteractItemC2SPacket)event.getPacket();
+         if ((packet.getHand() == Hand.MAIN_HAND ? mc.player.getMainHandStack() : mc.player.getOffHandStack()).getItem() instanceof FishingRodItem) {
             return;
          }
 
          this.rodState = 0;
          this.rotation = null;
-      } else if (event.getPacket() instanceof class_2846 && ((class_2846)event.getPacket()).method_12363() == class_2847.field_12968) {
+      } else if (event.getPacket() instanceof PlayerActionC2SPacket && ((PlayerActionC2SPacket)event.getPacket()).getAction() == Action.START_DESTROY_BLOCK) {
          this.rodState = 0;
          this.rotation = null;
       }

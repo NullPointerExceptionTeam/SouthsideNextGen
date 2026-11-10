@@ -6,17 +6,17 @@ import dev.southside.module.impl.player.StealerN;
 import dev.southside.utils.network.TimedPacket;
 import java.util.concurrent.LinkedBlockingQueue;
 import lombok.Generated;
-import net.minecraft.class_2596;
-import net.minecraft.class_2670;
+import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.s2c.common.KeepAliveS2CPacket;
 
 public final class PingSpoofManager implements MinecraftAccessor {
    public static final LinkedBlockingQueue<TimedPacket> packets = new LinkedBlockingQueue<>();
    public static boolean enabled = false;
 
-   public static boolean onPacket(class_2596<?> packet) {
+   public static boolean onPacket(Packet<?> packet) {
       if (!enabled) {
          return false;
-      } else if (packet instanceof class_2670) {
+      } else if (packet instanceof KeepAliveS2CPacket) {
          packets.add(new TimedPacket(packet));
          return true;
       } else {
@@ -37,7 +37,7 @@ public final class PingSpoofManager implements MinecraftAccessor {
                packets.poll();
 
                try {
-                  timedPacket.getPacket().method_65081(mc.method_1562());
+                  timedPacket.getPacket().apply(mc.getNetworkHandler());
                } catch (Exception var4) {
                   var4.printStackTrace();
                }
@@ -57,7 +57,7 @@ public final class PingSpoofManager implements MinecraftAccessor {
                TimedPacket keepAlive = packets.poll();
                if (keepAlive != null) {
                   try {
-                     keepAlive.getPacket().method_65081(mc.method_1562());
+                     keepAlive.getPacket().apply(mc.getNetworkHandler());
                   } catch (Exception var5) {
                      var5.printStackTrace();
                   }

@@ -13,12 +13,12 @@ import dev.southside.utils.raytrace.ClientRayTraceUtil;
 import dev.southside.utils.rotation.MoveFixMode;
 import dev.southside.utils.rotation.RotationUtils;
 import dev.southside.utils.types.Rotation;
-import net.minecraft.class_1268;
-import net.minecraft.class_1297;
-import net.minecraft.class_1511;
-import net.minecraft.class_243;
-import net.minecraft.class_2824;
-import net.minecraft.class_2879;
+import net.minecraft.util.Hand;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.decoration.EndCrystalEntity;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
+import net.minecraft.network.packet.c2s.play.HandSwingC2SPacket;
 
 public class AutoCrystal extends Module {
    public Slider range = new Slider("Range", 3.0, 1.0, 8.0, 0.01);
@@ -32,17 +32,17 @@ public class AutoCrystal extends Module {
    )
    public void onRotation(RotationEvent event) {
       if (!ClientUtils.nullCheck()) {
-         for (class_1297 entity : mc.field_1687.method_18112()) {
-            if (entity instanceof class_1511) {
-               class_243 vec3d = BoundBoxUtils.getMinDistanceVec3dByBox(mc.field_1724.method_33571(), entity.method_5829());
-               if (mc.field_1724.method_33571().method_1022(vec3d) <= this.range.getDouble()) {
-                  Rotation rotation = AimMath.toRotation(AimMath.computeBestAimToEntity(mc.field_1724, entity, 1.0F));
+         for (Entity entity : mc.world.getEntities()) {
+            if (entity instanceof EndCrystalEntity) {
+               Vec3d vec3d = BoundBoxUtils.getMinDistanceVec3dByBox(mc.player.getEyePos(), entity.getBoundingBox());
+               if (mc.player.getEyePos().distanceTo(vec3d) <= this.range.getDouble()) {
+                  Rotation rotation = AimMath.toRotation(AimMath.computeBestAimToEntity(mc.player, entity, 1.0F));
                   if (ClientRayTraceUtil.didHitEntity(rotation.yaw, rotation.pitch, 3.0, entity)) {
                      RotationUtils.setRotation(
-                        RotationUtils.getRotationByVector(mc.field_1724.method_33571(), vec3d, false), this.rotationPriority(), MoveFixMode.Silent
+                        RotationUtils.getRotationByVector(mc.player.getEyePos(), vec3d, false), this.rotationPriority(), MoveFixMode.Silent
                      );
-                     PacketUtils.sendPacketNoEvent(class_2824.method_34206(entity, mc.field_1724.method_5715()));
-                     PacketUtils.sendPacketNoEvent(new class_2879(class_1268.field_5808));
+                     PacketUtils.sendPacketNoEvent(PlayerInteractEntityC2SPacket.attack(entity, mc.player.isSneaking()));
+                     PacketUtils.sendPacketNoEvent(new HandSwingC2SPacket(Hand.MAIN_HAND));
                   }
                   break;
                }

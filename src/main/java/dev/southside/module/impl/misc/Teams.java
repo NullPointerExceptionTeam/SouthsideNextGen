@@ -5,10 +5,10 @@ import dev.southside.Southside;
 import dev.southside.module.Category;
 import dev.southside.module.Module;
 import java.util.Objects;
-import net.minecraft.class_1297;
-import net.minecraft.class_1657;
-import net.minecraft.class_268;
-import net.minecraft.class_640;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.scoreboard.Team;
+import net.minecraft.client.network.PlayerListEntry;
 import org.jetbrains.annotations.Nullable;
 
 public class Teams extends Module {
@@ -34,37 +34,37 @@ public class Teams extends Module {
       }
    }
 
-   public static boolean isTeam(class_1297 target) {
-      if (!(target instanceof class_1657)) {
+   public static boolean isTeam(Entity target) {
+      if (!(target instanceof PlayerEntity)) {
          return false;
-      } else if (mc.field_1724 == null) {
+      } else if (mc.player == null) {
          return false;
       } else if (!Southside.INSTANCE.getModuleManager().isEnabled(Teams.class)) {
          return false;
       } else if (getMode() == Teams.Mode.COLOR) {
-         int c1 = target.method_22861();
-         int c2 = mc.field_1724.method_22861();
+         int c1 = target.getTeamColorValue();
+         int c2 = mc.player.getTeamColorValue();
          return c1 == c2;
       } else {
          String t1 = getTeam(target);
-         String t2 = getTeam(mc.field_1724);
+         String t2 = getTeam(mc.player);
          return Objects.equals(t1, t2);
       }
    }
 
    @Nullable
-   public static String getTeam(class_1297 entity) {
-      if (!(entity instanceof class_1657)) {
+   public static String getTeam(Entity entity) {
+      if (!(entity instanceof PlayerEntity)) {
          return null;
-      } else if (mc.method_1562() == null) {
+      } else if (mc.getNetworkHandler() == null) {
          return null;
       } else {
-         class_640 entry = mc.method_1562().method_2871(entity.method_5667());
+         PlayerListEntry entry = mc.getNetworkHandler().getPlayerListEntry(entity.getUuid());
          if (entry == null) {
             return null;
          } else {
-            class_268 team = entry.method_2955();
-            return team != null ? team.method_1197() : null;
+            Team team = entry.getScoreboardTeam();
+            return team != null ? team.getName() : null;
          }
       }
    }

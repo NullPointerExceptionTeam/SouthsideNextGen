@@ -11,17 +11,17 @@ import dev.southside.orbit.EventHandler;
 import dev.southside.utils.math.RandomUtils;
 import dev.southside.utils.misc.MSTimer;
 import dev.southside.utils.rotation.RotationUtils;
-import net.minecraft.class_1297;
-import net.minecraft.class_1309;
-import net.minecraft.class_3966;
-import net.minecraft.class_239.class_240;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.util.hit.EntityHitResult;
+import net.minecraft.util.hit.HitResult.Type;
 
 public class TriggerBot extends Module {
    public Slider minCPS = new Slider("Min CPS", 8, 0, 20, 1);
    public Slider maxCps = new Slider("Max CPS", 10, 0, 20, 1);
    private final Switch attack1_9 = new Switch("Attack 1.9+", false);
    public static final MSTimer attackTimer = new MSTimer();
-   public static class_1297 target;
+   public static Entity target;
    private long nextAttackDelay = 100L;
 
    public TriggerBot() {
@@ -30,13 +30,13 @@ public class TriggerBot extends Module {
 
    @EventHandler
    public void onTick(TickEvent event) {
-      if (mc.field_1724 != null && mc.field_1687 != null && mc.field_1761 != null) {
-         if (mc.field_1765 instanceof class_3966 cnm && cnm.method_17783().equals(class_240.field_1331)) {
-            target = cnm.method_17782();
+      if (mc.player != null && mc.world != null && mc.interactionManager != null) {
+         if (mc.crosshairTarget instanceof EntityHitResult cnm && cnm.getType().equals(Type.ENTITY)) {
+            target = cnm.getEntity();
          }
 
-         if (target != null && this.canAttack((class_1309)target) && attackTimer.hasTimePassed(this.nextAttackDelay)) {
-            if (!this.attack1_9.getValue() || mc.field_1724.method_7261(0.0F) >= 1.0) {
+         if (target != null && this.canAttack((LivingEntity)target) && attackTimer.hasTimePassed(this.nextAttackDelay)) {
+            if (!this.attack1_9.getValue() || mc.player.getAttackCooldownProgress(0.0F) >= 1.0) {
                ((IMinecraftClient)mc).leftClick();
                CPSManager.INSTANCE.click();
             }
@@ -46,19 +46,19 @@ public class TriggerBot extends Module {
       }
    }
 
-   public boolean canAttack(class_1309 target) {
-      if (mc.field_1724 != null && mc.field_1687 != null && target != null && !mc.field_1724.method_6115()) {
+   public boolean canAttack(LivingEntity target) {
+      if (mc.player != null && mc.world != null && target != null && !mc.player.isUsingItem()) {
          return RotationUtils.getDistanceToEntity(target) > 5.0F ? false : this.getReach(target) <= 3.0;
       } else {
          return false;
       }
    }
 
-   public double getReach(class_1309 target) {
-      return mc.field_1724 == null
+   public double getReach(LivingEntity target) {
+      return mc.player == null
          ? 0.0
-         : mc.field_1724
-            .method_33571()
-            .method_1022(RotationUtils.getClosestPoint(mc.field_1724.method_33571(), target.method_5829().method_1014(target.method_5871())));
+         : mc.player
+            .getEyePos()
+            .distanceTo(RotationUtils.getClosestPoint(mc.player.getEyePos(), target.getBoundingBox().expand(target.getTargetingMargin())));
    }
 }

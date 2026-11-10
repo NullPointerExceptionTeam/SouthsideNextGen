@@ -18,18 +18,18 @@ import dev.southside.command.impl.ToggleCommand;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import net.minecraft.class_2172;
-import net.minecraft.class_2370;
-import net.minecraft.class_2960;
-import net.minecraft.class_5321;
-import net.minecraft.class_637;
+import net.minecraft.command.CommandSource;
+import net.minecraft.registry.SimpleRegistry;
+import net.minecraft.util.Identifier;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.client.network.ClientCommandSource;
 import org.jetbrains.annotations.NotNull;
 
 public class CommandManager {
    private static CommandManager INSTANCE;
    public static final CommandManager.CommandRegistry REGISTRY = new CommandManager.CommandRegistry();
-   public final CommandDispatcher<class_2172> DISPATCHER = new CommandDispatcher();
-   public final class_2172 COMMAND_SOURCE = new class_637(null, MinecraftAccessor.mc);
+   public final CommandDispatcher<CommandSource> DISPATCHER = new CommandDispatcher();
+   public final CommandSource COMMAND_SOURCE = new ClientCommandSource(null, MinecraftAccessor.mc);
    public final List<Command> COMMANDS = new ArrayList<>();
 
    public static CommandManager get() {
@@ -75,12 +75,12 @@ public class CommandManager {
       return null;
    }
 
-   public static class CommandRegistry extends class_2370<Command> {
+   public static class CommandRegistry extends SimpleRegistry<Command> {
       public CommandRegistry() {
-         super(class_5321.method_29180(class_2960.method_60655("southside", "commands")), Lifecycle.stable());
+         super(RegistryKey.ofRegistry(Identifier.of("southside", "commands")), Lifecycle.stable());
       }
 
-      public int method_10204() {
+      public int size() {
          return CommandManager.get().COMMANDS.size();
       }
 

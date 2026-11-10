@@ -23,31 +23,31 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import net.minecraft.class_1657;
-import net.minecraft.class_1738;
-import net.minecraft.class_1767;
-import net.minecraft.class_1799;
-import net.minecraft.class_1922;
-import net.minecraft.class_2244;
-import net.minecraft.class_2246;
-import net.minecraft.class_2248;
-import net.minecraft.class_2338;
-import net.minecraft.class_2350;
-import net.minecraft.class_238;
-import net.minecraft.class_2382;
-import net.minecraft.class_239;
-import net.minecraft.class_243;
-import net.minecraft.class_265;
-import net.minecraft.class_2680;
-import net.minecraft.class_2742;
-import net.minecraft.class_2769;
-import net.minecraft.class_3489;
-import net.minecraft.class_3965;
-import net.minecraft.class_9282;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.ArmorItem;
+import net.minecraft.util.DyeColor;
+import net.minecraft.item.ItemStack;
+import net.minecraft.world.BlockView;
+import net.minecraft.block.BedBlock;
+import net.minecraft.block.Blocks;
+import net.minecraft.block.Block;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3i;
+import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.shape.VoxelShape;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.enums.BedPart;
+import net.minecraft.state.property.Property;
+import net.minecraft.registry.tag.ItemTags;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.component.type.DyedColorComponent;
 
 public class BedBreaker
 extends Module {
-    private final List<class_2248> bedBlocks = new ArrayList<class_2248>(Arrays.asList(class_2246.field_10120, class_2246.field_10410, class_2246.field_10230, class_2246.field_10621, class_2246.field_10356, class_2246.field_10180, class_2246.field_10610, class_2246.field_10141, class_2246.field_10326, class_2246.field_10109, class_2246.field_10019, class_2246.field_10527, class_2246.field_10288, class_2246.field_10561, class_2246.field_10069, class_2246.field_10461));
+    private final List<Block> bedBlocks = new ArrayList<Block>(Arrays.asList(Blocks.WHITE_BED, Blocks.ORANGE_BED, Blocks.MAGENTA_BED, Blocks.LIGHT_BLUE_BED, Blocks.YELLOW_BED, Blocks.LIME_BED, Blocks.PINK_BED, Blocks.GRAY_BED, Blocks.LIGHT_GRAY_BED, Blocks.CYAN_BED, Blocks.PURPLE_BED, Blocks.BLUE_BED, Blocks.BROWN_BED, Blocks.GREEN_BED, Blocks.RED_BED, Blocks.BLACK_BED));
     private static final double RANGE = 4.0;
     private static final double WALL_RANGE = 4.0;
     private final Slider delay = new Slider("Delay", 0, 0, 20, 1);
@@ -56,24 +56,24 @@ extends Module {
     private final Switch prioritizeOverKillAura = new Switch("Prioritize Over KillAura", false);
     public Switch autoTool = new Switch("Auto Tool", true);
     public Switch checkTeamsBed = new Switch("Check Teams Bed", true);
-    private static final Map<class_2248, class_1767> bedColorMap = new HashMap<class_2248, class_1767>(){
+    private static final Map<Block, DyeColor> bedColorMap = new HashMap<Block, DyeColor>(){
         {
-            this.put(class_2246.field_10120, class_1767.field_7952);
-            this.put(class_2246.field_10410, class_1767.field_7946);
-            this.put(class_2246.field_10230, class_1767.field_7958);
-            this.put(class_2246.field_10621, class_1767.field_7951);
-            this.put(class_2246.field_10356, class_1767.field_7947);
-            this.put(class_2246.field_10180, class_1767.field_7961);
-            this.put(class_2246.field_10610, class_1767.field_7954);
-            this.put(class_2246.field_10141, class_1767.field_7944);
-            this.put(class_2246.field_10326, class_1767.field_7967);
-            this.put(class_2246.field_10109, class_1767.field_7955);
-            this.put(class_2246.field_10019, class_1767.field_7945);
-            this.put(class_2246.field_10527, class_1767.field_7966);
-            this.put(class_2246.field_10288, class_1767.field_7957);
-            this.put(class_2246.field_10561, class_1767.field_7942);
-            this.put(class_2246.field_10069, class_1767.field_7964);
-            this.put(class_2246.field_10461, class_1767.field_7963);
+            this.put(Blocks.WHITE_BED, DyeColor.WHITE);
+            this.put(Blocks.ORANGE_BED, DyeColor.ORANGE);
+            this.put(Blocks.MAGENTA_BED, DyeColor.MAGENTA);
+            this.put(Blocks.LIGHT_BLUE_BED, DyeColor.LIGHT_BLUE);
+            this.put(Blocks.YELLOW_BED, DyeColor.YELLOW);
+            this.put(Blocks.LIME_BED, DyeColor.LIME);
+            this.put(Blocks.PINK_BED, DyeColor.PINK);
+            this.put(Blocks.GRAY_BED, DyeColor.GRAY);
+            this.put(Blocks.LIGHT_GRAY_BED, DyeColor.LIGHT_GRAY);
+            this.put(Blocks.CYAN_BED, DyeColor.CYAN);
+            this.put(Blocks.PURPLE_BED, DyeColor.PURPLE);
+            this.put(Blocks.BLUE_BED, DyeColor.BLUE);
+            this.put(Blocks.BROWN_BED, DyeColor.BROWN);
+            this.put(Blocks.GREEN_BED, DyeColor.GREEN);
+            this.put(Blocks.RED_BED, DyeColor.RED);
+            this.put(Blocks.BLACK_BED, DyeColor.BLACK);
         }
     };
     private DestroyerTarget currentTarget;
@@ -102,7 +102,7 @@ extends Module {
         if (event.getState() == Stage.POST) {
             return;
         }
-        if (BedBreaker.mc.field_1724 == null || BedBreaker.mc.field_1687 == null || BedBreaker.mc.field_1761 == null) {
+        if (BedBreaker.mc.player == null || BedBreaker.mc.world == null || BedBreaker.mc.interactionManager == null) {
             return;
         }
         ClientRayTraceUtil.updateEyePos();
@@ -126,23 +126,23 @@ extends Module {
             this.switchBackToPreviousTool();
             return;
         }
-        class_2680 state = BedBreaker.mc.field_1687.method_8320(this.currentTarget.pos);
-        if (state.method_26215()) {
+        BlockState state = BedBreaker.mc.world.getBlockState(this.currentTarget.pos);
+        if (state.isAir()) {
             return;
         }
         Rotation rotation = RotationUtils.getRotationBlock(this.currentTarget.pos, 0.0f);
         RotationUtils.setRotation(rotation, (Boolean)this.prioritizeOverKillAura.getValue() != false ? 2 : 1);
-        class_3965 rayTraceResult = ClientRayTraceUtil.getFacedBlock(rotation.yaw, rotation.pitch);
-        if (rayTraceResult == null || rayTraceResult.method_17783() != class_239.class_240.field_1332) {
-            class_3965 synthetic;
+        BlockHitResult rayTraceResult = ClientRayTraceUtil.getFacedBlock(rotation.yaw, rotation.pitch);
+        if (rayTraceResult == null || rayTraceResult.getType() != HitResult.Type.BLOCK) {
+            BlockHitResult synthetic;
             if ((this.isInstantMode() || this.isHeypixelMode()) && (synthetic = this.createSyntheticHit(this.currentTarget.pos)) != null) {
                 this.switchToBestTool(this.currentTarget.pos);
                 BlockBreakUtils.doBreak(synthetic, false, true);
             }
             return;
         }
-        if (!rayTraceResult.method_17777().equals((Object)this.currentTarget.pos) || !ClientRayTraceUtil.didHitBlockFace((class_1657)BedBreaker.mc.field_1724, rotation.yaw, rotation.pitch, this.currentTarget.pos, rayTraceResult.method_17780(), false)) {
-            class_3965 synthetic;
+        if (!rayTraceResult.getBlockPos().equals((Object)this.currentTarget.pos) || !ClientRayTraceUtil.didHitBlockFace((PlayerEntity)BedBreaker.mc.player, rotation.yaw, rotation.pitch, this.currentTarget.pos, rayTraceResult.getSide(), false)) {
+            BlockHitResult synthetic;
             if ((this.isInstantMode() || this.isHeypixelMode()) && (synthetic = this.createSyntheticHit(this.currentTarget.pos)) != null) {
                 this.switchToBestTool(this.currentTarget.pos);
                 BlockBreakUtils.doBreak(synthetic, false, true);
@@ -154,7 +154,7 @@ extends Module {
     }
 
     private void updateCurrentTarget() {
-        List<class_2338> possibleBeds = this.searchPossibleTargetPositions();
+        List<BlockPos> possibleBeds = this.searchPossibleTargetPositions();
         this.validateCurrentTarget(possibleBeds);
         if (possibleBeds.isEmpty()) {
             return;
@@ -163,14 +163,14 @@ extends Module {
         double wallRangeValue = Math.min(rangeValue, 4.0);
         boolean foundDirect = false;
         if (this.isInstantMode()) {
-            for (class_2338 class_23382 : possibleBeds) {
-                if (!Boolean.TRUE.equals(this.considerAsTarget(new DestroyerTarget(class_23382, true), rangeValue, wallRangeValue, false, false))) continue;
+            for (BlockPos bedPos : possibleBeds) {
+                if (!Boolean.TRUE.equals(this.considerAsTarget(new DestroyerTarget(bedPos, true), rangeValue, wallRangeValue, false, false))) continue;
                 foundDirect = true;
                 break;
             }
         } else {
-            for (class_2338 class_23383 : possibleBeds) {
-                if (!this.isBedVisible(class_23383) || !Boolean.TRUE.equals(this.considerAsTarget(new DestroyerTarget(class_23383, true), rangeValue, wallRangeValue, false, true))) continue;
+            for (BlockPos visibleBed : possibleBeds) {
+                if (!this.isBedVisible(visibleBed) || !Boolean.TRUE.equals(this.considerAsTarget(new DestroyerTarget(visibleBed, true), rangeValue, wallRangeValue, false, true))) continue;
                 foundDirect = true;
                 break;
             }
@@ -186,8 +186,8 @@ extends Module {
         }
         if (this.isHeypixelMode()) {
             boolean foundCoverTarget = false;
-            for (class_2338 pos : possibleBeds) {
-                class_2338 coverTarget = this.selectHeypixelCoverTarget(pos);
+            for (BlockPos pos : possibleBeds) {
+                BlockPos coverTarget = this.selectHeypixelCoverTarget(pos);
                 if (coverTarget == null) continue;
                 foundCoverTarget = true;
                 this.considerAsTarget(new DestroyerTarget(coverTarget, false), rangeValue, rangeValue, false, false);
@@ -200,34 +200,34 @@ extends Module {
             return;
         }
         if (this.isLegitMode()) {
-            for (class_2338 class_23384 : possibleBeds) {
-                this.updateSurroundings(class_23384, rangeValue, wallRangeValue);
+            for (BlockPos surroundBed : possibleBeds) {
+                this.updateSurroundings(surroundBed, rangeValue, wallRangeValue);
             }
         }
     }
 
-    private boolean isBedVisible(class_2338 bedPos) {
-        if (BedBreaker.mc.field_1724 == null || BedBreaker.mc.field_1687 == null) {
+    private boolean isBedVisible(BlockPos bedPos) {
+        if (BedBreaker.mc.player == null || BedBreaker.mc.world == null) {
             return false;
         }
         Rotation rotation = RotationUtils.getRotationBlock(bedPos, 0.0f);
         ClientRayTraceUtil.updateEyePos();
-        class_3965 rayTraceResult = ClientRayTraceUtil.getFacedBlock(rotation.yaw, rotation.pitch);
-        return rayTraceResult != null && rayTraceResult.method_17783() == class_239.class_240.field_1332 && rayTraceResult.method_17777().equals((Object)bedPos) && ClientRayTraceUtil.didHitBlockFace((class_1657)BedBreaker.mc.field_1724, rotation.yaw, rotation.pitch, bedPos, rayTraceResult.method_17780(), false);
+        BlockHitResult rayTraceResult = ClientRayTraceUtil.getFacedBlock(rotation.yaw, rotation.pitch);
+        return rayTraceResult != null && rayTraceResult.getType() == HitResult.Type.BLOCK && rayTraceResult.getBlockPos().equals((Object)bedPos) && ClientRayTraceUtil.didHitBlockFace((PlayerEntity)BedBreaker.mc.player, rotation.yaw, rotation.pitch, bedPos, rayTraceResult.getSide(), false);
     }
 
-    private class_3965 createSyntheticHit(class_2338 pos) {
-        if (BedBreaker.mc.field_1724 == null) {
+    private BlockHitResult createSyntheticHit(BlockPos pos) {
+        if (BedBreaker.mc.player == null) {
             return null;
         }
-        class_243 eye = BedBreaker.mc.field_1724.method_33571();
-        class_243 center = class_243.method_24953((class_2382)pos);
-        class_243 diff = center.method_1020(eye);
-        class_2350 face = class_2350.method_10142((double)diff.field_1352, (double)diff.field_1351, (double)diff.field_1350).method_10153();
-        return new class_3965(center, face, pos, false);
+        Vec3d eye = BedBreaker.mc.player.getEyePos();
+        Vec3d center = Vec3d.ofCenter((Vec3i)pos);
+        Vec3d diff = center.subtract(eye);
+        Direction face = Direction.getFacing((double)diff.x, (double)diff.y, (double)diff.z).getOpposite();
+        return new BlockHitResult(center, face, pos, false);
     }
 
-    private void validateCurrentTarget(List<class_2338> possibleBeds) {
+    private void validateCurrentTarget(List<BlockPos> possibleBeds) {
         if (this.currentTarget == null) {
             return;
         }
@@ -245,12 +245,12 @@ extends Module {
         }
     }
 
-    private boolean matchesCurrentHeypixelCoverTarget(List<class_2338> possibleBeds, class_2338 targetPos) {
+    private boolean matchesCurrentHeypixelCoverTarget(List<BlockPos> possibleBeds, BlockPos targetPos) {
         if (targetPos == null) {
             return false;
         }
-        for (class_2338 bedPos : possibleBeds) {
-            class_2338 cover = this.selectHeypixelCoverTarget(bedPos);
+        for (BlockPos bedPos : possibleBeds) {
+            BlockPos cover = this.selectHeypixelCoverTarget(bedPos);
             if (cover == null || !cover.equals((Object)targetPos)) continue;
             return true;
         }
@@ -263,48 +263,48 @@ extends Module {
         this.currentTarget = null;
     }
 
-    private List<class_2338> searchPossibleTargetPositions() {
-        if (BedBreaker.mc.field_1724 == null || BedBreaker.mc.field_1687 == null) {
+    private List<BlockPos> searchPossibleTargetPositions() {
+        if (BedBreaker.mc.player == null || BedBreaker.mc.world == null) {
             return Collections.emptyList();
         }
         double rangeValue = 4.0;
         int radius = (int)Math.ceil(rangeValue);
-        class_243 eyePos = BedBreaker.mc.field_1724.method_33571();
-        ArrayList<class_2338> possibleBeds = new ArrayList<class_2338>();
+        Vec3d eyePos = BedBreaker.mc.player.getEyePos();
+        ArrayList<BlockPos> possibleBeds = new ArrayList<BlockPos>();
         HashSet<Long> seenHeads = new HashSet<Long>();
         for (int x = -radius; x <= radius; ++x) {
             for (int y = -radius; y <= radius; ++y) {
                 for (int z = -radius; z <= radius; ++z) {
                     double distance;
-                    class_2338 headPos;
-                    class_2338 blockPos = class_2338.method_49637((double)(BedBreaker.mc.field_1724.method_23317() + (double)x), (double)(BedBreaker.mc.field_1724.method_23318() + (double)y), (double)(BedBreaker.mc.field_1724.method_23321() + (double)z));
-                    class_2680 state = BedBreaker.mc.field_1687.method_8320(blockPos);
-                    if (!(state.method_26204() instanceof class_2244) || this.checkTeamBed(state.method_26204()) || (headPos = this.getBedHeadPos(blockPos, state)) == null || !seenHeads.add(headPos.method_10063()) || (distance = eyePos.method_1022(class_243.method_24953((class_2382)headPos))) > rangeValue) continue;
-                    possibleBeds.add(headPos.method_10062());
+                    BlockPos headPos;
+                    BlockPos blockPos = BlockPos.ofFloored((double)(BedBreaker.mc.player.getX() + (double)x), (double)(BedBreaker.mc.player.getY() + (double)y), (double)(BedBreaker.mc.player.getZ() + (double)z));
+                    BlockState state = BedBreaker.mc.world.getBlockState(blockPos);
+                    if (!(state.getBlock() instanceof BedBlock) || this.checkTeamBed(state.getBlock()) || (headPos = this.getBedHeadPos(blockPos, state)) == null || !seenHeads.add(headPos.asLong()) || (distance = eyePos.distanceTo(Vec3d.ofCenter((Vec3i)headPos))) > rangeValue) continue;
+                    possibleBeds.add(headPos.toImmutable());
                 }
             }
         }
-        possibleBeds.sort(Comparator.comparingDouble(pos -> eyePos.method_1022(class_243.method_24953((class_2382)pos))));
+        possibleBeds.sort(Comparator.comparingDouble(pos -> eyePos.distanceTo(Vec3d.ofCenter((Vec3i)pos))));
         return possibleBeds;
     }
 
     private Boolean considerAsTarget(DestroyerTarget target, double rangeValue, double wallRangeValue, boolean isCurrentTarget, boolean requireVisible) {
         boolean canSee;
-        if (BedBreaker.mc.field_1724 == null || BedBreaker.mc.field_1687 == null) {
+        if (BedBreaker.mc.player == null || BedBreaker.mc.world == null) {
             return false;
         }
-        class_2680 state = BedBreaker.mc.field_1687.method_8320(target.pos);
-        if (state.method_26215() || state.method_26214((class_1922)BedBreaker.mc.field_1687, target.pos) < 0.0f) {
+        BlockState state = BedBreaker.mc.world.getBlockState(target.pos);
+        if (state.isAir() || state.getHardness((BlockView)BedBreaker.mc.world, target.pos) < 0.0f) {
             return false;
         }
         Rotation rotation = RotationUtils.getRotationBlock(target.pos, 0.0f);
         ClientRayTraceUtil.updateEyePos();
-        class_3965 rayTraceResult = ClientRayTraceUtil.getFacedBlock(rotation.yaw, rotation.pitch);
-        boolean bl = canSee = rayTraceResult != null && rayTraceResult.method_17783() == class_239.class_240.field_1332 && rayTraceResult.method_17777().equals((Object)target.pos) && ClientRayTraceUtil.didHitBlockFace((class_1657)BedBreaker.mc.field_1724, rotation.yaw, rotation.pitch, target.pos, rayTraceResult.method_17780(), false);
+        BlockHitResult rayTraceResult = ClientRayTraceUtil.getFacedBlock(rotation.yaw, rotation.pitch);
+        boolean bl = canSee = rayTraceResult != null && rayTraceResult.getType() == HitResult.Type.BLOCK && rayTraceResult.getBlockPos().equals((Object)target.pos) && ClientRayTraceUtil.didHitBlockFace((PlayerEntity)BedBreaker.mc.player, rotation.yaw, rotation.pitch, target.pos, rayTraceResult.getSide(), false);
         if (requireVisible && !canSee) {
             return false;
         }
-        double distance = BedBreaker.mc.field_1724.method_33571().method_1022(class_243.method_24953((class_2382)target.pos));
+        double distance = BedBreaker.mc.player.getEyePos().distanceTo(Vec3d.ofCenter((Vec3i)target.pos));
         if (!canSee && distance > wallRangeValue) {
             return false;
         }
@@ -316,50 +316,50 @@ extends Module {
         return true;
     }
 
-    private void updateSurroundings(class_2338 targetPos, double rangeValue, double wallRangeValue) {
-        if (BedBreaker.mc.field_1724 == null || BedBreaker.mc.field_1687 == null) {
+    private void updateSurroundings(BlockPos targetPos, double rangeValue, double wallRangeValue) {
+        if (BedBreaker.mc.player == null || BedBreaker.mc.world == null) {
             return;
         }
-        class_243 eyePos = BedBreaker.mc.field_1724.method_33571();
-        class_243 targetPoint = new class_243((double)targetPos.method_10263() + 0.5, (double)targetPos.method_10264() + 0.5, (double)targetPos.method_10260() + 0.5);
+        Vec3d eyePos = BedBreaker.mc.player.getEyePos();
+        Vec3d targetPoint = new Vec3d((double)targetPos.getX() + 0.5, (double)targetPos.getY() + 0.5, (double)targetPos.getZ() + 0.5);
         Rotation rotation = RotationUtils.getRotationByVector(eyePos, targetPoint, false);
         ClientRayTraceUtil.updateEyePos();
-        class_3965 hit = ClientRayTraceUtil.getFacedBlock(rotation.yaw, rotation.pitch);
-        if (hit == null || hit.method_17783() != class_239.class_240.field_1332) {
+        BlockHitResult hit = ClientRayTraceUtil.getFacedBlock(rotation.yaw, rotation.pitch);
+        if (hit == null || hit.getType() != HitResult.Type.BLOCK) {
             return;
         }
-        class_2338 startPos = hit.method_17777();
+        BlockPos startPos = hit.getBlockPos();
         if (startPos.equals((Object)targetPos)) {
             return;
         }
-        List<class_2338> path = this.traceWayToTarget(targetPos, startPos);
+        List<BlockPos> path = this.traceWayToTarget(targetPos, startPos);
         double resistance = 0.0;
-        for (class_2338 pos : path) {
-            class_2680 state = BedBreaker.mc.field_1687.method_8320(pos);
-            if (state.method_26215()) continue;
+        for (BlockPos pos : path) {
+            BlockState state = BedBreaker.mc.world.getBlockState(pos);
+            if (state.isAir()) continue;
             resistance += this.miningDuration(pos);
         }
         this.considerAsTarget(new DestroyerTarget(startPos, false, resistance), rangeValue, wallRangeValue, false, false);
     }
 
-    private List<class_2338> traceWayToTarget(class_2338 target, class_2338 startPos) {
-        if (BedBreaker.mc.field_1724 == null || BedBreaker.mc.field_1687 == null) {
+    private List<BlockPos> traceWayToTarget(BlockPos target, BlockPos startPos) {
+        if (BedBreaker.mc.player == null || BedBreaker.mc.world == null) {
             return Collections.emptyList();
         }
-        class_243 eyePos = BedBreaker.mc.field_1724.method_33571();
-        class_243 targetPoint = new class_243((double)target.method_10263() + 0.5, (double)target.method_10264() + 0.5, (double)target.method_10260() + 0.5);
-        ArrayList<class_2338> path = new ArrayList<class_2338>();
-        ArrayList<class_2338> queue = new ArrayList<class_2338>();
+        Vec3d eyePos = BedBreaker.mc.player.getEyePos();
+        Vec3d targetPoint = new Vec3d((double)target.getX() + 0.5, (double)target.getY() + 0.5, (double)target.getZ() + 0.5);
+        ArrayList<BlockPos> path = new ArrayList<BlockPos>();
+        ArrayList<BlockPos> queue = new ArrayList<BlockPos>();
         queue.add(startPos);
         while (!queue.isEmpty()) {
-            class_2338 current = (class_2338)queue.removeFirst();
+            BlockPos current = (BlockPos)queue.removeFirst();
             if (current.equals((Object)target) || path.contains(current)) continue;
-            class_2680 state = BedBreaker.mc.field_1687.method_8320(current);
-            if (!state.method_26215() && !this.bedBlocks.contains(state.method_26204())) {
-                path.add(current.method_10062());
+            BlockState state = BedBreaker.mc.world.getBlockState(current);
+            if (!state.isAir() && !this.bedBlocks.contains(state.getBlock())) {
+                path.add(current.toImmutable());
             }
-            for (class_2350 direction : class_2350.values()) {
-                class_2338 neighbor = current.method_10093(direction);
+            for (Direction direction : Direction.values()) {
+                BlockPos neighbor = current.offset(direction);
                 if (neighbor.equals((Object)target) || path.contains(neighbor) || queue.contains(neighbor) || !this.isBlockInLineOfSight(neighbor, eyePos, targetPoint)) continue;
                 queue.add(neighbor);
             }
@@ -367,103 +367,103 @@ extends Module {
         return path;
     }
 
-    private boolean isBlockInLineOfSight(class_2338 blockPos, class_243 start, class_243 end) {
-        class_2680 state = BedBreaker.mc.field_1687.method_8320(blockPos);
-        if (state.method_26215()) {
+    private boolean isBlockInLineOfSight(BlockPos blockPos, Vec3d start, Vec3d end) {
+        BlockState state = BedBreaker.mc.world.getBlockState(blockPos);
+        if (state.isAir()) {
             return false;
         }
-        class_265 shape = state.method_26220((class_1922)BedBreaker.mc.field_1687, blockPos);
-        if (shape.method_1110()) {
+        VoxelShape shape = state.getCollisionShape((BlockView)BedBreaker.mc.world, blockPos);
+        if (shape.isEmpty()) {
             return false;
         }
-        class_238 box = shape.method_1107().method_996(blockPos);
-        return box.method_992(start, end).isPresent();
+        Box box = shape.getBoundingBox().offset(blockPos);
+        return box.raycast(start, end).isPresent();
     }
 
-    private double miningDuration(class_2338 pos) {
-        if (BedBreaker.mc.field_1724 == null || BedBreaker.mc.field_1687 == null) {
+    private double miningDuration(BlockPos pos) {
+        if (BedBreaker.mc.player == null || BedBreaker.mc.world == null) {
             return Double.MAX_VALUE;
         }
-        class_2680 state = BedBreaker.mc.field_1687.method_8320(pos);
-        if (state.method_26215()) {
+        BlockState state = BedBreaker.mc.world.getBlockState(pos);
+        if (state.isAir()) {
             return Double.MAX_VALUE;
         }
-        float hardness = state.method_26214((class_1922)BedBreaker.mc.field_1687, pos);
+        float hardness = state.getHardness((BlockView)BedBreaker.mc.world, pos);
         if (hardness < 0.0f) {
             return Double.MAX_VALUE;
         }
         float bestMiningSpeed = 1.0f;
         for (int i = 0; i < 9; ++i) {
             float speed;
-            class_1799 stack = BedBreaker.mc.field_1724.method_31548().method_5438(i);
-            if (stack.method_7960() || !((speed = stack.method_7924(state)) > bestMiningSpeed)) continue;
+            ItemStack stack = BedBreaker.mc.player.getInventory().getStack(i);
+            if (stack.isEmpty() || !((speed = stack.getMiningSpeedMultiplier(state)) > bestMiningSpeed)) continue;
             bestMiningSpeed = speed;
         }
         return hardness / bestMiningSpeed;
     }
 
-    private class_2338 getBedHeadPos(class_2338 bedPos, class_2680 state) {
-        if (!(state.method_26204() instanceof class_2244)) {
+    private BlockPos getBedHeadPos(BlockPos bedPos, BlockState state) {
+        if (!(state.getBlock() instanceof BedBlock)) {
             return null;
         }
-        class_2350 facing = (class_2350)state.method_11654((class_2769)class_2244.field_11177);
-        class_2742 part = (class_2742)state.method_11654((class_2769)class_2244.field_9967);
-        return part == class_2742.field_12560 ? bedPos.method_10062() : bedPos.method_10093(facing).method_10062();
+        Direction facing = (Direction)state.get((Property)BedBlock.FACING);
+        BedPart part = (BedPart)state.get((Property)BedBlock.PART);
+        return part == BedPart.HEAD ? bedPos.toImmutable() : bedPos.offset(facing).toImmutable();
     }
 
-    private BedHeadInfo getBedHeadInfo(class_2338 bedPos, class_2680 state) {
-        if (!(state.method_26204() instanceof class_2244)) {
+    private BedHeadInfo getBedHeadInfo(BlockPos bedPos, BlockState state) {
+        if (!(state.getBlock() instanceof BedBlock)) {
             return null;
         }
-        class_2350 facing = (class_2350)state.method_11654((class_2769)class_2244.field_11177);
-        class_2338 head = this.getBedHeadPos(bedPos, state);
+        Direction facing = (Direction)state.get((Property)BedBlock.FACING);
+        BlockPos head = this.getBedHeadPos(bedPos, state);
         if (head == null) {
             return null;
         }
         return new BedHeadInfo(head, facing);
     }
 
-    private class_2338 selectHeypixelCoverTarget(class_2338 bedPos) {
-        if (BedBreaker.mc.field_1687 == null || BedBreaker.mc.field_1724 == null) {
+    private BlockPos selectHeypixelCoverTarget(BlockPos bedPos) {
+        if (BedBreaker.mc.world == null || BedBreaker.mc.player == null) {
             return null;
         }
-        class_2680 state = BedBreaker.mc.field_1687.method_8320(bedPos);
+        BlockState state = BedBreaker.mc.world.getBlockState(bedPos);
         BedHeadInfo info = this.getBedHeadInfo(bedPos, state);
         if (info == null) {
             return null;
         }
-        class_2338 coverPos = (Integer)this.heypixelPath.getValue() == 1 ? info.head.method_10093(info.facing) : info.head.method_10084();
-        return this.isBreakable(coverPos) ? coverPos.method_10062() : null;
+        BlockPos coverPos = (Integer)this.heypixelPath.getValue() == 1 ? info.head.offset(info.facing) : info.head.up();
+        return this.isBreakable(coverPos) ? coverPos.toImmutable() : null;
     }
 
-    private boolean isBreakable(class_2338 pos) {
-        if (BedBreaker.mc.field_1687 == null) {
+    private boolean isBreakable(BlockPos pos) {
+        if (BedBreaker.mc.world == null) {
             return false;
         }
-        class_2680 state = BedBreaker.mc.field_1687.method_8320(pos);
-        return !state.method_26215() && state.method_26214((class_1922)BedBreaker.mc.field_1687, pos) >= 0.0f;
+        BlockState state = BedBreaker.mc.world.getBlockState(pos);
+        return !state.isAir() && state.getHardness((BlockView)BedBreaker.mc.world, pos) >= 0.0f;
     }
 
-    private class_1767 getArmorColor(class_1799 itemStack) {
-        if (itemStack.method_31573(class_3489.field_48803) && itemStack.method_7909() instanceof class_1738) {
-            int i = class_9282.method_57470((class_1799)itemStack, (int)0);
-            for (class_1767 dyeColor : class_1767.values()) {
-                if (i != dyeColor.method_7787()) continue;
+    private DyeColor getArmorColor(ItemStack itemStack) {
+        if (itemStack.isIn(ItemTags.DYEABLE) && itemStack.getItem() instanceof ArmorItem) {
+            int i = DyedColorComponent.getColor((ItemStack)itemStack, (int)0);
+            for (DyeColor dyeColor : DyeColor.values()) {
+                if (i != dyeColor.getEntityColor()) continue;
                 return dyeColor;
             }
         }
         return null;
     }
 
-    private boolean checkTeamBed(class_2248 block) {
+    private boolean checkTeamBed(Block block) {
         if (!this.bedBlocks.contains(block)) {
             return true;
         }
-        class_1767 chestplateColor = this.getArmorColor(BedBreaker.mc.field_1724.method_31548().method_7372(0));
+        DyeColor chestplateColor = this.getArmorColor(BedBreaker.mc.player.getInventory().getArmorStack(0));
         if (chestplateColor == null) {
             return false;
         }
-        class_1767 color = bedColorMap.get(block);
+        DyeColor color = bedColorMap.get(block);
         if (color == null) {
             return false;
         }
@@ -473,41 +473,41 @@ extends Module {
         return color.equals((Object)chestplateColor);
     }
 
-    private void switchToBestTool(class_2338 pos) {
+    private void switchToBestTool(BlockPos pos) {
         if (!((Boolean)this.autoTool.getValue()).booleanValue()) {
             return;
         }
-        if (BedBreaker.mc.field_1724 == null || BedBreaker.mc.field_1687 == null) {
+        if (BedBreaker.mc.player == null || BedBreaker.mc.world == null) {
             return;
         }
-        class_2680 blockState = BedBreaker.mc.field_1687.method_8320(pos);
-        if (blockState.method_26215()) {
+        BlockState blockState = BedBreaker.mc.world.getBlockState(pos);
+        if (blockState.isAir()) {
             return;
         }
         int bestSlot = this.findBestToolSlot(blockState);
-        if (bestSlot != -1 && bestSlot != BedBreaker.mc.field_1724.method_31548().field_7545) {
-            this.previousSlot = BedBreaker.mc.field_1724.method_31548().field_7545;
-            BedBreaker.mc.field_1724.method_31548().field_7545 = bestSlot;
+        if (bestSlot != -1 && bestSlot != BedBreaker.mc.player.getInventory().selectedSlot) {
+            this.previousSlot = BedBreaker.mc.player.getInventory().selectedSlot;
+            BedBreaker.mc.player.getInventory().selectedSlot = bestSlot;
         }
     }
 
     private void switchBackToPreviousTool() {
-        if (this.previousSlot != -1 && BedBreaker.mc.field_1724 != null) {
-            BedBreaker.mc.field_1724.method_31548().field_7545 = this.previousSlot;
+        if (this.previousSlot != -1 && BedBreaker.mc.player != null) {
+            BedBreaker.mc.player.getInventory().selectedSlot = this.previousSlot;
             this.previousSlot = -1;
         }
     }
 
-    private int findBestToolSlot(class_2680 blockState) {
-        if (BedBreaker.mc.field_1724 == null) {
+    private int findBestToolSlot(BlockState blockState) {
+        if (BedBreaker.mc.player == null) {
             return -1;
         }
         int bestSlot = -1;
         float bestSpeed = 1.0f;
         for (int i = 0; i < 9; ++i) {
             float speed;
-            class_1799 stack = BedBreaker.mc.field_1724.method_31548().method_5438(i);
-            if (stack.method_7960() || !((speed = stack.method_7924(blockState)) > bestSpeed)) continue;
+            ItemStack stack = BedBreaker.mc.player.getInventory().getStack(i);
+            if (stack.isEmpty() || !((speed = stack.getMiningSpeedMultiplier(blockState)) > bestSpeed)) continue;
             bestSpeed = speed;
             bestSlot = i;
         }
@@ -516,8 +516,8 @@ extends Module {
 
     @EventHandler
     public void onRender(Render3DEvent event) {
-        if (this.currentTarget != null && BedBreaker.mc.field_1687 != null && BedBreaker.mc.field_1724 != null) {
-            Render3D.boxLines(new class_238(this.currentTarget.pos), new Color(0, 255, 0, 255));
+        if (this.currentTarget != null && BedBreaker.mc.world != null && BedBreaker.mc.player != null) {
+            Render3D.boxLines(new Box(this.currentTarget.pos), new Color(0, 255, 0, 255));
         }
     }
 
@@ -530,15 +530,15 @@ extends Module {
 
     private static class DestroyerTarget
     implements Comparable<DestroyerTarget> {
-        final class_2338 pos;
+        final BlockPos pos;
         final boolean isTarget;
         final double resistance;
 
-        DestroyerTarget(class_2338 pos, boolean isTarget) {
+        DestroyerTarget(BlockPos pos, boolean isTarget) {
             this(pos, isTarget, 0.0);
         }
 
-        DestroyerTarget(class_2338 pos, boolean isTarget, double resistance) {
+        DestroyerTarget(BlockPos pos, boolean isTarget, double resistance) {
             this.pos = pos;
             this.isTarget = isTarget;
             this.resistance = resistance;
@@ -557,10 +557,10 @@ extends Module {
     }
 
     private static class BedHeadInfo {
-        final class_2338 head;
-        final class_2350 facing;
+        final BlockPos head;
+        final Direction facing;
 
-        BedHeadInfo(class_2338 head, class_2350 facing) {
+        BedHeadInfo(BlockPos head, Direction facing) {
             this.head = head;
             this.facing = facing;
         }

@@ -4,18 +4,18 @@ import cc.polyfrost.oneconfig.hud.Hud;
 import cc.polyfrost.oneconfig.libs.universal.UMatrixStack;
 import cc.polyfrost.oneconfig.renderer.NanoVGHelper;
 import java.awt.Color;
-import net.minecraft.class_2561;
-import net.minecraft.class_332;
+import net.minecraft.text.Text;
+import net.minecraft.client.gui.DrawContext;
 
 public class TestHUD extends Hud {
-   private static final class_2561 COLON_TEXT = class_2561.method_43470(": ");
+   private static final Text COLON_TEXT = Text.literal(": ");
 
    public TestHUD(float x, float y, int positionAlignment, float scale) {
       super(x, y, positionAlignment, scale);
    }
 
    @Override
-   protected void draw(class_332 context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
+   protected void draw(DrawContext context, UMatrixStack matrices, float x, float y, float scale, boolean example) {
       NanoVGHelper nanoVGHelper = NanoVGHelper.INSTANCE;
       nanoVGHelper.setupAndDraw(
          true,

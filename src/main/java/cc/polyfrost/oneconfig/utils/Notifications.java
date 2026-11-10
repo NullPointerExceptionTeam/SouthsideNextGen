@@ -21,7 +21,7 @@ import java.io.File;
 import java.util.LinkedHashMap;
 import java.util.Map.Entry;
 import java.util.concurrent.Callable;
-import net.minecraft.class_437;
+import net.minecraft.client.gui.screen.Screen;
 import org.jetbrains.annotations.Nullable;
 
 public final class Notifications {
@@ -128,7 +128,7 @@ public final class Notifications {
          && event.getState() == Stage.PRE
          && !(Platform.getGuiPlatform().getCurrentScreen() instanceof OneConfigGui)
          && Platform.getServerPlatform().doesPlayerExist()
-         && UMinecraft.getMinecraft().field_1724.field_6012 > 20) {
+         && UMinecraft.getMinecraft().player.age > 20) {
          Preferences.firstLaunch.setValue(false);
          Preferences.getInstance().save();
          this.dummyAnimation = new EaseInOutQuad(4000, 0.0F, 1.0F, false);
@@ -146,7 +146,7 @@ public final class Notifications {
                   return this.dummyAnimation.get(GuiUtils.getDeltaTime());
                }
             },
-            () -> GuiUtils.displayScreen((class_437)OneConfigGui.create())
+            () -> GuiUtils.displayScreen((Screen)OneConfigGui.create())
          );
       }
    }

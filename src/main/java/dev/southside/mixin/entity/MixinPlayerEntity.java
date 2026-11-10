@@ -8,12 +8,12 @@ import dev.southside.module.impl.combat.KillAura;
 import dev.southside.module.impl.movement.KeepSprint;
 import dev.southside.module.impl.render.OldHitting;
 import dev.southside.utils.rotation.RotationUtils;
-import net.minecraft.class_1297;
-import net.minecraft.class_1299;
-import net.minecraft.class_1657;
-import net.minecraft.class_1937;
-import net.minecraft.class_243;
-import net.minecraft.class_310;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityType;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.world.World;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.MinecraftClient;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -22,14 +22,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
-@Mixin({class_1657.class})
-public abstract class MixinPlayerEntity extends class_1297 {
-   public MixinPlayerEntity(class_1299<?> type, class_1937 world) {
+@Mixin({PlayerEntity.class})
+public abstract class MixinPlayerEntity extends Entity {
+   public MixinPlayerEntity(EntityType<?> type, World world) {
       super(type, world);
    }
 
    @Inject(
-      method = {"method_5773()V"},
+      method = {"tick()V"},
       at = {@At("HEAD")},
       cancellable = true
    )
@@ -42,7 +42,7 @@ public abstract class MixinPlayerEntity extends class_1297 {
    }
 
    @Inject(
-      method = {"method_7261(F)F"},
+      method = {"getAttackCooldownProgress(F)F"},
       at = {@At("HEAD")},
       cancellable = true
    )
@@ -53,7 +53,7 @@ public abstract class MixinPlayerEntity extends class_1297 {
    }
 
    @Inject(
-      method = {"method_7279()F"},
+      method = {"getAttackCooldownProgressPerTick()F"},
       at = {@At("HEAD")},
       cancellable = true
    )
@@ -64,14 +64,14 @@ public abstract class MixinPlayerEntity extends class_1297 {
    }
 
    @ModifyExpressionValue(
-      method = {"method_7324(Lnet/minecraft/class_1297;)V"},
+      method = {"attack(Lnet/minecraft/entity/Entity;)V"},
       at = {@At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_1657;method_36454()F"
+         target = "Lnet/minecraft/entity/player/PlayerEntity;getYaw()F"
       )}
    )
    private float hookFixRotation(float original) {
-      if ((Object)this != class_310.method_1551().field_1724) {
+      if ((Object)this != MinecraftClient.getInstance().player) {
          return original;
       } else if (!RotationUtils.isStrafeFix()) {
          return original;
@@ -81,29 +81,29 @@ public abstract class MixinPlayerEntity extends class_1297 {
    }
 
    @ModifyArgs(
-      method = {"method_7324(Lnet/minecraft/class_1297;)V"},
+      method = {"attack(Lnet/minecraft/entity/Entity;)V"},
       at = @At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_1657;method_18799(Lnet/minecraft/class_243;)V"
+         target = "Lnet/minecraft/entity/player/PlayerEntity;setVelocity(Lnet/minecraft/util/math/Vec3d;)V"
       )
    )
    private void hookSlow(Args args) {
-      if ((Object)this == class_310.method_1551().field_1724) {
+      if ((Object)this == MinecraftClient.getInstance().player) {
          if (KeepSprint.canKeepSprint()) {
-            args.set(0, this.method_18798());
+            args.set(0, this.getVelocity());
          }
       }
    }
 
    @ModifyArgs(
-      method = {"method_7324(Lnet/minecraft/class_1297;)V"},
+      method = {"attack(Lnet/minecraft/entity/Entity;)V"},
       at = @At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_1657;method_5728(Z)V"
+         target = "Lnet/minecraft/entity/player/PlayerEntity;setSprinting(Z)V"
       )
    )
    private void hookSlowSprint(Args args) {
-      if ((Object)this == class_310.method_1551().field_1724) {
+      if ((Object)this == MinecraftClient.getInstance().player) {
          if (KeepSprint.canKeepSprint() || KillAura.keepSprint.getValue()) {
             args.set(0, true);
          }
@@ -111,26 +111,26 @@ public abstract class MixinPlayerEntity extends class_1297 {
    }
 
    @WrapWithCondition(
-      method = {"method_7324(Lnet/minecraft/class_1297;)V"},
+      method = {"attack(Lnet/minecraft/entity/Entity;)V"},
       at = {@At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_1657;method_18799(Lnet/minecraft/class_243;)V",
+         target = "Lnet/minecraft/entity/player/PlayerEntity;setVelocity(Lnet/minecraft/util/math/Vec3d;)V",
          ordinal = 0
       )}
    )
-   private boolean hookSlowVelocity(class_1657 instance, class_243 vec3d) {
-      return (Object)this != class_310.method_1551().field_1724 || !KeepSprint.canKeepSprint();
+   private boolean hookSlowVelocity(PlayerEntity instance, Vec3d vec3d) {
+      return (Object)this != MinecraftClient.getInstance().player || !KeepSprint.canKeepSprint();
    }
 
    @WrapWithCondition(
-      method = {"method_7324(Lnet/minecraft/class_1297;)V"},
+      method = {"attack(Lnet/minecraft/entity/Entity;)V"},
       at = {@At(
          value = "INVOKE",
-         target = "Lnet/minecraft/class_1657;method_5728(Z)V",
+         target = "Lnet/minecraft/entity/player/PlayerEntity;setSprinting(Z)V",
          ordinal = 0
       )}
    )
-   private boolean hookSlowVelocity(class_1657 instance, boolean b) {
-      return (Object)this != class_310.method_1551().field_1724 ? true : !KeepSprint.canKeepSprint() || b;
+   private boolean hookSlowVelocity(PlayerEntity instance, boolean b) {
+      return (Object)this != MinecraftClient.getInstance().player ? true : !KeepSprint.canKeepSprint() || b;
    }
 }

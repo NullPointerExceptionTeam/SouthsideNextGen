@@ -7,8 +7,8 @@ import dev.southside.Southside;
 import dev.southside.command.Command;
 import dev.southside.command.args.ConfigsArgumentType;
 import dev.southside.config.ConfigInfo;
-import net.minecraft.class_124;
-import net.minecraft.class_2172;
+import net.minecraft.util.Formatting;
+import net.minecraft.command.CommandSource;
 
 public class ConfigsCommand extends Command {
    public ConfigsCommand() {
@@ -16,13 +16,13 @@ public class ConfigsCommand extends Command {
    }
 
    @Override
-   public void build(LiteralArgumentBuilder<class_2172> builder) {
+   public void build(LiteralArgumentBuilder<CommandSource> builder) {
       builder.then(literal("list").executes(context -> {
          Southside.INSTANCE.getConfigManager().refreshConfigs();
          this.info("------Configs------", new Object[0]);
 
          for (ConfigInfo file : Southside.get().getConfigManager().configs) {
-            this.message(class_124.field_1061 + file.name, new Object[0]);
+            this.message(Formatting.RED + file.name, new Object[0]);
          }
 
          return 1;

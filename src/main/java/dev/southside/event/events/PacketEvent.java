@@ -3,13 +3,13 @@ package dev.southside.event.events;
 import dev.southside.event.CancellableEvent;
 import dev.southside.event.TransferOrigin;
 import lombok.Generated;
-import net.minecraft.class_2535;
-import net.minecraft.class_2596;
+import net.minecraft.network.ClientConnection;
+import net.minecraft.network.packet.Packet;
 
 public class PacketEvent extends CancellableEvent {
    private final TransferOrigin origin;
-   public class_2596<?> packet;
-   private final class_2535 connection;
+   public Packet<?> packet;
+   private final ClientConnection connection;
 
    public boolean isSend() {
       return this.origin == TransferOrigin.SEND;
@@ -21,24 +21,24 @@ public class PacketEvent extends CancellableEvent {
    }
 
    @Generated
-   public class_2596<?> getPacket() {
+   public Packet<?> getPacket() {
       return this.packet;
    }
 
    @Generated
-   public class_2535 getConnection() {
+   public ClientConnection getConnection() {
       return this.connection;
    }
 
    @Generated
-   public PacketEvent(TransferOrigin origin, class_2596<?> packet, class_2535 connection) {
+   public PacketEvent(TransferOrigin origin, Packet<?> packet, ClientConnection connection) {
       this.origin = origin;
       this.packet = packet;
       this.connection = connection;
    }
 
    @Generated
-   public void setPacket(class_2596<?> packet) {
+   public void setPacket(Packet<?> packet) {
       this.packet = packet;
    }
 }

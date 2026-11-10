@@ -14,20 +14,20 @@ import dev.southside.render.Render3D;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import net.minecraft.class_1923;
-import net.minecraft.class_2246;
-import net.minecraft.class_2248;
-import net.minecraft.class_2338;
-import net.minecraft.class_238;
-import net.minecraft.class_241;
-import net.minecraft.class_243;
-import net.minecraft.class_2561;
-import net.minecraft.class_2680;
-import net.minecraft.class_2791;
-import net.minecraft.class_2826;
-import net.minecraft.class_327;
-import net.minecraft.class_332;
-import net.minecraft.class_4587;
+import net.minecraft.util.math.ChunkPos;
+import net.minecraft.block.Blocks;
+import net.minecraft.block.Block;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec2f;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.text.Text;
+import net.minecraft.block.BlockState;
+import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.ChunkSection;
+import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.util.math.MatrixStack;
 
 public class IronESP extends Module {
    private final Slider range = new Slider("Range", 32, 16, 64, 1);
@@ -36,8 +36,8 @@ public class IronESP extends Module {
    private final Switch tag = new Switch("Tag", true);
    private final Color lineColor = new Color("Line Color", new OneColor(255, 255, 255, 200));
    private final Color sideColor = new Color("Side Color", new OneColor(255, 255, 255, 50));
-   private static final Set<class_2248> TARGET_BLOCKS = Set.of(class_2246.field_10212, class_2246.field_29027, class_2246.field_33508, class_2246.field_10085);
-   private final List<class_2338> foundPositions = new ArrayList<>();
+   private static final Set<Block> TARGET_BLOCKS = Set.of(Blocks.IRON_ORE, Blocks.DEEPSLATE_IRON_ORE, Blocks.RAW_IRON_BLOCK, Blocks.IRON_BLOCK);
+   private final List<BlockPos> foundPositions = new ArrayList<>();
    private final List<String> foundNames = new ArrayList<>();
 
    public IronESP() {
@@ -46,41 +46,41 @@ public class IronESP extends Module {
 
    @EventHandler
    public void onRender3D(Render3DEvent event) {
-      if (mc.field_1687 != null && mc.field_1724 != null) {
+      if (mc.world != null && mc.player != null) {
          this.foundPositions.clear();
          this.foundNames.clear();
          int rangeVal = this.range.getValue().intValue();
          int rangeSq = rangeVal * rangeVal;
-         class_243 playerPos = mc.field_1724.method_19538();
-         class_1923 playerChunk = mc.field_1724.method_31476();
+         Vec3d playerPos = mc.player.getPos();
+         ChunkPos playerChunk = mc.player.getChunkPos();
          int chunkRange = (rangeVal >> 4) + 1;
 
-         for (int cx = playerChunk.field_9181 - chunkRange; cx <= playerChunk.field_9181 + chunkRange; cx++) {
-            for (int cz = playerChunk.field_9180 - chunkRange; cz <= playerChunk.field_9180 + chunkRange; cz++) {
-               if (mc.field_1687.method_2935().method_12123(cx, cz)) {
-                  class_2791 chunk = mc.field_1687.method_8497(cx, cz);
-                  class_2826[] sections = chunk.method_12006();
+         for (int cx = playerChunk.x - chunkRange; cx <= playerChunk.x + chunkRange; cx++) {
+            for (int cz = playerChunk.z - chunkRange; cz <= playerChunk.z + chunkRange; cz++) {
+               if (mc.world.getChunkManager().isChunkLoaded(cx, cz)) {
+                  Chunk chunk = mc.world.getChunk(cx, cz);
+                  ChunkSection[] sections = chunk.getSectionArray();
 
                   for (int sectionIdx = 0; sectionIdx < sections.length; sectionIdx++) {
-                     class_2826 section = sections[sectionIdx];
-                     if (!section.method_38292()) {
-                        int sectionY = chunk.method_31607() + (sectionIdx << 4);
+                     ChunkSection section = sections[sectionIdx];
+                     if (!section.isEmpty()) {
+                        int sectionY = chunk.getBottomY() + (sectionIdx << 4);
 
                         for (int x = 0; x < 16; x++) {
                            for (int y = 0; y < 16; y++) {
                               for (int z = 0; z < 16; z++) {
-                                 class_2680 state = section.method_12254(x, y, z);
-                                 class_2248 block = state.method_26204();
+                                 BlockState state = section.getBlockState(x, y, z);
+                                 Block block = state.getBlock();
                                  if (TARGET_BLOCKS.contains(block)) {
                                     int worldX = (cx << 4) + x;
                                     int worldY = sectionY + y;
                                     int worldZ = (cz << 4) + z;
-                                    double dx = worldX + 0.5 - playerPos.field_1352;
-                                    double dy = worldY + 0.5 - playerPos.field_1351;
-                                    double dz = worldZ + 0.5 - playerPos.field_1350;
+                                    double dx = worldX + 0.5 - playerPos.x;
+                                    double dy = worldY + 0.5 - playerPos.y;
+                                    double dz = worldZ + 0.5 - playerPos.z;
                                     if (!(dx * dx + dy * dy + dz * dz > rangeSq)) {
-                                       class_2338 pos = new class_2338(worldX, worldY, worldZ);
-                                       class_238 box = new class_238(pos);
+                                       BlockPos pos = new BlockPos(worldX, worldY, worldZ);
+                                       Box box = new Box(pos);
                                        if (this.boxLines.getValue()) {
                                           Render3D.boxLines(box, this.lineColor.getValue().toJavaColor());
                                        }
@@ -108,44 +108,44 @@ public class IronESP extends Module {
 
    @EventHandler
    public void onRender2D(Render2DEvent event) {
-      if (mc.field_1687 != null && mc.field_1724 != null && this.tag.getValue()) {
-         class_332 context = event.getDrawContext();
-         class_327 textRenderer = mc.field_1772;
+      if (mc.world != null && mc.player != null && this.tag.getValue()) {
+         DrawContext context = event.getDrawContext();
+         TextRenderer textRenderer = mc.textRenderer;
 
          for (int i = 0; i < this.foundPositions.size(); i++) {
-            class_2338 pos = this.foundPositions.get(i);
+            BlockPos pos = this.foundPositions.get(i);
             String name = this.foundNames.get(i);
-            class_243 center = pos.method_46558().method_1031(0.0, 0.5, 0.0);
-            class_241 screen = ProjectionUtil.worldScreenPos(center);
+            Vec3d center = pos.toCenterPos().add(0.0, 0.5, 0.0);
+            Vec2f screen = ProjectionUtil.worldScreenPos(center);
             if (screen != null) {
-               int textWidth = textRenderer.method_1727(name);
+               int textWidth = textRenderer.getWidth(name);
                float scaleVal = 0.8F;
-               class_4587 matrices = context.method_51448();
-               matrices.method_22903();
-               matrices.method_46416(screen.field_1343, screen.field_1342, 0.0F);
-               matrices.method_22905(scaleVal, scaleVal, 1.0F);
+               MatrixStack matrices = context.getMatrices();
+               matrices.push();
+               matrices.translate(screen.x, screen.y, 0.0F);
+               matrices.scale(scaleVal, scaleVal, 1.0F);
                int bg = 1711276032;
                int padding = 3;
                int left = -textWidth / 2 - padding;
                int top = -9 - padding;
                int right = textWidth / 2 + padding;
-               context.method_25294(left, top, right, padding, bg);
-               context.method_51439(textRenderer, class_2561.method_43470(name), -textWidth / 2, top + padding, -1, true);
-               matrices.method_22909();
+               context.fill(left, top, right, padding, bg);
+               context.drawText(textRenderer, Text.literal(name), -textWidth / 2, top + padding, -1, true);
+               matrices.pop();
             }
          }
       }
    }
 
-   private String getBlockDisplayName(class_2248 block) {
-      if (block == class_2246.field_10212) {
+   private String getBlockDisplayName(Block block) {
+      if (block == Blocks.IRON_ORE) {
          return "铁矿";
-      } else if (block == class_2246.field_29027) {
+      } else if (block == Blocks.DEEPSLATE_IRON_ORE) {
          return "深层铁矿";
-      } else if (block == class_2246.field_33508) {
+      } else if (block == Blocks.RAW_IRON_BLOCK) {
          return "粗铁块";
       } else {
-         return block == class_2246.field_10085 ? "铁块" : "铁矿";
+         return block == Blocks.IRON_BLOCK ? "铁块" : "铁矿";
       }
    }
 }

@@ -16,19 +16,19 @@ import dev.southside.utils.player.InventoryUtils;
 import dev.southside.utils.player.SlotUtils;
 import java.util.Arrays;
 import java.util.List;
-import net.minecraft.class_1713;
-import net.minecraft.class_1747;
-import net.minecraft.class_1792;
-import net.minecraft.class_1799;
-import net.minecraft.class_1802;
-import net.minecraft.class_1844;
-import net.minecraft.class_1847;
-import net.minecraft.class_2815;
-import net.minecraft.class_490;
-import net.minecraft.class_9334;
+import net.minecraft.screen.slot.SlotActionType;
+import net.minecraft.item.BlockItem;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.component.type.PotionContentsComponent;
+import net.minecraft.potion.Potions;
+import net.minecraft.network.packet.c2s.play.CloseHandledScreenC2SPacket;
+import net.minecraft.client.gui.screen.ingame.InventoryScreen;
+import net.minecraft.component.DataComponentTypes;
 
 public class AutoOffhand extends Module {
-   private static final List<class_1792> THROWABLE_PRIORITY = Arrays.asList(class_1802.field_8543, class_1802.field_8803);
+   private static final List<Item> THROWABLE_PRIORITY = Arrays.asList(Items.SNOWBALL, Items.EGG);
    private final Slider minHealth = new Slider("Min Health", 8.0F, 1.0F, 24.0F, 0.5F);
    private final Dropdown healItem = new Dropdown("Heal Item", "Golden Apple", "Golden Apple", "Healing Potion");
    private final Switch bedwars = new Switch("Bedwars", false);
@@ -54,10 +54,10 @@ public class AutoOffhand extends Module {
 
    @EventHandler
    private void onMoveInput(MovementInputEvent event) {
-      if (this.needStopSprint && mc.field_1724 != null) {
-         if (!mc.field_1690.field_1903.method_1434() || !mc.field_1724.method_24828()) {
-            mc.field_1690.field_1867.method_23481(false);
-            mc.field_1724.method_5728(false);
+      if (this.needStopSprint && mc.player != null) {
+         if (!mc.options.jumpKey.isPressed() || !mc.player.isOnGround()) {
+            mc.options.sprintKey.setPressed(false);
+            mc.player.setSprinting(false);
             event.setSprint(false);
          }
       }
@@ -66,16 +66,16 @@ public class AutoOffhand extends Module {
    @EventHandler
    private void onMotion(MotionEvent event) {
       if (event.getState() == Stage.PRE) {
-         if (mc.field_1724 != null && mc.field_1687 != null && mc.method_1562() != null) {
-            if (!mc.field_1724.method_29504()) {
-               if (!(mc.field_1755 instanceof class_490)) {
-                  if (mc.field_1724.method_6115() || mc.field_1724.field_6252 || mc.field_1690.field_1904.method_1434()) {
+         if (mc.player != null && mc.world != null && mc.getNetworkHandler() != null) {
+            if (!mc.player.isDead()) {
+               if (!(mc.currentScreen instanceof InventoryScreen)) {
+                  if (mc.player.isUsingItem() || mc.player.handSwinging || mc.options.useKey.isPressed()) {
                      this.swapCooldown = 4;
                   } else if (this.swapCooldown > 0) {
                      this.swapCooldown--;
                   } else {
-                     class_1799 offhandStack = mc.field_1724.method_6079();
-                     double health = mc.field_1724.method_6032() + mc.field_1724.method_6067();
+                     ItemStack offhandStack = mc.player.getOffHandStack();
+                     double health = mc.player.getHealth() + mc.player.getAbsorptionAmount();
                      if (health <= this.minHealth.getValue().doubleValue()) {
                         int healSlot = this.findHealItemSlot();
                         if (healSlot != -1 && !this.isSelectedHealItem(offhandStack)) {
@@ -121,19 +121,19 @@ public class AutoOffhand extends Module {
       return this.healItem.isMode("Healing Potion") ? this.findHealingPotionSlot() : this.findGappleSlot();
    }
 
-   private boolean isSelectedHealItem(class_1799 stack) {
+   private boolean isSelectedHealItem(ItemStack stack) {
       return this.healItem.isMode("Healing Potion") ? this.isHealingPotion(stack) : this.isGapple(stack);
    }
 
    private int findGappleSlot() {
-      int enchanted = this.findHotbarItem(class_1802.field_8367);
-      return enchanted != -1 ? enchanted : this.findHotbarItem(class_1802.field_8463);
+      int enchanted = this.findHotbarItem(Items.ENCHANTED_GOLDEN_APPLE);
+      return enchanted != -1 ? enchanted : this.findHotbarItem(Items.GOLDEN_APPLE);
    }
 
-   private int findHotbarItem(class_1792 item) {
+   private int findHotbarItem(Item item) {
       for (int slot = 0; slot < 9; slot++) {
-         class_1799 stack = mc.field_1724.method_31548().method_5438(slot);
-         if (!stack.method_7960() && stack.method_7909() == item) {
+         ItemStack stack = mc.player.getInventory().getStack(slot);
+         if (!stack.isEmpty() && stack.getItem() == item) {
             return slot;
          }
       }
@@ -146,7 +146,7 @@ public class AutoOffhand extends Module {
       int bestScore = Integer.MIN_VALUE;
 
       for (int slot = 0; slot < 9; slot++) {
-         class_1799 stack = mc.field_1724.method_31548().method_5438(slot);
+         ItemStack stack = mc.player.getInventory().getStack(slot);
          if (this.isHealingPotion(stack)) {
             int score = this.getHealingPotionScore(stack);
             if (score > bestScore) {
@@ -160,7 +160,7 @@ public class AutoOffhand extends Module {
    }
 
    private int findProjectileSlot() {
-      class_1799 bestProjectile = InventoryUtils.getBestProjectile();
+      ItemStack bestProjectile = InventoryUtils.getBestProjectile();
       if (bestProjectile != null) {
          int slot = InventoryUtils.getItemStackSlot(bestProjectile);
          if (this.isHotbarSlot(slot)) {
@@ -168,7 +168,7 @@ public class AutoOffhand extends Module {
          }
       }
 
-      for (class_1792 throwable : THROWABLE_PRIORITY) {
+      for (Item throwable : THROWABLE_PRIORITY) {
          int slot = this.findHotbarItem(throwable);
          if (slot != -1) {
             return slot;
@@ -180,7 +180,7 @@ public class AutoOffhand extends Module {
 
    private int findBlockSlot() {
       for (int slot = 8; slot >= 0; slot--) {
-         class_1799 stack = mc.field_1724.method_31548().method_5438(slot);
+         ItemStack stack = mc.player.getInventory().getStack(slot);
          if (this.isBridgeBlock(stack)) {
             return slot;
          }
@@ -189,72 +189,72 @@ public class AutoOffhand extends Module {
       return -1;
    }
 
-   private boolean isGapple(class_1799 stack) {
-      if (stack.method_7960()) {
+   private boolean isGapple(ItemStack stack) {
+      if (stack.isEmpty()) {
          return false;
       } else {
-         class_1792 item = stack.method_7909();
-         return item == class_1802.field_8463 || item == class_1802.field_8367;
+         Item item = stack.getItem();
+         return item == Items.GOLDEN_APPLE || item == Items.ENCHANTED_GOLDEN_APPLE;
       }
    }
 
-   private boolean isProjectile(class_1799 stack) {
-      return stack.method_7960() ? false : THROWABLE_PRIORITY.contains(stack.method_7909());
+   private boolean isProjectile(ItemStack stack) {
+      return stack.isEmpty() ? false : THROWABLE_PRIORITY.contains(stack.getItem());
    }
 
-   private boolean isHealingPotion(class_1799 stack) {
-      if (stack.method_7960()) {
+   private boolean isHealingPotion(ItemStack stack) {
+      if (stack.isEmpty()) {
          return false;
       } else {
-         class_1792 item = stack.method_7909();
-         if (item != class_1802.field_8574 && item != class_1802.field_8436 && item != class_1802.field_8150) {
+         Item item = stack.getItem();
+         if (item != Items.POTION && item != Items.SPLASH_POTION && item != Items.LINGERING_POTION) {
             return false;
          } else {
-            class_1844 contents = (class_1844)stack.method_57825(class_9334.field_49651, class_1844.field_49274);
-            return contents.method_57401(class_1847.field_8963) || contents.method_57401(class_1847.field_8980);
+            PotionContentsComponent contents = (PotionContentsComponent)stack.getOrDefault(DataComponentTypes.POTION_CONTENTS, PotionContentsComponent.DEFAULT);
+            return contents.matches(Potions.HEALING) || contents.matches(Potions.STRONG_HEALING);
          }
       }
    }
 
-   private int getHealingPotionScore(class_1799 stack) {
-      class_1792 item = stack.method_7909();
+   private int getHealingPotionScore(ItemStack stack) {
+      Item item = stack.getItem();
       int base;
-      if (item == class_1802.field_8436) {
+      if (item == Items.SPLASH_POTION) {
          base = 3000;
-      } else if (item == class_1802.field_8574) {
+      } else if (item == Items.POTION) {
          base = 2000;
-      } else if (item == class_1802.field_8150) {
+      } else if (item == Items.LINGERING_POTION) {
          base = 1000;
       } else {
          base = 0;
       }
 
-      return base + stack.method_7947();
+      return base + stack.getCount();
    }
 
-   private boolean isBridgeBlock(class_1799 stack) {
-      if (stack.method_7960()) {
+   private boolean isBridgeBlock(ItemStack stack) {
+      if (stack.isEmpty()) {
          return false;
       } else {
-         class_1792 item = stack.method_7909();
-         return !(item instanceof class_1747) ? false : SlotUtils.isGoodForBridging(item);
+         Item item = stack.getItem();
+         return !(item instanceof BlockItem) ? false : SlotUtils.isGoodForBridging(item);
       }
    }
 
    private void silentSwapOffhand(int hotbarSlot) {
       if (this.isHotbarSlot(hotbarSlot)) {
-         if (mc.field_1761 != null && mc.field_1724.field_3944 != null) {
+         if (mc.interactionManager != null && mc.player.networkHandler != null) {
             if (!Southside.INSTANCE.getModuleManager().isEnabled(Scaffold.class)) {
                this.needStopSprint = true;
             }
 
-            if (!mc.field_1724.field_3919) {
-               class_1799 targetStack = mc.field_1724.method_31548().method_5438(hotbarSlot);
-               class_1799 offhandStack = mc.field_1724.method_6079();
-               if (targetStack.method_7960() || !class_1799.method_7984(targetStack, offhandStack)) {
+            if (!mc.player.lastSprinting) {
+               ItemStack targetStack = mc.player.getInventory().getStack(hotbarSlot);
+               ItemStack offhandStack = mc.player.getOffHandStack();
+               if (targetStack.isEmpty() || !ItemStack.areItemsEqual(targetStack, offhandStack)) {
                   int containerSlot = hotbarSlot + 36;
-                  mc.field_1761.method_2906(mc.field_1724.field_7498.field_7763, containerSlot, 40, class_1713.field_7791, mc.field_1724);
-                  mc.field_1724.field_3944.method_52787(new class_2815(mc.field_1724.field_7498.field_7763));
+                  mc.interactionManager.clickSlot(mc.player.playerScreenHandler.syncId, containerSlot, 40, SlotActionType.SWAP, mc.player);
+                  mc.player.networkHandler.sendPacket(new CloseHandledScreenC2SPacket(mc.player.playerScreenHandler.syncId));
                   this.swapCooldown = Math.max(this.swapCooldown, 3);
                }
             }

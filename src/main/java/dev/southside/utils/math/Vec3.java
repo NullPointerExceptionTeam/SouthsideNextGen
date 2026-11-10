@@ -1,7 +1,7 @@
 package dev.southside.utils.math;
 
-import net.minecraft.class_2338;
-import net.minecraft.class_243;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
 
 public class Vec3 {
    public double xCoord;
@@ -30,8 +30,8 @@ public class Vec3 {
       return new Vec3(vec.xCoord - this.xCoord, vec.yCoord - this.yCoord, vec.zCoord - this.zCoord);
    }
 
-   public static Vec3 atLowerCornerOf(class_2338 pos) {
-      return new Vec3(pos.method_10263(), pos.method_10264(), pos.method_10260());
+   public static Vec3 atLowerCornerOf(BlockPos pos) {
+      return new Vec3(pos.getX(), pos.getY(), pos.getZ());
    }
 
    public double dotProduct(Vec3 vec) {
@@ -126,9 +126,9 @@ public class Vec3 {
       return (float)Math.sqrt(this.xCoord * this.xCoord + this.yCoord * this.yCoord + this.zCoord * this.zCoord);
    }
 
-   public void of(class_243 input) {
-      this.xCoord = input.method_10216();
-      this.yCoord = input.method_10214();
-      this.zCoord = input.method_10215();
+   public void of(Vec3d input) {
+      this.xCoord = input.getX();
+      this.yCoord = input.getY();
+      this.zCoord = input.getZ();
    }
 }

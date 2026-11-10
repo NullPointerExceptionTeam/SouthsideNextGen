@@ -14,9 +14,9 @@ import dev.southside.utils.MinecraftTickTimerUtils;
 import dev.southside.utils.math.MathUtils;
 import dev.southside.utils.player.PlayerUtils;
 import dev.southside.utils.player.TargetUtils;
-import net.minecraft.class_1657;
-import net.minecraft.class_2743;
-import net.minecraft.class_2824;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.network.packet.s2c.play.EntityVelocityUpdateS2CPacket;
+import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
 
 public class TimerRangeB extends Module {
    private final Slider range = new Slider("Range", 3.5, 1.0, 6.0, 0.02);
@@ -64,7 +64,7 @@ public class TimerRangeB extends Module {
    @EventHandler
    public void onPlayerTick(TickEvent event) {
       if (event.getState() != Stage.POST) {
-         if (mc.field_1687 != null && mc.field_1724 != null) {
+         if (mc.world != null && mc.player != null) {
             double timerboost = MathUtils.randomDouble(0.5, 0.5);
             double charged = MathUtils.randomDouble(0.9, 0.9);
             if (this.playerTicks <= 0) {
@@ -91,27 +91,27 @@ public class TimerRangeB extends Module {
 
    @EventHandler
    public void onPacket(PacketEvent event) {
-      if (mc.field_1724 != null && mc.field_1687 != null) {
+      if (mc.player != null && mc.world != null) {
          if (PlayerUtils.isMoving()
             && !this.shouldResetTimer()
-            && (mc.field_52750.field_51964 > 50.0 || mc.field_52750.field_51964 < 50.0)
+            && (mc.renderTickCounter.tickTime > 50.0 || mc.renderTickCounter.tickTime < 50.0)
             && event.getOrigin() == TransferOrigin.RECEIVE
-            && event.getPacket() instanceof class_2743 p
-            && mc.field_1724.method_5628() == p.method_11818()
-            && p.method_11816() > 0.0
-            && (p.method_11815() != 0.0 || p.method_11819() != 0.0)) {
+            && event.getPacket() instanceof EntityVelocityUpdateS2CPacket p
+            && mc.player.getId() == p.getEntityId()
+            && p.getVelocityY() > 0.0
+            && (p.getVelocityX() != 0.0 || p.getVelocityZ() != 0.0)) {
             this.confirmKnockback = false;
             this.resetTimer();
          }
 
-         if (event.isSend() && event.getPacket() instanceof class_2824 p) {
-            if (p.field_12871 != class_2824.field_29170 && this.playerTicks >= 1) {
+         if (event.isSend() && event.getPacket() instanceof PlayerInteractEntityC2SPacket p) {
+            if (p.type != PlayerInteractEntityC2SPacket.ATTACK && this.playerTicks >= 1) {
                this.resetTimer();
                return;
             }
 
             this.confirmAttack = true;
-            double entityDistance = mc.field_1724.method_5739(mc.field_1687.method_8469(p.field_12870));
+            double entityDistance = mc.player.distanceTo(mc.world.getEntityById(p.entityId));
             this.cooldownTick++;
             boolean shouldSlowed = this.cooldownTick >= this.negativeTicks.getValue().intValue() && entityDistance > this.range.getValue().floatValue();
             if (shouldSlowed && this.confirmAttack) {
@@ -126,13 +126,13 @@ public class TimerRangeB extends Module {
       }
    }
 
-   private class_1657 searchTargets() {
-      class_1657 closest = null;
+   private PlayerEntity searchTargets() {
+      PlayerEntity closest = null;
       double closestDist = Double.MAX_VALUE;
 
-      for (class_1657 player : mc.field_1687.method_18456()) {
-         if (player != mc.field_1724 && TargetUtils.isTarget(player, true, true)) {
-            double dist = mc.field_1724.method_5739(player);
+      for (PlayerEntity player : mc.world.getPlayers()) {
+         if (player != mc.player && TargetUtils.isTarget(player, true, true)) {
+            double dist = mc.player.distanceTo(player);
             if (dist <= this.range.getValue().floatValue() && dist < closestDist) {
                closest = player;
                closestDist = dist;
@@ -145,20 +145,20 @@ public class TimerRangeB extends Module {
 
    private boolean shouldResetTimer() {
       return this.playerTicks >= 1
-         || mc.field_1724.method_7325()
-         || mc.field_1724.method_29504()
-         || mc.field_1724.method_5771()
-         || mc.field_1724.method_52535()
-         || mc.field_1724.method_21754()
-         || mc.field_1724.method_3144();
+         || mc.player.isSpectator()
+         || mc.player.isDead()
+         || mc.player.isInLava()
+         || mc.player.isInFluid()
+         || mc.player.isHoldingOntoLadder()
+         || mc.player.isRiding();
    }
 
    private double getDistancePrediction() {
-      double predictX = mc.field_1724.method_23317() + (mc.field_1724.method_23317() - mc.field_1724.field_3926) * 2.0;
-      double predictZ = mc.field_1724.method_23321() + (mc.field_1724.method_23321() - mc.field_1724.field_3924) * 2.0;
-      float f = (float)(predictX - mc.field_1724.method_23317());
-      float f1 = (float)(mc.field_1724.method_23318() - mc.field_1724.method_23318());
-      float f2 = (float)(predictZ - mc.field_1724.method_23321());
+      double predictX = mc.player.getX() + (mc.player.getX() - mc.player.lastX) * 2.0;
+      double predictZ = mc.player.getZ() + (mc.player.getZ() - mc.player.lastZ) * 2.0;
+      float f = (float)(predictX - mc.player.getX());
+      float f1 = (float)(mc.player.getY() - mc.player.getY());
+      float f2 = (float)(predictZ - mc.player.getZ());
       return MathUtils.sqrt(f * f + f1 * f1 + f2 * f2);
    }
 

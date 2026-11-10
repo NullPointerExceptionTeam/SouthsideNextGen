@@ -7,19 +7,19 @@ import dev.southside.render.shader.Shader;
 import java.awt.Color;
 import java.nio.ByteBuffer;
 import lombok.Generated;
-import net.minecraft.class_243;
-import net.minecraft.class_293;
-import net.minecraft.class_4587;
-import net.minecraft.class_293.class_5595;
-import net.minecraft.class_293.class_5596;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.render.VertexFormat;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.render.VertexFormat.IndexType;
+import net.minecraft.client.render.VertexFormat.DrawMode;
 import org.joml.Matrix4fStack;
 import org.lwjgl.system.MemoryUtil;
 
 public class Mesh {
    public final RenderPass pass;
-   private class_4587 matrices;
-   private final class_293 format;
-   private final class_5596 mode;
+   private MatrixStack matrices;
+   private final VertexFormat format;
+   private final DrawMode mode;
    private final int primitiveVerticesSize;
    private final int primitiveIndicesCount;
    private ByteBuffer vertices;
@@ -32,7 +32,7 @@ public class Mesh {
    private boolean building;
    private boolean in3d;
 
-   public Mesh mat(class_4587 stack) {
+   public Mesh mat(MatrixStack stack) {
       this.matrices = stack;
       return this;
    }
@@ -49,11 +49,11 @@ public class Mesh {
       this.indicesPointer = MemoryUtil.memAddress0(this.indices);
       this.vertices = MemoryUtil.memAlloc(1024);
       this.verticesPointer = this.verticesPointerStart = MemoryUtil.memAddress0(this.vertices);
-      this.primitiveVerticesSize = this.format.method_1362();
-      this.primitiveIndicesCount = this.mode.field_27384;
+      this.primitiveVerticesSize = this.format.getVertexSizeByte();
+      this.primitiveIndicesCount = this.mode.firstVertexCount;
    }
 
-   public Mesh(Shader shader, class_293 format, class_5596 mode) {
+   public Mesh(Shader shader, VertexFormat format, DrawMode mode) {
       this.pass = new RenderPass(format, mode);
       this.pass.setShader(shader);
       this.format = format;
@@ -62,8 +62,8 @@ public class Mesh {
       this.indicesPointer = MemoryUtil.memAddress0(this.indices);
       this.vertices = MemoryUtil.memAlloc(1024);
       this.verticesPointer = this.verticesPointerStart = MemoryUtil.memAddress0(this.vertices);
-      this.primitiveVerticesSize = format.method_1362();
-      this.primitiveIndicesCount = mode.field_27384;
+      this.primitiveVerticesSize = format.getVertexSizeByte();
+      this.primitiveIndicesCount = mode.firstVertexCount;
    }
 
    public void begin() {
@@ -96,8 +96,8 @@ public class Mesh {
    public Mesh vec3(float x, float y, float z) {
       long p = this.verticesPointer;
       if (this.in3d) {
-         float _x = (float)(x - MinecraftAccessor.mc.method_1561().field_4686.method_19326().method_10216());
-         float _z = (float)(z - MinecraftAccessor.mc.method_1561().field_4686.method_19326().method_10215());
+         float _x = (float)(x - MinecraftAccessor.mc.getEntityRenderDispatcher().camera.getPos().getX());
+         float _z = (float)(z - MinecraftAccessor.mc.getEntityRenderDispatcher().camera.getPos().getZ());
          MemoryUtil.memPutFloat(p, _x);
          MemoryUtil.memPutFloat(p + 4L, y);
          MemoryUtil.memPutFloat(p + 8L, _z);
@@ -209,7 +209,7 @@ public class Mesh {
          throw new IllegalStateException("Mesh.end() called while not building.");
       } else {
          this.building = false;
-         this.pass.setIndexBuffer(this.getIndexBuffer(), class_5595.field_27373);
+         this.pass.setIndexBuffer(this.getIndexBuffer(), IndexType.INT);
          this.pass.setVertexBuffer(this.getVertexBuffer());
       }
    }
@@ -226,12 +226,12 @@ public class Mesh {
       Matrix4fStack matrixStack = RenderSystem.getModelViewStack();
       matrixStack.pushMatrix();
       if (this.matrices != null) {
-         matrixStack.mul(this.matrices.method_23760().method_23761());
+         matrixStack.mul(this.matrices.peek().getPositionMatrix());
       }
 
       if (this.in3d) {
-         class_243 cameraPos = MinecraftAccessor.mc.field_1773.method_19418().method_19326();
-         matrixStack.translate(0.0F, (float)(-cameraPos.field_1351), 0.0F);
+         Vec3d cameraPos = MinecraftAccessor.mc.gameRenderer.getCamera().getPos();
+         matrixStack.translate(0.0F, (float)(-cameraPos.y), 0.0F);
       }
 
       this.pass.drawIndexed(0, this.indicesCount);

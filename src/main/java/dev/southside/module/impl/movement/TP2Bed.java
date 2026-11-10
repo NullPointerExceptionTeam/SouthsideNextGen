@@ -14,26 +14,26 @@ import dev.southside.utils.ChatUtils;
 import dev.southside.utils.network.PacketUtils;
 import dev.southside.utils.world.BlockEntityIterator;
 import java.util.concurrent.LinkedBlockingQueue;
-import net.minecraft.class_2244;
-import net.minecraft.class_2338;
-import net.minecraft.class_2350;
-import net.minecraft.class_243;
-import net.minecraft.class_2586;
-import net.minecraft.class_2587;
-import net.minecraft.class_2596;
-import net.minecraft.class_2668;
-import net.minecraft.class_2680;
-import net.minecraft.class_2696;
-import net.minecraft.class_2708;
-import net.minecraft.class_2742;
-import net.minecraft.class_2793;
-import net.minecraft.class_2828.class_2829;
+import net.minecraft.block.BedBlock;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.block.entity.BedBlockEntity;
+import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.s2c.play.GameStateChangeS2CPacket;
+import net.minecraft.block.BlockState;
+import net.minecraft.network.packet.s2c.play.PlayerAbilitiesS2CPacket;
+import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
+import net.minecraft.block.enums.BedPart;
+import net.minecraft.network.packet.c2s.play.TeleportConfirmC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket.PositionAndOnGround;
 
 public class TP2Bed extends Module {
    private final Slider searchRadius = new Slider("Search Radius", 64, 16, 128, 1);
    private final Switch autoDisable = new Switch("Auto Disable", true);
    private final Switch debug = new Switch("Debug", false);
-   private final LinkedBlockingQueue<class_2596<?>> packetQueue = new LinkedBlockingQueue<>();
+   private final LinkedBlockingQueue<Packet<?>> packetQueue = new LinkedBlockingQueue<>();
    private boolean inSpectator = false;
    private boolean teleported = false;
    private int graceTicks = 0;
@@ -48,7 +48,7 @@ public class TP2Bed extends Module {
    @Override
    public void onEnable() {
       this.resetState();
-      if (mc.field_1724 != null && mc.field_1724.method_31549().field_7479) {
+      if (mc.player != null && mc.player.getAbilities().flying) {
          this.inSpectator = true;
       }
 
@@ -75,11 +75,11 @@ public class TP2Bed extends Module {
 
    @EventHandler
    public void onTick(RotationEvent event) {
-      if (mc.field_1724 != null) {
+      if (mc.player != null) {
          if (this.graceTicks > 0) {
             this.graceTicks--;
-            mc.field_1724.method_5814(this.tpX, this.tpY, this.tpZ);
-            mc.field_1724.method_18800(0.0, 0.0, 0.0);
+            mc.player.setPosition(this.tpX, this.tpY, this.tpZ);
+            mc.player.setVelocity(0.0, 0.0, 0.0);
             if (this.graceTicks == 0) {
                this.inSpectator = false;
                this.teleported = false;
@@ -97,17 +97,17 @@ public class TP2Bed extends Module {
 
    @EventHandler
    public void onPacket(PacketEvent event) {
-      if (mc.field_1724 != null && mc.field_1687 != null) {
+      if (mc.player != null && mc.world != null) {
          if (event.getOrigin() == TransferOrigin.RECEIVE) {
-            if (mc.field_1724.field_6012 >= 20) {
-               class_2596<?> packet = event.getPacket();
-               if (packet instanceof class_2708 pos) {
+            if (mc.player.age >= 20) {
+               Packet<?> packet = event.getPacket();
+               if (packet instanceof PlayerPositionLookS2CPacket pos) {
                   if (this.teleported && this.graceTicks > 0) {
                      event.setCancelled(true);
-                     PacketUtils.sendPacketNoEvent(new class_2793(pos.comp_3133()));
-                     PacketUtils.sendPacketNoEvent(new class_2829(this.tpX, this.tpY, this.tpZ, true, false));
-                     mc.field_1724.method_5814(this.tpX, this.tpY, this.tpZ);
-                     mc.field_1724.method_18800(0.0, 0.0, 0.0);
+                     PacketUtils.sendPacketNoEvent(new TeleportConfirmC2SPacket(pos.teleportId()));
+                     PacketUtils.sendPacketNoEvent(new PositionAndOnGround(this.tpX, this.tpY, this.tpZ, true, false));
+                     mc.player.setPosition(this.tpX, this.tpY, this.tpZ);
+                     mc.player.setVelocity(0.0, 0.0, 0.0);
                      if (this.debug.getValue()) {
                         ChatUtils.info("§7[TP2Bed] Grace中拦截Position包");
                      }
@@ -117,15 +117,15 @@ public class TP2Bed extends Module {
 
                   if (this.inSpectator && !this.teleported) {
                      event.setCancelled(true);
-                     PacketUtils.sendPacketNoEvent(new class_2793(pos.comp_3133()));
+                     PacketUtils.sendPacketNoEvent(new TeleportConfirmC2SPacket(pos.teleportId()));
                      this.doTeleport();
                      return;
                   }
                }
 
                if (!event.isCancelled()) {
-                  if (packet instanceof class_2668 gs && gs.method_11491() == class_2668.field_25648) {
-                     int mode = (int)gs.method_11492();
+                  if (packet instanceof GameStateChangeS2CPacket gs && gs.getReason() == GameStateChangeS2CPacket.GAME_MODE_CHANGED) {
+                     int mode = (int)gs.getValue();
                      if (mode == 3) {
                         this.inSpectator = true;
                         this.teleported = false;
@@ -142,14 +142,14 @@ public class TP2Bed extends Module {
                      }
                   }
 
-                  if (packet instanceof class_2696 abilities && abilities.method_11698() && !this.inSpectator) {
+                  if (packet instanceof PlayerAbilitiesS2CPacket abilities && abilities.isFlying() && !this.inSpectator) {
                      this.inSpectator = true;
                      this.teleported = false;
                      this.graceTicks = 0;
                      if (this.debug.getValue()) {
                         ChatUtils.info("§7[TP2Bed] 进入旁观 (Abilities)");
-                        mc.field_1724.method_5814(this.tpX, this.tpY, this.tpZ);
-                        mc.field_1724.method_18800(0.0, 0.0, 0.0);
+                        mc.player.setPosition(this.tpX, this.tpY, this.tpZ);
+                        mc.player.setVelocity(0.0, 0.0, 0.0);
                      }
                   }
                }
@@ -160,40 +160,40 @@ public class TP2Bed extends Module {
 
    private void doTeleport() {
       if (!this.teleported) {
-         class_2338 bed = this.findNearestBed();
+         BlockPos bed = this.findNearestBed();
          if (bed == null) {
             ChatUtils.warning("§c[TP2Bed] 未找到床");
             this.inSpectator = false;
          } else {
-            this.tpX = bed.method_10263() + 0.5;
-            this.tpY = bed.method_10264() + 1.0;
-            this.tpZ = bed.method_10260() + 0.5;
-            PacketUtils.sendPacketNoEvent(new class_2829(this.tpX, this.tpY, this.tpZ, true, false));
-            mc.field_1724.method_5814(this.tpX, this.tpY, this.tpZ);
-            mc.field_1724.method_18800(0.0, 0.0, 0.0);
+            this.tpX = bed.getX() + 0.5;
+            this.tpY = bed.getY() + 1.0;
+            this.tpZ = bed.getZ() + 0.5;
+            PacketUtils.sendPacketNoEvent(new PositionAndOnGround(this.tpX, this.tpY, this.tpZ, true, false));
+            mc.player.setPosition(this.tpX, this.tpY, this.tpZ);
+            mc.player.setVelocity(0.0, 0.0, 0.0);
             this.teleported = true;
             this.graceTicks = 5;
-            ChatUtils.info("§a[TP2Bed] 已传送到床 (" + bed.method_10263() + ", " + (bed.method_10264() + 1) + ", " + bed.method_10260() + ")");
+            ChatUtils.info("§a[TP2Bed] 已传送到床 (" + bed.getX() + ", " + (bed.getY() + 1) + ", " + bed.getZ() + ")");
          }
       }
    }
 
-   private class_2338 findNearestBed() {
-      if (mc.field_1724 != null && mc.field_1687 != null) {
-         class_243 pos = mc.field_1724.method_19538();
+   private BlockPos findNearestBed() {
+      if (mc.player != null && mc.world != null) {
+         Vec3d pos = mc.player.getPos();
          double maxSq = Math.pow(this.searchRadius.getValue().doubleValue(), 2.0);
-         class_2338 nearest = null;
+         BlockPos nearest = null;
          double nearestSq = Double.MAX_VALUE;
          BlockEntityIterator it = new BlockEntityIterator();
 
          while (it.hasNext()) {
-            class_2586 be = it.next();
-            if (be instanceof class_2587) {
-               class_2680 state = mc.field_1687.method_8320(be.method_11016());
-               if (state.method_26204() instanceof class_2244) {
-                  class_2338 head = this.getHeadPos(be.method_11016(), state);
+            BlockEntity be = it.next();
+            if (be instanceof BedBlockEntity) {
+               BlockState state = mc.world.getBlockState(be.getPos());
+               if (state.getBlock() instanceof BedBlock) {
+                  BlockPos head = this.getHeadPos(be.getPos(), state);
                   if (head != null) {
-                     double dSq = pos.method_1025(class_243.method_24953(head));
+                     double dSq = pos.squaredDistanceTo(Vec3d.ofCenter(head));
                      if (dSq < maxSq && dSq < nearestSq) {
                         nearestSq = dSq;
                         nearest = head;
@@ -209,15 +209,15 @@ public class TP2Bed extends Module {
       }
    }
 
-   private class_2338 getHeadPos(class_2338 pos, class_2680 state) {
-      class_2350 facing = (class_2350)state.method_11654(class_2244.field_11177);
-      class_2742 part = (class_2742)state.method_11654(class_2244.field_9967);
-      return part == class_2742.field_12560 ? pos.method_10062() : pos.method_10093(facing).method_10062();
+   private BlockPos getHeadPos(BlockPos pos, BlockState state) {
+      Direction facing = (Direction)state.get(BedBlock.FACING);
+      BedPart part = (BedPart)state.get(BedBlock.PART);
+      return part == BedPart.HEAD ? pos.toImmutable() : pos.offset(facing).toImmutable();
    }
 
    private void releasePackets() {
       while (!this.packetQueue.isEmpty()) {
-         class_2596<?> p = this.packetQueue.poll();
+         Packet<?> p = this.packetQueue.poll();
          if (p != null && !ServerPacketManager.onPacket(p)) {
             PacketUtils.handlePacket(p);
          }
